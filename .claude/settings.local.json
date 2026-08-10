@@ -20,7 +20,23 @@
       "Bash(curl -s \"http://127.0.0.1:8765/properties/sheet_e3a0a660a35017e76d6485432aafa741\" -o /tmp/show2.html)",
       "Bash(curl -s \"http://127.0.0.1:8765/properties/sheet_e3a0a660a35017e76d6485432aafa741\" -o /tmp/show3.html)",
       "Bash(curl -s \"http://127.0.0.1:8765/properties/sheet_e3a0a660a35017e76d6485432aafa741\" -o /tmp/show4.html)",
-      "Bash(curl -s \"http://127.0.0.1:8765/properties/sheet_e3a0a660a35017e76d6485432aafa741\" -o /tmp/show_fixed.html)"
+      "Bash(curl -s \"http://127.0.0.1:8765/properties/sheet_e3a0a660a35017e76d6485432aafa741\" -o /tmp/show_fixed.html)",
+      "PowerShell(php artisan view:clear)",
+      "PowerShell(php artisan view:cache)",
+      "Bash(node --check public/js/property-filters-sync.js)",
+      "Bash(php -l app/Http/Controllers/PropertyController.php)",
+      "Bash(curl -s -D - -o /dev/null http://127.0.0.1:8010/properties)",
+      "Bash(php artisan *)",
+      "Bash(rm -f /tmp/th-jar.txt)",
+      "Bash(curl -s -c /tmp/th-jar.txt -b /tmp/th-jar.txt -o /dev/null -w '  status=%{http_code} redirect=%{redirect_url}\\\\n' 'http://127.0.0.1:8010/?location=London&qf=1')",
+      "Bash(curl -s -c /tmp/th-jar.txt -b /tmp/th-jar.txt -o /dev/null -w '  status=%{http_code} redirect=%{redirect_url}\\\\n' http://127.0.0.1:8010/)",
+      "Bash(curl -s -c /tmp/th-jar.txt -b /tmp/th-jar.txt -o /dev/null -w '  status=%{http_code} redirect=%{redirect_url}\\\\n' http://127.0.0.1:8010/?qf=1)",
+      "Bash(curl -s \"http://127.0.0.1:8010/?qf=1\")",
+      "Bash(grep -oiE \"[0-9,]+[^<>]{0,25}\\(properties|propert\\)\")",
+      "Bash(taskkill //FI \"IMAGENAME eq php.exe\" //F)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }

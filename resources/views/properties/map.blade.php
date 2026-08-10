@@ -1449,21 +1449,14 @@ select.filter-input option {
                         </svg>
                         Map View
                     </a></li>
-                        @auth
-                    <li><a href="{{ route('admin.dashboard') }}" class="btn-agent">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                        </svg>
-                        Dashboard
-                    </a></li>
-                        @else
+                        @guest
                     <li><a href="{{ route('login', ['redirect' => url()->current()]) }}" class="btn-agent">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                         </svg>
                         Agent Login
                     </a></li>
-                        @endauth
+                        @endguest
                 </ul>
                 </div>
             </div>
@@ -1927,7 +1920,7 @@ select.filter-input option {
                 fitMapToProperties(validProperties);
 
                 if (typeof TrueholdPropertyFilters !== 'undefined') {
-                    if (!TrueholdPropertyFilters.hasFilterParamsInSearch()) {
+                    if (!TrueholdPropertyFilters.expressesFilterState()) {
                         const stored = TrueholdPropertyFilters.getStoredQueryString();
                         if (stored) {
                             TrueholdPropertyFilters.applyQueryStringToMapControls(stored);
@@ -2340,7 +2333,7 @@ select.filter-input option {
                 const qs = TrueholdPropertyFilters.buildMapControlsQueryString();
                 TrueholdPropertyFilters.saveFromQueryString(qs);
                 const mapBase = '{{ route("properties.map") }}';
-                history.replaceState({}, '', qs ? (mapBase + '?' + qs) : mapBase);
+                history.replaceState({}, '', mapBase + '?' + TrueholdPropertyFilters.markedQueryString(qs));
             }
         }
         
@@ -2380,7 +2373,9 @@ select.filter-input option {
 
             if (typeof TrueholdPropertyFilters !== 'undefined') {
                 TrueholdPropertyFilters.clearStored();
-                history.replaceState({}, '', '{{ route("properties.map") }}');
+                // Keep the marker so a refresh (and the next navigation) tells the
+                // server the empty filter set is deliberate.
+                history.replaceState({}, '', '{{ route("properties.map") }}' + '?qf=1');
             }
         }
 
@@ -2471,10 +2466,10 @@ select.filter-input option {
             document.querySelectorAll('a.js-truehold-to-listing').forEach(function (a) {
                 a.addEventListener('click', function (e) {
                     e.preventDefault();
-                    const qs = TrueholdPropertyFilters.buildMapControlsQueryString() || TrueholdPropertyFilters.getStoredQueryString();
+                    const qs = TrueholdPropertyFilters.buildMapControlsQueryString();
                     TrueholdPropertyFilters.saveFromQueryString(qs);
                     const base = a.getAttribute('href').split('?')[0];
-                    window.location.href = base + (qs ? '?' + qs : '');
+                    window.location.href = base + '?' + TrueholdPropertyFilters.markedQueryString(qs);
                 });
             });
 

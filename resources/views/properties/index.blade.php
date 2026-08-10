@@ -1545,21 +1545,14 @@ button {
                         </svg>
                         Map View
                     </a></li>
-                        @auth
-                    <li><a href="{{ route('admin.dashboard') }}" class="btn-agent">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                        </svg>
-                        Dashboard
-                    </a></li>
-                        @else
+                        @guest
                     <li><a href="{{ route('login', ['redirect' => url()->current()]) }}" class="btn-agent">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                         </svg>
                         Agent Login
                     </a></li>
-                        @endauth
+                        @endguest
                 </ul>
                     </div>
                 </div>
@@ -1914,7 +1907,9 @@ button {
             if (typeof TrueholdPropertyFilters !== 'undefined') {
                 TrueholdPropertyFilters.clearStored();
             }
-            window.location.href = '{{ route("properties.index") }}';
+            // reset=1 makes the server forget the remembered filters; a bare URL
+            // would just be treated as navigation and restore them again.
+            window.location.href = '{{ route("properties.index") }}' + '?reset=1';
         }
 
         function shareFilters() {
@@ -1996,7 +1991,10 @@ button {
 
             function loadResults() {
                 const qs = getFilterQueryString();
-                const url = '{{ route("properties.index") }}' + (qs ? '?' + qs : '');
+                const marked = (typeof TrueholdPropertyFilters !== 'undefined')
+                    ? TrueholdPropertyFilters.markedQueryString(qs)
+                    : (qs ? qs + '&qf=1' : 'qf=1');
+                const url = '{{ route("properties.index") }}' + '?' + marked;
                 container.style.opacity = '0.6';
                 container.style.pointerEvents = 'none';
                 fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
@@ -2024,7 +2022,7 @@ button {
             updateThfFilterCountBadge();
 
             if (typeof TrueholdPropertyFilters !== 'undefined') {
-                if (!TrueholdPropertyFilters.hasFilterParamsInSearch()) {
+                if (!TrueholdPropertyFilters.expressesFilterState()) {
                     const stored = TrueholdPropertyFilters.getStoredQueryString();
                     if (stored) {
                         TrueholdPropertyFilters.applyQueryStringToListingForm(form, stored);
@@ -2041,9 +2039,9 @@ button {
             if (mapNav && typeof TrueholdPropertyFilters !== 'undefined') {
                 mapNav.addEventListener('click', function (e) {
                     e.preventDefault();
-                    const qs = TrueholdPropertyFilters.listingFormQueryString(form) || TrueholdPropertyFilters.getStoredQueryString();
+                    const qs = TrueholdPropertyFilters.listingFormQueryString(form);
                     TrueholdPropertyFilters.saveFromQueryString(qs);
-                    window.location.href = '{{ route("properties.map") }}' + (qs ? '?' + qs : '');
+                    window.location.href = '{{ route("properties.map") }}' + '?' + TrueholdPropertyFilters.markedQueryString(qs);
                 });
             }
 

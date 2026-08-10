@@ -4,6 +4,10 @@
  */
 (function (global) {
     var STORAGE_KEY = 'truehold_property_filters_qs';
+    // Marker the server (PropertyController::applyStickyFilters) reads as "this URL
+    // states the filters — even if it states none". Without it a filter-less URL is
+    // treated as bare navigation and the remembered filters are restored.
+    var MARKER_KEY = 'qf';
     var FILTER_KEYS = [
         'location',
         'property_type',
@@ -41,6 +45,13 @@
         });
     }
 
+    // True when the URL is authoritative about the filter state, including the
+    // deliberately-empty state (?qf=1), which must not be re-filled from storage.
+    function expressesFilterState(search) {
+        var p = parseQueryString(search || window.location.search || '');
+        return p.has(MARKER_KEY) || hasFilterParamsInSearch(search);
+    }
+
     function saveFromParams(params) {
         var p = filterParamsOnly(params);
         var s = p.toString();
@@ -58,7 +69,17 @@
     global.TrueholdPropertyFilters = {
         STORAGE_KEY: STORAGE_KEY,
         FILTER_KEYS: FILTER_KEYS,
+        MARKER_KEY: MARKER_KEY,
         hasFilterParamsInSearch: hasFilterParamsInSearch,
+        expressesFilterState: expressesFilterState,
+
+        // Stamp a query string as authoritative so an empty one clears the
+        // server-remembered filters instead of resurrecting them.
+        markedQueryString: function (qs) {
+            var p = parseQueryString(qs || '');
+            p.set(MARKER_KEY, '1');
+            return p.toString();
+        },
 
         saveFromLocationSearch: function () {
             saveFromParams(parseQueryString(window.location.search || ''));
