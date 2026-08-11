@@ -1888,8 +1888,26 @@ button {
     </div>
     </section>
 
-    <script src="{{ asset('js/property-filters-sync.js') }}"></script>
+    <script src="{{ asset('js/property-filters-sync.js') }}?v={{ @filemtime(public_path('js/property-filters-sync.js')) ?: '1' }}"></script>
     <script>
+        // Fallbacks so a stale cached (or not-yet-deployed) property-filters-sync.js
+        // degrades instead of throwing. qf=1 marks a filter state as deliberate.
+        function thfMarkQuery(qs) {
+            if (typeof TrueholdPropertyFilters !== 'undefined' && typeof TrueholdPropertyFilters.markedQueryString === 'function') {
+                return TrueholdPropertyFilters.markedQueryString(qs);
+            }
+            return qs ? qs + '&qf=1' : 'qf=1';
+        }
+
+        function thfUrlStatesFilters() {
+            if (typeof TrueholdPropertyFilters === 'undefined') return false;
+            if (typeof TrueholdPropertyFilters.expressesFilterState === 'function') {
+                return TrueholdPropertyFilters.expressesFilterState();
+            }
+            return new URLSearchParams(window.location.search || '').has('qf')
+                || TrueholdPropertyFilters.hasFilterParamsInSearch();
+        }
+
         function toggleFilters() {
             const wrap = document.getElementById('filtersCollapse');
             const btn = document.getElementById('filtersToggleBtn');
@@ -1991,10 +2009,7 @@ button {
 
             function loadResults() {
                 const qs = getFilterQueryString();
-                const marked = (typeof TrueholdPropertyFilters !== 'undefined')
-                    ? TrueholdPropertyFilters.markedQueryString(qs)
-                    : (qs ? qs + '&qf=1' : 'qf=1');
-                const url = '{{ route("properties.index") }}' + '?' + marked;
+                const url = '{{ route("properties.index") }}' + '?' + thfMarkQuery(qs);
                 container.style.opacity = '0.6';
                 container.style.pointerEvents = 'none';
                 fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
@@ -2022,7 +2037,7 @@ button {
             updateThfFilterCountBadge();
 
             if (typeof TrueholdPropertyFilters !== 'undefined') {
-                if (!TrueholdPropertyFilters.expressesFilterState()) {
+                if (!thfUrlStatesFilters()) {
                     const stored = TrueholdPropertyFilters.getStoredQueryString();
                     if (stored) {
                         TrueholdPropertyFilters.applyQueryStringToListingForm(form, stored);
@@ -2041,7 +2056,7 @@ button {
                     e.preventDefault();
                     const qs = TrueholdPropertyFilters.listingFormQueryString(form);
                     TrueholdPropertyFilters.saveFromQueryString(qs);
-                    window.location.href = '{{ route("properties.map") }}' + '?' + TrueholdPropertyFilters.markedQueryString(qs);
+                    window.location.href = '{{ route("properties.map") }}' + '?' + thfMarkQuery(qs);
                 });
             }
 

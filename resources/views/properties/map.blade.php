@@ -1714,7 +1714,26 @@ select.filter-input option {
         </script>
     @endif
 
-    <script src="{{ asset('js/property-filters-sync.js') }}"></script>
+    <script src="{{ asset('js/property-filters-sync.js') }}?v={{ @filemtime(public_path('js/property-filters-sync.js')) ?: '1' }}"></script>
+    <script>
+        // Fallbacks so a stale cached (or not-yet-deployed) property-filters-sync.js
+        // degrades instead of throwing. qf=1 marks a filter state as deliberate.
+        function thfMarkQuery(qs) {
+            if (typeof TrueholdPropertyFilters !== 'undefined' && typeof TrueholdPropertyFilters.markedQueryString === 'function') {
+                return TrueholdPropertyFilters.markedQueryString(qs);
+            }
+            return qs ? qs + '&qf=1' : 'qf=1';
+        }
+
+        function thfUrlStatesFilters() {
+            if (typeof TrueholdPropertyFilters === 'undefined') return false;
+            if (typeof TrueholdPropertyFilters.expressesFilterState === 'function') {
+                return TrueholdPropertyFilters.expressesFilterState();
+            }
+            return new URLSearchParams(window.location.search || '').has('qf')
+                || TrueholdPropertyFilters.hasFilterParamsInSearch();
+        }
+    </script>
     <script>
         let map;
         let markers = [];
@@ -1920,7 +1939,7 @@ select.filter-input option {
                 fitMapToProperties(validProperties);
 
                 if (typeof TrueholdPropertyFilters !== 'undefined') {
-                    if (!TrueholdPropertyFilters.expressesFilterState()) {
+                    if (!thfUrlStatesFilters()) {
                         const stored = TrueholdPropertyFilters.getStoredQueryString();
                         if (stored) {
                             TrueholdPropertyFilters.applyQueryStringToMapControls(stored);
@@ -2333,7 +2352,7 @@ select.filter-input option {
                 const qs = TrueholdPropertyFilters.buildMapControlsQueryString();
                 TrueholdPropertyFilters.saveFromQueryString(qs);
                 const mapBase = '{{ route("properties.map") }}';
-                history.replaceState({}, '', mapBase + '?' + TrueholdPropertyFilters.markedQueryString(qs));
+                history.replaceState({}, '', mapBase + '?' + thfMarkQuery(qs));
             }
         }
         
@@ -2469,7 +2488,7 @@ select.filter-input option {
                     const qs = TrueholdPropertyFilters.buildMapControlsQueryString();
                     TrueholdPropertyFilters.saveFromQueryString(qs);
                     const base = a.getAttribute('href').split('?')[0];
-                    window.location.href = base + '?' + TrueholdPropertyFilters.markedQueryString(qs);
+                    window.location.href = base + '?' + thfMarkQuery(qs);
                 });
             });
 
