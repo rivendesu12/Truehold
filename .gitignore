@@ -27,3 +27,16 @@ Thumbs.db
 credentials/service_account.json
 credentials/*.json
 /credentials/*.json
+
+# Database dumps / storage archives (never commit real data)
+*.sql
+*.sql.gz
+*.tgz
+*.tar.gz
+*.dump
+google-credentials.json
+
+# Python bytecode (scraper scripts)
+__pycache__/
+*.pyc
+scraper_script.py
