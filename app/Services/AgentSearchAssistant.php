@@ -5,6 +5,7 @@ namespace App\Services;
 use Anthropic\Client as AnthropicClient;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use App\Support\FieldValue;
 use App\Support\LondonRegion;
@@ -565,6 +566,37 @@ SYS;
         return null;
     }
 
+    /**
+     * What each call really used, so the running cost is known rather than
+     * guessed: logged per call and totalled per day (assistant:usage).
+     */
+    protected function recordUsage(array $usage): void
+    {
+        if (! $usage) {
+            return;
+        }
+
+        $row = [
+            'input' => (int) ($usage['prompt_tokens'] ?? 0),
+            'cached' => (int) ($usage['prompt_tokens_details']['cached_tokens'] ?? 0),
+            'output' => (int) ($usage['completion_tokens'] ?? 0),
+            'reasoning' => (int) ($usage['completion_tokens_details']['reasoning_tokens'] ?? 0),
+        ];
+        Log::info('Assistant call', $row + ['model' => $this->model()]);
+
+        try {
+            $key = 'assistant_usage:' . now()->toDateString();
+            $day = Cache::get($key, ['calls' => 0, 'input' => 0, 'cached' => 0, 'output' => 0, 'reasoning' => 0]);
+            $day['calls']++;
+            foreach ($row as $k => $v) {
+                $day[$k] += $v;
+            }
+            Cache::put($key, $day, now()->addDays(40));
+        } catch (\Throwable $e) {
+            // Counting must never break a search.
+        }
+    }
+
     /** Anthropic path, via the official SDK. */
     protected function askAnthropic(string $system, string $question, array $schema): ?string
     {
@@ -596,8 +628,11 @@ SYS;
         $response = Http::withToken((string) config('services.openai.api_key'))
             ->timeout(30)
             ->acceptJson()
-            ->post(rtrim((string) config('services.openai.base_url', 'https://api.openai.com/v1'), '/') . '/chat/completions', [
+            ->post(rtrim((string) config('services.openai.base_url', 'https://api.openai.com/v1'), '/') . '/chat/completions', array_filter([
                 'model' => $this->model(),
+                // Reasoning models think before answering, billed as output.
+                // Filling a form from one sentence needs little of it.
+                'reasoning_effort' => config('services.openai.reasoning_effort') ?: null,
                 'messages' => [
                     ['role' => 'system', 'content' => $system],
                     ['role' => 'user', 'content' => $question],
@@ -610,7 +645,9 @@ SYS;
                         'schema' => $schema,
                     ],
                 ],
-            ]);
+            ]));
+
+        $this->recordUsage((array) $response->json('usage'));
 
         if (! $response->successful()) {
             Log::warning('OpenAI assistant call failed', [

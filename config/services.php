@@ -135,6 +135,15 @@ return [
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'model' => env('OPENAI_MODEL', 'gpt-5-nano'),
+        // minimal | low | medium | high. Empty sends nothing (the model's
+        // own default, medium, which spends far more on hidden thinking).
+        'reasoning_effort' => env('OPENAI_REASONING_EFFORT', 'low'),
+        // USD per 1M tokens, for assistant:usage estimates (gpt-5.6-luna).
+        'price' => [
+            'input' => (float) env('OPENAI_PRICE_INPUT', 0.20),
+            'cached' => (float) env('OPENAI_PRICE_CACHED', 0.02),
+            'output' => (float) env('OPENAI_PRICE_OUTPUT', 1.20),
+        ],
         // Any provider exposing an OpenAI-compatible /chat/completions
         // endpoint can be used by pointing this at their base URL. The
         // assistant only needs strict JSON-schema output; nothing else here
