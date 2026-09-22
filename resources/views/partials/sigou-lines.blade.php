@@ -40,8 +40,9 @@ window.SigouLines = (function () {
             'After 6 is overtime bro 😂 what we need?',
         ]);
         if (day === 5) return pick([
-            'Is Friday re. One more deal and we go out',
-            'Friday man. Close smth and we celebrate',
+            'Is Friday re. One more deal and we go out find girls',
+            'Friday man. Close smth and tonight we find me a girlfriend',
+            'Friday. Iam single and ready. Oh you mean the client? Ok go',
         ]);
         return pick([
             'Ela malaka. Budget, area, what the client want?',
@@ -69,6 +70,11 @@ window.SigouLines = (function () {
         'Who has the keys? Always the keys ffs',
         'Single, Greek, with a vape. Ladies the queue is here 😂😂😂',
         'Tinder is dead today so iam all yours bro',
+        'Find me a girlfriend and I give you my commission 😂😂😂',
+        'After this we go out find girls ok? Deal',
+        'Which area has the most single girls? For research bro',
+        'Iam not bored, iam single. Is different',
+        'Stop poking me, poke a girl for me 😂',
         'Budget first then we talk',
         'Commission rooms first. Obviously',
         '7 for the chicken or tomorrow on you 🤣',
@@ -92,6 +98,7 @@ window.SigouLines = (function () {
         if (has(q, /\bcheap/i)) lines.push('Cheap. My favourite word *puff*');
         if (has(q, /\b(pet|dog|cat)s?\b/i)) lines.push('A pet? Ffs… ok iam looking');
         if (has(q, /\bmin(s|utes)?\b/i)) lines.push('Checking TfL. If is westbound we are finished');
+        if (has(q, /clapham|shoreditch|soho|brixton|camden|hackney/i)) lines.push('Good area. Full of girls bro. For the client I mean 😂');
         const filler = [
             'On sec… *puff*',
             'Let m check',
@@ -99,6 +106,8 @@ window.SigouLines = (function () {
             'Iam reading all of them man, relax',
             'Is coming, is coming',
             'Hold on, one puff…',
+            'Checking the rooms… and if there are girls in the house *puff*',
+            'Let m see if any girls live there. For the client I mean 😂',
         ];
         return lines.concat(filler.sort(() => Math.random() - 0.5));
     };
