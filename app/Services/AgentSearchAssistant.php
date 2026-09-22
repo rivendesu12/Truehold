@@ -233,7 +233,22 @@ SYS;
         return $copy;
     }
 
-    public function parse(string $question, array $knownLocations = []): ?array
+    /** Keys that describe the reply rather than the search. */
+    public const NOT_FILTERS = ['explanation', 'chit_chat', 'sigou', 'sigou_found', 'sigou_none', 'refines_previous'];
+
+    /**
+     * The filters worth carrying into a follow-up: everything the agent
+     * actually set, nothing that is empty or merely Sigou talking.
+     */
+    public static function carriedFilters(array $spec): array
+    {
+        return array_filter(
+            array_diff_key($spec, array_flip(self::NOT_FILTERS)),
+            fn ($v) => ! ($v === null || $v === false || $v === [] || $v === ''),
+        );
+    }
+
+    public function parse(string $question, array $knownLocations = [], ?array $previous = null): ?array
     {
         if (! $this->isConfigured()) {
             return null;
@@ -354,6 +369,15 @@ Rules:
 - `commission_only` true if they ask for only agencies that pay commission.
 - `explanation` is one short sentence telling the agent how you read their
   request, so they can spot a misreading. Plain and neutral, not in character.
+  When refining, describe the whole search as it now stands.
+- Follow-ups. The message may start with PREVIOUS SEARCH, the filters of the
+  agent's last search. Agents refine: "max 650", "what about zone 4", "with
+  ensuite", "cheaper", "drop the zone", "and couples ok". Then return the
+  previous filters with only that change applied, and set `refines_previous`
+  true. Start fresh (`refines_previous` false, previous filters ignored) when
+  it is a new brief: "new client", "another one", "different search", or a
+  message that states its own area AND budget or type. With no PREVIOUS
+  SEARCH, `refines_previous` is false.
 SYS;
 
         if ($this->persona) {
@@ -406,6 +430,7 @@ SYS;
                 'agencies' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'sort' => ['type' => ['string', 'null'], 'enum' => ['cheapest', null]],
                 'commission_only' => ['type' => 'boolean'],
+                'refines_previous' => ['type' => 'boolean'],
                 'nice_to_have' => ['type' => 'array', 'items' => ['type' => 'string',
                     'enum' => ['garden', 'parking', 'bills_included', 'ensuite', 'near_station', 'no_deposit']]],
                 'explanation' => ['type' => 'string'],
@@ -419,7 +444,7 @@ SYS;
                 'smokers', 'pets', 'region', 'garden', 'parking', 'furnished', 'no_deposit',
                 'max_deposit', 'available_by', 'max_commitment_months',
                 'good_transport', 'agencies', 'sort',
-                'commission_only', 'nice_to_have', 'explanation',
+                'commission_only', 'nice_to_have', 'explanation', 'refines_previous',
             ],
             'additionalProperties' => false,
         ];
@@ -437,10 +462,14 @@ SYS;
         // fraction of the price.
         $prompt = $system . $locationHint . ($this->persona ? $this->jokesForThisOne() : '');
 
+        $message = $previous
+            ? "PREVIOUS SEARCH:\n" . json_encode($previous, JSON_UNESCAPED_SLASHES) . "\n\nNEW MESSAGE:\n" . $question
+            : $question;
+
         try {
             $json = $this->provider() === 'anthropic'
-                ? $this->askAnthropic($prompt, $question, $schema)
-                : $this->askOpenAi($prompt, $question, $schema);
+                ? $this->askAnthropic($prompt, $message, $schema)
+                : $this->askOpenAi($prompt, $message, $schema);
 
             if ($json === null) {
                 return null;

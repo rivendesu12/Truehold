@@ -26,6 +26,7 @@
         </div>
 
         <form class="th-ask__form" id="thAskForm">
+            <button type="button" class="th-ask__new" id="thAskNew" hidden title="Forget the last search and start a new one">New search</button>
             <input type="search" id="thAskInput" class="th-ask__input" autocomplete="off"
                    enterkeyhint="search" aria-label="Describe what the client wants"
                    placeholder="e.g. ensuite 30 min from Bond Street under £900">
@@ -56,6 +57,12 @@
 .th-ask__send{background:var(--gold,#c9a227);color:#1b2a41;border:none;border-radius:8px;
     padding:10px 16px;font-weight:700;cursor:pointer}
 .th-ask__send[disabled]{opacity:.55;cursor:default}
+.th-ask__new{background:none;border:1px solid #d5dbe5;border-radius:8px;color:#42536b;
+    padding:0 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.th-ask__new[hidden]{display:none}
+.th-ask__new:hover{background:#f4f6fa}
+.th-ask__refined{display:inline-block;background:#eef3ff;color:#2c4a8a;border-radius:4px;
+    padding:1px 6px;font-size:11px;font-weight:700;margin-right:6px;vertical-align:1px}
 .th-ask__res{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid #eef1f6;text-decoration:none;color:inherit;align-items:center}
 .th-ask__res:hover{background:#fafbfe}
 .th-ask__res img{width:92px;height:68px;object-fit:cover;border-radius:7px;background:#eef1f6;flex:none}
@@ -336,6 +343,20 @@
 
     // The last search, so it can be recalled with the up arrow and tweaked.
     let lastQ = '';
+
+    // Follow-ups refine the last search on the server ("max 650" keeps the
+    // area and zone). "New search" forgets it for the next message.
+    let startFresh = false;
+    const newBtn = document.getElementById('thAskNew');
+    newBtn.addEventListener('click', () => {
+        startFresh = true;
+        newBtn.hidden = true;
+        body.innerHTML = '';
+        stage.classList.remove('is-compact');
+        Sigou.set('idle');
+        say(SigouLines.fresh());
+        input.focus();
+    });
     input.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowUp' && !input.value && lastQ) {
             e.preventDefault();
@@ -398,7 +419,7 @@
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                     'Accept': 'application/json',
                 },
-                body: JSON.stringify({q}),
+                body: JSON.stringify({q, fresh: startFresh}),
             });
             const data = await res.json();
 
@@ -476,7 +497,9 @@
             let html = '';
             if (data.explanation) html += '<p class="th-ask__note">' + esc(data.explanation) + '</p>';
 
-            html += '<p class="th-ask__hint"><strong>' + onBrief + '</strong> match'
+            html += '<p class="th-ask__hint">'
+                 + (data.refined ? '<span class="th-ask__refined" title="Your last search, with this change">REFINED</span>' : '')
+                 + '<strong>' + onBrief + '</strong> match'
                  + (onBrief === 1 ? '' : 'es')
                  + (data.hub && data.max_journey
                         ? ' within <strong>' + data.max_journey + ' minutes</strong> of ' + esc(data.hub)
@@ -517,6 +540,8 @@
             // Sent: clear the box, like any chat. Up-arrow brings it back.
             lastQ = q;
             input.value = '';
+            startFresh = false;
+            newBtn.hidden = false;
 
             Sigou.look(0, 0.6);
             if (g.commission.length) Sigou.set('happy', 3200);

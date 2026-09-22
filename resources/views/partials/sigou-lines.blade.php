@@ -178,6 +178,13 @@ window.SigouLines = (function () {
     const error = () => pick(['Smth broke. Not me. Probably Giaco', 'Ffs is crashed. Try again', 'Piece of shit computer. Again']);
     const offline = () => pick(['WiFi is dead. Like Central line on Monday', 'Internet ate it. Try again man']);
 
-    return {greeting, poke: () => pick(pokes), nudge: () => pick(nudges), thinking, result, error, offline};
+    const fresh = () => pick([
+        'Ok, new client. Tell me',
+        'Forget the last one. Who is next?',
+        'Clean page bro. Budget, area, go',
+        'New one? Ela, tell me',
+    ]);
+
+    return {greeting, fresh, poke: () => pick(pokes), nudge: () => pick(nudges), thinking, result, error, offline};
 })();
 </script>

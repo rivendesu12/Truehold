@@ -28,8 +28,27 @@ class TestAgentAssistant extends Command
         'thanks bro',
     ];
 
+    /**
+     * Follow-ups: the first brief, then what the agent types next. A
+     * refinement keeps everything else; a new client starts over.
+     */
+    private const FOLLOWUP_CASES = [
+        ['first' => 'something in east london up to zone 3', 'then' => 'max 650',
+            'refines' => true, 'expect' => ['region' => 'east', 'max_zone' => 3, 'max_price' => 650], 'expect_none' => true],
+        ['first' => 'ensuite near bond street under 1000', 'then' => 'what about 1200',
+            'refines' => true, 'expect' => ['ensuite_only' => true, 'place' => 'bond', 'max_price' => 1200], 'expect_none' => true],
+        ['first' => 'east london zone 3 max 800', 'then' => 'drop the zone',
+            'refines' => true, 'expect' => ['max_zone' => 'none', 'region' => 'east', 'max_price' => 800]],
+        ['first' => 'double room in stratford under 900', 'then' => 'and couples ok',
+            'refines' => true, 'expect' => ['couples' => true, 'place' => 'stratford', 'max_price' => 900], 'expect_none' => true],
+        ['first' => 'studio in canary wharf under 1500', 'then' => 'new client: couple looking for a double in brixton under 1300',
+            'refines' => false, 'expect' => ['couples' => true, 'place' => 'brixton', 'max_price' => 1300], 'expect_none' => true],
+        ['first' => 'rooms in E14 under 1000', 'then' => 'another one, whole flat in wapping two bedrooms minimum',
+            'refines' => false, 'expect' => ['max_price' => 'none', 'min_bedrooms' => 2, 'place' => 'wapping'], 'expect_none' => true],
+    ];
+
     /** Fields that are Sigou talking, not search filters. */
-    private const PERSONA_FIELDS = ['explanation', 'chit_chat', 'sigou', 'sigou_found', 'sigou_none'];
+    private const PERSONA_FIELDS = AgentSearchAssistant::NOT_FILTERS;
 
     protected $description = 'Run real agent briefs through the assistant and check the parsed filters';
 
@@ -289,6 +308,31 @@ class TestAgentAssistant extends Command
 
         $this->table(['brief', 'result', 'what it got wrong', 'matches'], $rows);
 
+        // Follow-ups: does "max 650" keep the rest of the last search?
+        $followOk = 0;
+        $followRows = [];
+        foreach (self::FOLLOWUP_CASES as $case) {
+            $first = $assistant->parse($case['first'], $locations);
+            $previous = $first ? AgentSearchAssistant::carriedFilters($first) : null;
+            $spec = $previous ? $assistant->parse($case['then'], $locations, $previous) : null;
+
+            if (! $spec) {
+                $followRows[] = [$case['first'] . ' → ' . $case['then'], 'PARSE FAILED', ''];
+                continue;
+            }
+
+            $misses = $this->misses(['q' => $case['then']] + $case, $spec, $assistant, $properties);
+            if ((bool) ($spec['refines_previous'] ?? false) !== $case['refines']) {
+                $misses[] = $case['refines'] ? 'started over instead of refining' : 'kept the old search for a new client';
+            }
+
+            $ok = empty($misses);
+            $followOk += $ok ? 1 : 0;
+            $followRows[] = [substr($case['first'], 0, 34) . ' → ' . substr($case['then'], 0, 30), $ok ? 'pass' : 'MISS', implode('; ', array_slice($misses, 0, 2))];
+        }
+        $this->newLine();
+        $this->table(['follow-up', 'result', 'what it got wrong'], $followRows);
+
         // Small talk: answered in character, nothing searched.
         $chatOk = 0;
         $chatRows = [];
@@ -308,7 +352,7 @@ class TestAgentAssistant extends Command
 
         $total = count(self::CASES);
         $this->newLine();
-        $this->info("Passed {$passed}/{$total} on {$assistant->provider()}/{$assistant->model()}, small talk {$chatOk}/" . count(self::CHAT_CASES));
+        $this->info("Passed {$passed}/{$total} on {$assistant->provider()}/{$assistant->model()}, follow-ups {$followOk}/" . count(self::FOLLOWUP_CASES) . ", small talk {$chatOk}/" . count(self::CHAT_CASES));
 
         if ($this->option('compare')) {
             $this->info("Without the Sigou persona: {$plainPassed}/{$total}");
@@ -326,7 +370,8 @@ class TestAgentAssistant extends Command
             $this->line('  ASSISTANT_PROVIDER=anthropic php artisan assistant:test');
         }
 
-        return $passed === $total && $chatOk === count(self::CHAT_CASES) ? self::SUCCESS : self::FAILURE;
+        return $passed === $total && $chatOk === count(self::CHAT_CASES) && $followOk === count(self::FOLLOWUP_CASES)
+            ? self::SUCCESS : self::FAILURE;
     }
 
     /** Filters that differ between two readings, ignoring Sigou's lines. */

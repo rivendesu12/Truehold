@@ -71,12 +71,23 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
     $feed = app(\App\Services\ScrapedListingsApiService::class)->getAllProperties();
     $locations = $feed->pluck('location')->filter()->unique()->values()->all();
 
-    $spec = $assistant->parse($question, $locations);
+    // The agent's last search, so "max 650" refines it instead of starting
+    // over. Kept 30 minutes, per session; "New search" in the panel drops it.
+    $previous = null;
+    if (! $request->boolean('fresh')) {
+        $last = $request->session()->get('sigou.last');
+        if (is_array($last) && ($last['at'] ?? 0) > now()->subMinutes(30)->timestamp) {
+            $previous = $last['filters'] ?? null;
+        }
+    }
+
+    $spec = $assistant->parse($question, $locations, $previous ?: null);
     if (! $spec) {
         return response()->json(['error' => 'Could not understand that — try rephrasing.'], 502);
     }
 
-    // Just talking to Sigou, not searching: he answers and nothing is filtered.
+    // Just talking to Sigou, not searching: he answers and nothing is filtered,
+    // and the search being refined is left as it was.
     if (! empty($spec['chit_chat'])) {
         return response()->json([
             'chat' => true,
@@ -84,6 +95,11 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
             'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
         ]);
     }
+
+    $request->session()->put('sigou.last', [
+        'filters' => \App\Services\AgentSearchAssistant::carriedFilters($spec),
+        'at' => now()->timestamp,
+    ]);
 
     $found = $assistant->search($spec, $feed);
 
@@ -136,6 +152,7 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         'relaxed' => $found['relaxed'] ?? [],
         'commission_only' => (bool) ($spec['commission_only'] ?? false),
         'sigou' => (string) ($spec['sigou'] ?? ''),
+        'refined' => (bool) ($previous && ! empty($spec['refines_previous'])),
         'sigou_found' => (string) ($spec['sigou_found'] ?? ''),
         'sigou_none' => (string) ($spec['sigou_none'] ?? ''),
         // What the brief was understood as, so Sigou can comment on it.
