@@ -98,7 +98,15 @@ class TestAgentAssistant extends Command
         ],
         [
             'q' => 'short let, 3 months max, room in east london',
-            'expect' => ['max_commitment_months' => 3, 'property_types' => ['rooms']],
+            'expect' => ['max_commitment_months' => 3, 'property_types' => ['rooms'], 'region' => 'east'],
+        ],
+        [
+            'q' => 'anything in south london under 800',
+            'expect' => ['region' => 'south', 'max_price' => 800],
+        ],
+        [
+            'q' => 'north west london, ensuite, bills included',
+            'expect' => ['region' => 'north_west', 'ensuite_only' => true, 'bills_included' => true],
         ],
         [
             'q' => 'only Banksia properties please',
@@ -139,7 +147,7 @@ class TestAgentAssistant extends Command
         ],
         [
             'q' => 'between 600 and 800, furnished, somewhere in south london',
-            'expect' => ['min_price' => 600, 'max_price' => 800, 'furnished' => true],
+            'expect' => ['min_price' => 600, 'max_price' => 800, 'furnished' => true, 'region' => 'south'],
         ],
     ];
 

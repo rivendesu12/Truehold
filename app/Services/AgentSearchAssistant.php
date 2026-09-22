@@ -7,6 +7,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Support\FieldValue;
+use App\Support\LondonRegion;
 use App\Support\PropertyClassifier;
 
 /**
@@ -156,6 +157,11 @@ Rules:
 - `students` true when the tenant is a student; false when they specifically
   want a professional house.
 - `smokers` true only if they need smoking allowed.
+- `region` for a compass area: "east London", "south London", "north west
+  London", "central". Values: central, north, south, east, west, north_east,
+  north_west, south_east, south_west. Use it whenever they name a side of
+  London rather than a specific place — never leave the area out because it
+  is not in the list of known areas.
 - `pets` true if they need pets allowed.
 - `garden`, `parking` true only if asked for.
 - `furnished` true or false when they say; null when they do not care.
@@ -206,6 +212,11 @@ SYS;
                 'students' => ['type' => ['boolean', 'null']],
                 'smokers' => ['type' => ['boolean', 'null']],
                 'pets' => ['type' => ['boolean', 'null']],
+                'region' => [
+                    'type' => ['string', 'null'],
+                    'enum' => ['central', 'north', 'south', 'east', 'west',
+                        'north_east', 'north_west', 'south_east', 'south_west', null],
+                ],
                 'garden' => ['type' => ['boolean', 'null']],
                 'parking' => ['type' => ['boolean', 'null']],
                 'furnished' => ['type' => ['boolean', 'null']],
@@ -225,7 +236,7 @@ SYS;
                 'min_bedrooms', 'max_bedrooms', 'couples', 'max_zone',
                 'max_walk_to_station', 'direct_only', 'lines',
                 'max_house_size', 'room_type', 'bills_included', 'students',
-                'smokers', 'pets', 'garden', 'parking', 'furnished', 'no_deposit',
+                'smokers', 'pets', 'region', 'garden', 'parking', 'furnished', 'no_deposit',
                 'max_deposit', 'available_by', 'max_commitment_months',
                 'good_transport', 'agencies', 'sort',
                 'commission_only', 'explanation',
@@ -834,11 +845,24 @@ SYS;
             });
         }
 
+        if (! empty($spec['region'])) {
+            $region = (string) $spec['region'];
+            $results = $results->filter(fn ($p) => LondonRegion::matches($p, $region));
+        }
+
         if (! empty($spec['agencies'])) {
             $rates = app(CommissionRates::class);
             $wanted = array_map(fn ($a) => $rates->normalise((string) $a), (array) $spec['agencies']);
             $results = $results->filter(function ($p) use ($rates, $wanted) {
                 $key = $rates->normalise($p['agent_name'] ?? $p['landlord_name'] ?? null);
+
+                // A listing with no agency name normalises to '', and
+                // str_contains($want, '') is true for every request — so
+                // "only Banksia" was matching every unattributed listing.
+                if ($key === '') {
+                    return false;
+                }
+
                 foreach ($wanted as $want) {
                     if ($want !== '' && (str_contains($key, $want) || str_contains($want, $key))) {
                         return true;
