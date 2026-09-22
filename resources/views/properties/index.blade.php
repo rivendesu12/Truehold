@@ -611,6 +611,10 @@ button {
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.card-img--none{display:flex;align-items:center;justify-content:center;
+    background:#f3f5f9;color:#9aa3b4;font-size:13px;letter-spacing:.02em;
+    border-bottom:1px solid #e7ebf2}
+.card-img--none span{display:block}
 .thf-input::placeholder {
     color: rgba(248, 250, 252, 0.5);
 }
@@ -1822,7 +1826,11 @@ button {
                                     @elseif($property->first_photo_url && $property->first_photo_url !== 'N/A')
                                     <img src="{{ $property->first_photo_url }}" alt="{{ $property->title }}" class="card-img">
                                     @else
-                                    <img src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&q=80" alt="{{ $property->title }}" class="card-img">
+                                    {{-- No photograph: say so rather than showing a stock image of
+                                         someone else's flat, which is what clients complain about. --}}
+                                    <div class="card-img card-img--none" role="img" aria-label="No photo available">
+                                        <span>No photo</span>
+                                    </div>
                                     @endif
                                     
                                     @if(($property->high_quality_photos_array && count($property->high_quality_photos_array) > 0) || $property->photo_count > 0)

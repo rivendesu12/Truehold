@@ -307,6 +307,18 @@ html {
     object-fit: cover;
 }
 
+/* Stands in for the photograph when the source gives us none. Keeps the
+   gallery's shape so the page does not jump, and is not clickable to zoom. */
+.gallery-image--none {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f5f9;
+    color: #9aa3b4;
+    font-size: 15px;
+    cursor: default;
+}
+
 .gallery-nav {
     position: absolute;
     top: 50%;
@@ -1703,7 +1715,11 @@ html {
                             @elseif($property->first_photo_url && $property->first_photo_url !== 'N/A')
                                 <img src="{{ $property->first_photo_url }}" alt="{{ $property->title }}" class="gallery-image">
                             @else
-                                <img src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1200&q=80" alt="{{ $property->title }}" class="gallery-image">
+                                {{-- No photograph for this listing. An honest blank beats a stock
+                                     photo of a flat nobody is letting. --}}
+                                <div class="gallery-image gallery-image--none" role="img" aria-label="No photo available">
+                                    <span>No photo for this listing</span>
+                                </div>
                             @endif
                             
                             @if(($property->high_quality_photos_array && count($property->high_quality_photos_array) > 1) || $property->photo_count > 1)
@@ -2144,12 +2160,15 @@ html {
                     }
                     return src;
                 });
-            } else if (mainImage) {
+            // A listing with no photograph renders a placeholder <div> here, not
+            // an <img>. Reading .src off it gives undefined and .replace throws,
+            // and a lightbox over an empty box is nothing anyone wants opened.
+            } else if (mainImage && mainImage.tagName === 'IMG' && mainImage.src) {
                 allImages = [mainImage.src.replace(/w=\d+/, 'w=1920').replace(/h=\d+/, 'h=1080')];
             }
             
             // Add click event to main image
-            if (mainImage) {
+            if (mainImage && mainImage.tagName === 'IMG') {
                 mainImage.addEventListener('click', () => {
                     openLightbox(currentImageIndex);
                 });
