@@ -230,26 +230,46 @@ class SupplierPhotoService
         return isset(Cache::get(self::ALLOWED_KEY, [])[$fileId]);
     }
 
-    /** Raw bytes plus content type, or null. */
+    /**
+     * Raw bytes plus content type, or null.
+     *
+     * Cached on local disk, not through the cache store: the cache store is the
+     * database here, and binary image data cannot be written to its text column.
+     */
     public function download(string $fileId): ?array
     {
+        $dir = storage_path('app/supplier-photos');
+        $path = $dir . '/' . $fileId;
+        $metaPath = $path . '.mime';
+
+        if (is_file($path) && filemtime($path) > time() - 43200) {
+            return [
+                'body' => (string) file_get_contents($path),
+                'mime' => is_file($metaPath) ? trim((string) file_get_contents($metaPath)) : 'image/jpeg',
+            ];
+        }
+
         $drive = $this->drive();
         if (! $drive) {
             return null;
         }
 
-        return Cache::remember('supplier_photo_bytes_' . $fileId, now()->addHours(12), function () use ($drive, $fileId) {
-            try {
-                $meta = $drive->files->get($fileId, ['fields' => 'mimeType', 'supportsAllDrives' => true]);
-                $response = $drive->files->get($fileId, ['alt' => 'media', 'supportsAllDrives' => true]);
-                return [
-                    'body' => (string) $response->getBody(),
-                    'mime' => $meta->getMimeType() ?: 'image/jpeg',
-                ];
-            } catch (\Throwable $e) {
-                Log::warning('Drive photo download failed', ['file' => $fileId, 'error' => $e->getMessage()]);
-                return null;
+        try {
+            $meta = $drive->files->get($fileId, ['fields' => 'mimeType', 'supportsAllDrives' => true]);
+            $response = $drive->files->get($fileId, ['alt' => 'media', 'supportsAllDrives' => true]);
+            $body = (string) $response->getBody();
+            $mime = $meta->getMimeType() ?: 'image/jpeg';
+
+            if (! is_dir($dir)) {
+                @mkdir($dir, 0775, true);
             }
-        });
+            @file_put_contents($path, $body);
+            @file_put_contents($metaPath, $mime);
+
+            return ['body' => $body, 'mime' => $mime];
+        } catch (\Throwable $e) {
+            Log::warning('Drive photo download failed', ['file' => $fileId, 'error' => $e->getMessage()]);
+            return null;
+        }
     }
 }

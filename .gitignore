@@ -40,3 +40,6 @@ google-credentials.json
 __pycache__/
 *.pyc
 scraper_script.py
+
+# Cached supplier photos (fetched from Drive at runtime)
+storage/app/supplier-photos/
