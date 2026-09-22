@@ -69,7 +69,8 @@ return [
 
         // Only listings whose status is in this list are shown. The upstream feed
         // has no "let"/"taken" value, so this is an allowlist rather than a blocklist.
-        // Comma-separated, case-insensitive.
+        // Comma-separated, case-insensitive, matched as a prefix. available,
+        // ROLLING and APT BREAK are always shown (set in the service); this adds to them.
         'available_statuses' => env('HARBOROPS_AVAILABLE_STATUSES', 'available'),
         // Roughly half the feed has no status at all. Upstream treated blank as
         // available; set this to true to keep that behaviour.

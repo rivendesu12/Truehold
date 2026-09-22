@@ -23,6 +23,10 @@ class ScrapedListingsApiService
     protected const PAGE_SIZE = 200; // API clamps limit to 1-200
     protected const MAX_PAGES = 50;  // safety cap: 10k listings
 
+    // Statuses that mean the room can be let, whatever the env allowlist says.
+    // ROLLING and APT BREAK are available rooms; the env can add, not remove.
+    protected const ALWAYS_AVAILABLE = ['available', 'rolling', 'apt break'];
+
     protected ?string $baseUrl;
     protected ?string $apiKey;
     protected int $cacheTimeout;
@@ -39,8 +43,10 @@ class ScrapedListingsApiService
         $this->portalDomain = config('services.harborops.portal_domain');
 
         $this->availableStatuses = collect(explode(',', (string) config('services.harborops.available_statuses', 'available')))
+            ->merge(self::ALWAYS_AVAILABLE)
             ->map(fn ($v) => strtolower(trim($v)))
             ->filter()
+            ->unique()
             ->all();
         $this->includeBlankStatus = (bool) config('services.harborops.include_blank_status', false);
         $this->maxAgeDays = (int) config('services.harborops.max_age_days', 0);
@@ -60,7 +66,8 @@ class ScrapedListingsApiService
             if (! $this->includeBlankStatus) {
                 return false;
             }
-        } elseif (! in_array($status, $this->availableStatuses, true)) {
+        } elseif (! collect($this->availableStatuses)->contains(fn ($ok) => str_starts_with($status, $ok))) {
+            // Prefix match: the sheet appends dates, e.g. "APT BREAK 01/10".
             return false;
         }
 
