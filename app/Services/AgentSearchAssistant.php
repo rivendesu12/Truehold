@@ -346,6 +346,17 @@ SYS;
      */
     public function search(array $spec, Collection $properties): array
     {
+        // The sources record size and en-suite in one field — its values are
+        // double, single and ensuite — so an advertiser picks one and "en-suite
+        // double" cannot be stated as both. Requiring both is unsatisfiable,
+        // and the en-suite is the part a client cares about, so the size goes.
+        // Done here rather than while filtering so that the explanation for an
+        // empty result describes the same conditions the filter actually used.
+        if (! empty($spec['ensuite_only'])
+            && in_array(strtolower((string) ($spec['room_type'] ?? '')), ['double', 'single', 'twin'], true)) {
+            unset($spec['room_type']);
+        }
+
         $radius = $spec['radius_miles'] ?? null;
         $center = $this->resolveLandmark($spec['near_landmark'] ?? null);
         $transport = app(TransportIndex::class);
@@ -766,16 +777,6 @@ SYS;
                 $size = $p['house_size'] ?? $p['total_rooms'] ?? null;
                 return is_numeric($size) && (int) $size <= $limit;
             });
-        }
-
-        // The sources record size and en-suite in one field — its values are
-        // double, single and ensuite — so an advertiser picks one and "en-suite
-        // double" cannot be expressed. Asking for both is unsatisfiable, and
-        // the en-suite is the part a client actually cares about, so the size
-        // is dropped rather than returning nothing.
-        if (! empty($spec['ensuite_only'])
-            && in_array(strtolower((string) ($spec['room_type'] ?? '')), ['double', 'single', 'twin'], true)) {
-            unset($spec['room_type']);
         }
 
         if (! empty($spec['room_type'])) {
