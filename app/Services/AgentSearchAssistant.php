@@ -281,6 +281,26 @@ SYS;
             }
         }
 
+        // Pass three: a bedroom filter can empty the set purely because we do not
+        // hold the figure — none of the 10 whole properties carries a bedroom
+        // count. Silently returning nothing implies we have no such stock, which
+        // is a different and wrong message, so drop the filter and say so.
+        $relaxed = [];
+        if ($results->isEmpty() && (! empty($spec['min_bedrooms']) || ! empty($spec['max_bedrooms']))) {
+            $without = $spec;
+            unset($without['min_bedrooms'], $without['max_bedrooms']);
+
+            $base = ($center && $radius)
+                ? $this->withinRadius($properties, $center, $radius)
+                : ($term !== '' ? $properties->filter($this->textMatcher($term)) : $properties);
+
+            $candidate = $this->applyPreferences($base, $without);
+            if ($candidate->isNotEmpty()) {
+                $results = $candidate;
+                $relaxed[] = 'bedrooms';
+            }
+        }
+
         // Commission-paying agencies first, always.
         $results = $results->sortByDesc(fn ($p) => $this->paysCommission($p) ? 1 : 0)->values();
 
@@ -290,6 +310,7 @@ SYS;
             'center' => $center,
             'radius' => $radius,
             'widened' => $widened,
+            'relaxed' => $relaxed,
         ];
     }
 
