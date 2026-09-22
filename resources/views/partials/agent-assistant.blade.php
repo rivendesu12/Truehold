@@ -123,6 +123,7 @@
             if (data.explanation) html += '<p class="th-ask__note">' + esc(data.explanation) + '</p>';
             html += '<p class="th-ask__hint"><strong>' + data.matched + '</strong> match'
                  + (data.matched === 1 ? '' : 'es')
+                 + (data.widened ? ' <em>(nothing exactly there — showing nearby)</em>' : '')
                  + (data.commission_only ? ', commission-paying only' : '')
                  + (data.matched > 12 ? ' — showing the first 12' : '') + '</p>';
 

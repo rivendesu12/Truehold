@@ -41,6 +41,10 @@ class AgentSearchAssistant
      */
     private const MILES_PER_MINUTE = 0.33;
 
+    /** How far to widen when an exact area match finds nothing, in order. */
+    private const WIDEN_MILES = 2.0;
+    private const WIDEN_STEPS = [2.0, 4.0, 7.0];
+
     public function provider(): string
     {
         return config('services.assistant.provider', 'openai') === 'anthropic' ? 'anthropic' : 'openai';
@@ -211,46 +215,87 @@ SYS;
     /**
      * Apply a parsed spec to the live feed.
      *
-     * @return array{results: Collection, matched: int, center: ?array}
+     * Runs the geography separately from everything else, so that when a brief
+     * yields nothing we can retry with a wider area rather than hand back an
+     * empty list. An exact-area match frequently survives on its own and then
+     * gets emptied by a later filter: we hold 13 Canary Wharf listings and 22
+     * studios, but no studio in Canary Wharf, while there is one 1.5 miles off.
+     *
+     * @return array{results: Collection, matched: int, center: ?array, radius: ?float, widened: bool}
      */
     public function search(array $spec, Collection $properties): array
     {
-        $center = null;
         $radius = $spec['radius_miles'] ?? null;
+        $center = $this->resolveLandmark($spec['near_landmark'] ?? null);
 
-        // "20 minutes from Bond Street" -> a radius around a known landmark.
-        $landmark = strtolower(trim((string) ($spec['near_landmark'] ?? '')));
-        if ($landmark !== '') {
-            foreach (self::LANDMARKS as $name => $coords) {
-                if (str_contains($landmark, $name) || str_contains($name, $landmark)) {
-                    $center = $coords;
-                    break;
-                }
-            }
-            if ($center && ! empty($spec['minutes_from_landmark'])) {
-                $radius = round($spec['minutes_from_landmark'] * self::MILES_PER_MINUTE, 2);
-            }
+        if ($center && ! empty($spec['minutes_from_landmark'])) {
+            $radius = round($spec['minutes_from_landmark'] * self::MILES_PER_MINUTE, 2);
         }
 
-        $results = $properties;
+        // "near Canary Wharf" with no distance given still has to mean near it.
+        // Without this the landmark was resolved and then ignored, quietly
+        // returning the whole feed.
+        if ($center && ! $radius) {
+            $radius = self::WIDEN_MILES;
+        }
 
+        $term = strtolower(trim((string) ($spec['location'] ?? '')));
+
+        // Pass one: the geography as asked for.
         if ($center && $radius) {
-            $results = $results->filter(function ($p) use ($center, $radius) {
-                if (! is_numeric($p['latitude'] ?? null) || ! is_numeric($p['longitude'] ?? null)) {
-                    return false;
-                }
-                return \App\Support\PropertyClassifier::milesBetween(
-                    (float) $p['latitude'], (float) $p['longitude'], $center[0], $center[1]
-                ) <= $radius;
-            });
-        } elseif (! empty($spec['location'])) {
-            $term = strtolower($spec['location']);
-            $results = $results->filter(fn ($p) =>
-                str_contains(strtolower((string) ($p['location'] ?? '')), $term)
-                || str_contains(strtolower((string) ($p['title'] ?? '')), $term)
-                || str_contains(strtolower((string) ($p['postcode'] ?? '')), $term));
+            $scoped = $this->withinRadius($properties, $center, $radius);
+        } elseif ($term !== '') {
+            $scoped = $properties->filter($this->textMatcher($term));
+        } else {
+            $scoped = $properties;
         }
 
+        $results = $this->applyPreferences($scoped, $spec);
+        $widened = false;
+
+        // Pass two: nothing matched, but a place was named — step the radius out
+        // until something does. An agent would rather be told "nothing in Canary
+        // Wharf, here are three a mile away" than be shown an empty list.
+        if ($results->isEmpty() && ($term !== '' || $center)) {
+            $wideCenter = $center ?: $this->centroidFor($properties, $term);
+
+            if ($wideCenter) {
+                foreach (self::WIDEN_STEPS as $step) {
+                    if ($radius && $step <= (float) $radius) {
+                        continue; // already covered by the original search
+                    }
+
+                    $candidate = $this->applyPreferences(
+                        $this->withinRadius($properties, $wideCenter, $step),
+                        $spec
+                    );
+
+                    if ($candidate->isNotEmpty()) {
+                        $results = $candidate;
+                        $center = $wideCenter;
+                        $radius = $step;
+                        $widened = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Commission-paying agencies first, always.
+        $results = $results->sortByDesc(fn ($p) => $this->paysCommission($p) ? 1 : 0)->values();
+
+        return [
+            'results' => $results,
+            'matched' => $results->count(),
+            'center' => $center,
+            'radius' => $radius,
+            'widened' => $widened,
+        ];
+    }
+
+    /** Everything that is not geography. */
+    protected function applyPreferences(Collection $results, array $spec): Collection
+    {
         if (! empty($spec['max_price'])) {
             $results = $results->filter(fn ($p) => ! empty($p['price']) && (float) $p['price'] <= (float) $spec['max_price']);
         }
@@ -280,19 +325,71 @@ SYS;
                 ! empty($p['total_rooms']) && (int) $p['total_rooms'] >= (int) $spec['min_bedrooms']);
         }
 
-        // Commission-paying agencies: only, or just first.
         if (! empty($spec['commission_only'])) {
             $results = $results->filter(fn ($p) => $this->paysCommission($p));
         }
 
-        $results = $results->sortByDesc(fn ($p) => $this->paysCommission($p) ? 1 : 0)->values();
+        return $results;
+    }
 
-        return [
-            'results' => $results,
-            'matched' => $results->count(),
-            'center' => $center,
-            'radius' => $radius,
-        ];
+    protected function textMatcher(string $term): callable
+    {
+        return fn ($p) => str_contains(strtolower((string) ($p['location'] ?? '')), $term)
+            || str_contains(strtolower((string) ($p['title'] ?? '')), $term)
+            || str_contains(strtolower((string) ($p['postcode'] ?? '')), $term);
+    }
+
+    protected function withinRadius(Collection $properties, array $center, float $miles): Collection
+    {
+        return $properties->filter(function ($p) use ($center, $miles) {
+            if (! is_numeric($p['latitude'] ?? null) || ! is_numeric($p['longitude'] ?? null)) {
+                return false;
+            }
+            return \App\Support\PropertyClassifier::milesBetween(
+                (float) $p['latitude'], (float) $p['longitude'], $center[0], $center[1]
+            ) <= $miles;
+        });
+    }
+
+    /** A landmark we know, or null. */
+    protected function resolveLandmark(?string $name): ?array
+    {
+        $needle = strtolower(trim((string) $name));
+        if ($needle === '') {
+            return null;
+        }
+        foreach (self::LANDMARKS as $landmark => $coords) {
+            if (str_contains($needle, $landmark) || str_contains($landmark, $needle)) {
+                return $coords;
+            }
+        }
+        return null;
+    }
+
+    /** Centre of our own listings matching a term, else a known landmark. */
+    protected function centroidFor(Collection $properties, string $term): ?array
+    {
+        if ($term === '') {
+            return null;
+        }
+
+        // A known landmark is a truer centre than the mean of whatever happened
+        // to mention the word — one stray match miles away skews an average.
+        if ($landmark = $this->resolveLandmark($term)) {
+            return $landmark;
+        }
+
+        $matching = $properties->filter($this->textMatcher($term))
+            ->filter(fn ($p) => is_numeric($p['latitude'] ?? null) && is_numeric($p['longitude'] ?? null));
+
+        if ($matching->isNotEmpty()) {
+            return [
+                (float) $matching->avg(fn ($p) => (float) $p['latitude']),
+                (float) $matching->avg(fn ($p) => (float) $p['longitude']),
+            ];
+        }
+
+        return null;
     }
 
     public function paysCommission(array $property): bool

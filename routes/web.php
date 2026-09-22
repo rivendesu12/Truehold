@@ -83,6 +83,7 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         'explanation' => $spec['explanation'] ?? '',
         'matched' => $found['matched'],
         'radius' => $found['radius'],
+        'widened' => (bool) ($found['widened'] ?? false),
         'commission_only' => (bool) ($spec['commission_only'] ?? false),
         'results' => $found['results']->take(12)->map(fn ($p) => [
             'id' => $p['id'] ?? null,
