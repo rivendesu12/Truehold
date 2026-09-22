@@ -126,6 +126,12 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         'widened' => (bool) ($found['widened'] ?? false),
         'relaxed' => $found['relaxed'] ?? [],
         'commission_only' => (bool) ($spec['commission_only'] ?? false),
+        // What the brief was understood as, so Sigou can comment on it.
+        'brief' => array_intersect_key($spec, array_flip([
+            'location', 'near_landmark', 'minutes_from_landmark', 'max_price', 'min_price',
+            'ensuite_only', 'couples', 'pets', 'students', 'max_zone', 'region', 'room_type',
+            'bills_included', 'no_deposit', 'parking', 'garden', 'sort', 'property_types',
+        ])),
         'groups' => [
             'commission' => $found['commission']->take(24)->map($shape)->values(),
             'standard' => $found['standard']->take(24)->map($shape)->values(),

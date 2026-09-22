@@ -9,7 +9,6 @@
     <section class="th-ask__panel" id="thAskPanel" hidden>
         <header class="th-ask__head">
             <span class="th-ask__who">
-                @include('partials.sigou', ['size' => 36])
                 <span><strong>Sigou</strong><small>Finds the room. Doesn't judge the budget.</small></span>
             </span>
             <button type="button" class="th-ask__close" id="thAskClose" aria-label="Close">&times;</button>
@@ -42,14 +41,14 @@
 .th-ask__fab:hover{filter:brightness(1.12)}
 .th-ask__panel{position:absolute;right:0;bottom:64px;width:min(620px,calc(100vw - 32px));
     background:#fff;color:#152c4e;border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.3);
-    display:flex;flex-direction:column;height:min(78vh,760px);overflow:hidden}
+    display:flex;flex-direction:column;max-height:min(78vh,760px);overflow:hidden}
 /* A class rule beats the UA stylesheet's [hidden]{display:none}, so the panel
    would open on page load without this. */
 .th-ask__panel[hidden]{display:none}
 .th-ask__head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;
     border-bottom:1px solid #e6e9ef;background:#f7f9fc}
 .th-ask__close{background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:#6b7280}
-.th-ask__body{padding:14px 18px;overflow-y:auto;flex:1;font-size:14px}
+.th-ask__body{padding:14px 18px;overflow-y:auto;flex:1 1 auto;min-height:0;font-size:14px}
 .th-ask__hint{margin:0 0 10px;color:#5b6472}
 .th-ask__form{display:flex;gap:8px;padding:12px 16px;border-top:1px solid #e6e9ef;background:#fff}
 .th-ask__input{flex:1;border:1px solid #d5dbe5;border-radius:8px;padding:10px 12px;font-size:14px}
@@ -82,6 +81,8 @@
 .th-ask__stn{display:block;color:#7b8598;font-size:12px}
 
 /* Sigou */
+.th-ask--open .th-ask__fab{display:none}
+.th-ask--open .th-ask__panel{bottom:0}
 .th-ask__fab{padding:6px 18px 6px 6px}
 .th-ask__avatar{flex:none;border-radius:50%;box-shadow:0 0 0 2px rgba(255,255,255,.85)}
 .th-ask__who{display:flex;align-items:center;gap:10px}
@@ -187,8 +188,7 @@
 @media (max-width:640px){
     .th-ask{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
     .th-ask__fab{padding:5px 16px 5px 5px}
-    .th-ask--open .th-ask__fab{display:none}
-    .th-ask__panel{position:fixed;inset:0;width:auto;height:100%;height:100dvh;border-radius:0;box-shadow:none}
+    .th-ask__panel{position:fixed;inset:0;width:auto;height:100%;height:100dvh;max-height:none;border-radius:0;box-shadow:none}
     .th-ask__head{order:-2;padding:10px 8px 10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px))}
     .th-ask__close{width:44px;height:44px;font-size:28px}
     .th-ask__form{order:-1;border-top:none;border-bottom:1px solid #e6e9ef;padding:10px 12px}
@@ -201,6 +201,7 @@
 }
 </style>
 
+@include('partials.sigou-lines')
 <script>
 (function () {
     const fab = document.getElementById('thAskFab');
@@ -223,6 +224,10 @@
         // On a phone the panel covers the page; stop the page scrolling behind it.
         document.body.classList.toggle('th-ask-lock', open && phone.matches);
         if (open) input.focus();
+        if (open && !stage.classList.contains('is-compact')) {
+            say(SigouLines.greeting());
+            armNudge();
+        }
     };
 
     fab.addEventListener('click', () => toggle(panel.hidden));
@@ -326,30 +331,30 @@
     });
     input.addEventListener('blur', () => { if (Sigou.mood === 'typing') Sigou.set('idle'); });
 
-    const pokes = [
-        'Oi. I\'m working.',
-        'Budget first, then we talk.',
-        'I know a guy in Zone 2.',
-        'Did you check the en-suite is actually en-suite?',
-        'Commission rooms first. Obviously.',
-        'Stop poking me and type something.',
-        'Yes? What does the client want?',
-    ];
     document.getElementById('thAskPoke').addEventListener('click', () => {
         if (Sigou.mood === 'thinking') return;
         Sigou.set(pick(['shocked', 'happy']), 1400);
         Sigou.waggle();
-        say(pick(pokes));
+        say(SigouLines.poke());
     });
 
-    const thinking = [
-        'Hold on. One puff…',
-        'Mango ice. Right, where were we…',
-        'Reading every single listing between puffs…',
-        'Checking the tube map. *puff*',
-        'Doing the maths on that budget… *puff*',
-        'Thinking cloud incoming…',
-    ];
+    // While a search runs he keeps talking: a new line every vape cycle.
+    let chatter = null;
+    const stopChatter = () => { clearInterval(chatter); chatter = null; };
+
+    // Greets when the panel opens; nudges if nobody types for a while.
+    let nudged = false;
+    let nudgeTimer = null;
+    const armNudge = () => {
+        clearTimeout(nudgeTimer);
+        nudgeTimer = setTimeout(() => {
+            if (!panel.hidden && !nudged && !input.value.trim() && !stage.classList.contains('is-compact')) {
+                nudged = true;
+                say(SigouLines.nudge());
+                Sigou.waggle();
+            }
+        }, 22000);
+    };
 
     const money = n => n ? '£' + Number(n).toLocaleString('en-GB', {maximumFractionDigits: 0}) : '—';
     const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
@@ -366,7 +371,11 @@
         stage.classList.remove('is-compact'); // centre stage while he vapes
         Sigou.set('thinking');
         Sigou.look(-0.7, -0.9);
-        say(pick(thinking));
+        const lines = SigouLines.thinking(q);
+        let li = 0;
+        say(lines[li++]);
+        stopChatter();
+        chatter = setInterval(() => { if (li < lines.length) say(lines[li++]); }, 3200);
 
         try {
             const res = await fetch(@json(route('agent.search')), {
@@ -383,7 +392,7 @@
             if (!res.ok) {
                 body.innerHTML = '<p class="th-ask__err">' + esc(data.error || 'Something went wrong.') + '</p>';
                 Sigou.set('sad', 4000);
-                say('Something broke. Not my fault.');
+                say(SigouLines.error());
                 return;
             }
 
@@ -484,24 +493,16 @@
             body.innerHTML = html;
 
             Sigou.look(0, 0.6);
-            if (g.commission.length) {
-                Sigou.set('happy', 3200);
-                say(g.commission.length + (g.commission.length === 1 ? ' pays' : ' pay') + ' commission. Now we\'re talking.');
-            } else if (onBrief) {
-                Sigou.set('happy', 2600);
-                say(pick([onBrief + ' on the brief. Not bad, eh?', 'Found ' + onBrief + '. Go on, send them.']));
-            } else if (g.alternatives.length) {
-                Sigou.set('shocked', 1800);
-                say('Nothing exact. These are close, have a look.');
-            } else {
-                Sigou.set('shocked', 2600);
-                say('Nothing. Nada. Stretch the budget or the area?');
-            }
+            if (g.commission.length) Sigou.set('happy', 3200);
+            else if (onBrief) Sigou.set('happy', 2600);
+            else Sigou.set('shocked', g.alternatives.length ? 1800 : 2600);
+            say(SigouLines.result(data, q));
         } catch (err) {
             body.innerHTML = '<p class="th-ask__err">Network error — try again.</p>';
             Sigou.set('sad', 4000);
-            say('The internet ate it. Try again?');
+            say(SigouLines.offline());
         } finally {
+            stopChatter();
             stage.classList.add('is-compact'); // then step aside for the results
             send.disabled = false;
         }
