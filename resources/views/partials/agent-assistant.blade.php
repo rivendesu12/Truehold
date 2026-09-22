@@ -10,7 +10,7 @@
         <header class="th-ask__head">
             <span class="th-ask__who">
                 @include('partials.sigou', ['size' => 36])
-                <span><strong>Sigou</strong><small>Finds the room. Doesn't judge the budget.</small></span>
+                <span><strong>Sigou</strong><small>Finds the room. Judges the budget.</small></span>
             </span>
             <button type="button" class="th-ask__close" id="thAskClose" aria-label="Close">&times;</button>
         </header>
