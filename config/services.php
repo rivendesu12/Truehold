@@ -86,6 +86,13 @@ return [
         'suppliers' => env('SUPPLIER_TARGETS_SUPPLIERS', ''),
     ],
 
+    // AP / Horizon portfolio workbook. A real .xlsx in Drive, so it is downloaded
+    // and parsed rather than read through the Sheets API (which 400s on it).
+    // Used to fill price gaps the Targets tab and the feed both have.
+    'ap_portfolio' => [
+        'file_id' => env('AP_PORTFOLIO_FILE_ID'),
+    ],
+
     'twilio' => [
         'account_sid' => env('TWILIO_ACCOUNT_SID'),
         'auth_token' => env('TWILIO_AUTH_TOKEN'),

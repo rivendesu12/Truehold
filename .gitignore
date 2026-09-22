@@ -43,3 +43,4 @@ scraper_script.py
 
 # Cached supplier photos (fetched from Drive at runtime)
 storage/app/supplier-photos/
+storage/app/ap-portfolio/

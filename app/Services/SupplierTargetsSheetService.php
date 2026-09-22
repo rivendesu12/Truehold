@@ -143,7 +143,45 @@ class SupplierTargetsSheetService
             $out->push($this->mapRow($row, $supplier, $property, $availableRaw, $availableDate));
         }
 
-        return $this->attachCoordinates($out)->values();
+        return $this->attachCoordinates($this->fillMissingPrices($out))->values();
+    }
+
+    /**
+     * The Targets tab's Price column has gaps; the AP portfolio workbook does not.
+     * Fill any blank price from there before the rows reach the site.
+     */
+    protected function fillMissingPrices(Collection $rows): Collection
+    {
+        if ($rows->every(fn ($r) => ! empty($r['price']))) {
+            return $rows;
+        }
+
+        $ap = app(ApPortfolioPriceService::class);
+        $lookup = $ap->prices();
+        if (! $lookup) {
+            return $rows;
+        }
+
+        return $rows->map(function (array $row) use ($ap, $lookup) {
+            if (! empty($row['price'])) {
+                return $row;
+            }
+
+            // The room code is appended to the title, so use the raw parts.
+            $price = $ap->priceFor(
+                $lookup,
+                $row['source_property'] ?? $row['title'],
+                $row['source_room'] ?? null,
+                $row['postcode'] ?? null
+            );
+
+            if ($price !== null) {
+                $row['price'] = $price;
+                $row['price_from'] = 'ap_portfolio';
+            }
+
+            return $row;
+        });
     }
 
     /**
@@ -243,6 +281,8 @@ class SupplierTargetsSheetService
             'agent_name' => $supplier,
             'agent_id' => null,
             'management_company' => $supplier,
+            'source_property' => $property,
+            'source_room' => $roomNo !== '' ? $roomNo : null,
             'total_rooms' => $cell(self::COL_BEDS) ?: null,
             'max_occupancy' => $cell(self::COL_MAX_OCCUPANCY) ?: null,
             'status' => 'available',

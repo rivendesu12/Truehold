@@ -103,7 +103,52 @@ class ScrapedListingsApiService
             // to them — the sheet's own "Available From" gate does.
             $supplier = app(SupplierTargetsSheetService::class)->getAllProperties();
 
-            return $this->geocodeMissing($feed->concat($supplier))->values();
+            return $this->geocodeMissing($this->fillMissingPrices($feed->concat($supplier)))->values();
+        });
+    }
+
+    /**
+     * Fill blank prices from the AP / Horizon portfolio workbook.
+     *
+     * The feed's spreadsheet-sourced rows arrive without a price even though the
+     * source workbook has one, so the card renders "N/A". Match on the property
+     * name in the title plus the postcode.
+     */
+    protected function fillMissingPrices(Collection $properties): Collection
+    {
+        if ($properties->every(fn ($p) => ! empty($p['price']))) {
+            return $properties;
+        }
+
+        $ap = app(ApPortfolioPriceService::class);
+        $lookup = $ap->prices();
+        if (! $lookup) {
+            return $properties;
+        }
+
+        return $properties->map(function (array $property) use ($ap, $lookup) {
+            if (! empty($property['price'])) {
+                return $property;
+            }
+
+            // Titles look like "7 Marina Point, 14 Lanark Square" or
+            // "Broxbourne House — Room A"; the workbook keys on the building.
+            $title = (string) ($property['title'] ?? '');
+            $name = trim(preg_split('/[—,|]/u', $title)[0] ?? $title);
+
+            $postcode = $property['postcode'] ?? null;
+            if (! $postcode && preg_match('/\b([A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2})\b/i', $title . ' ' . ($property['location'] ?? ''), $m)) {
+                $postcode = $m[1];
+            }
+
+            $price = $ap->priceFor($lookup, $name, $property['source_room'] ?? null, $postcode);
+
+            if ($price !== null) {
+                $property['price'] = $price;
+                $property['price_from'] = 'ap_portfolio';
+            }
+
+            return $property;
         });
     }
 
