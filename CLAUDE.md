@@ -73,6 +73,27 @@ php artisan photos:warm
 Scheduled (cron runs `schedule:run`): feed refresh hourly, `photos:warm` at :50,
 availability every 6h, stations monthly, journeys weekly.
 
+## Sigou (the assistant's mascot)
+
+The assistant panel is "Ask Sigou", after the office admin: an animated SVG
+(`partials/sigou.blade.php`) that blinks, follows the cursor, vapes his Lost
+Mary while a search runs, rubs his hands on results. Agents only (`@auth`).
+
+- He talks two ways. The model that parses the brief also writes `sigou`
+  (first reaction / chit-chat answer), `sigou_found` and `sigou_none`; the
+  panel shows the one matching the results. Persona is `PERSONA` in
+  `AgentSearchAssistant`, drawn from his WhatsApp. Canned lines (greetings,
+  the wait, fallbacks) are in `partials/sigou-lines.blade.php`.
+- Each call gets two random running jokes (`jokesForThisOne`) so he does not
+  repeat himself; girls about half the time. Guardrails: never about a real
+  client/tenant/colleague, nothing sexual, never claims to know results.
+- `chit_chat: true` answers without searching. A real brief read as chat
+  fails the test.
+- **The persona must not change the filters.** Check with
+  `assistant:test --compare --sigou` (runs every brief with and without him,
+  lists filter differences; `false` vs `null` on garden/parking/etc. is
+  harmless, both mean "not asked"). Last run: 34/34 both ways.
+
 ## Client vs agent view
 
 Agents share the same URL; the client opens it logged out. Hidden from guests:
