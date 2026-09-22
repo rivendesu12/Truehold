@@ -143,7 +143,30 @@ class SupplierTargetsSheetService
             $out->push($this->mapRow($row, $supplier, $property, $availableRaw, $availableDate));
         }
 
-        return $out->values();
+        return $this->attachCoordinates($out)->values();
+    }
+
+    /**
+     * Fill in lat/long from the postcode, in one bulk lookup for the whole batch.
+     * Without coordinates these rooms can never be plotted on the map view.
+     */
+    protected function attachCoordinates(Collection $rows): Collection
+    {
+        if ($rows->isEmpty()) {
+            return $rows;
+        }
+
+        $geocoder = app(PostcodeGeocoder::class);
+        $coords = $geocoder->lookupMany($rows->pluck('postcode')->filter()->all());
+
+        return $rows->map(function (array $row) use ($geocoder, $coords) {
+            $key = $geocoder->normalise((string) ($row['postcode'] ?? ''));
+            if ($key !== '' && isset($coords[$key])) {
+                $row['latitude'] = $coords[$key]['lat'];
+                $row['longitude'] = $coords[$key]['lng'];
+            }
+            return $row;
+        });
     }
 
     /**
