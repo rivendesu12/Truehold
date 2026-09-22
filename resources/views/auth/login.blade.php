@@ -627,15 +627,16 @@ button {
                     <div class="form-group">
                         <label for="email" class="form-label">
                             <i class="fas fa-envelope"></i>
-                            <span>Email Address</span>
+                            <span>Email or Username</span>
                         </label>
                         <input 
-                            type="email" 
+                            type="text" 
                             id="email" 
                             name="email" 
                             value="{{ old('email') }}" 
                             class="form-input" 
-                            placeholder="Enter your email"
+                            placeholder="Email or username"
+                            autocomplete="username"
                             required 
                             autofocus
                         >

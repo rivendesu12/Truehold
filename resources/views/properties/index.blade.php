@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta name="description" content="Find your dream home with TrueHold. Browse {{ $properties->total() }}+ premium properties in prime London locations.">
     <meta name="theme-color" content="#1e3a5f">
@@ -1655,8 +1656,8 @@ button {
                                 </div>
                             @endauth
 
-                            <x-filters.filter-section title="Where" description="Area and home style">
-                                <div class="thf-fields-grid thf-fields-grid--2 thf-fields-grid--3">
+                            <x-filters.filter-section title="Where" description="Area, radius and home style">
+                                <div class="thf-fields-grid thf-fields-grid--2">
                                     <x-filters.filter-field label="Location" for="thf_location">
                                         <input type="search"
                                                name="location"
@@ -1676,38 +1677,54 @@ button {
                                         <span id="thf_location_hint" class="thf-sr-only">Suggestions appear as you type. You can pick a suggestion or enter your own.</span>
                                     </x-filters.filter-field>
 
-                                    <x-filters.filter-field label="Property type" for="thf_property_type">
-                                        <select name="property_type" id="thf_property_type" class="thf-select">
-                                            <option value="">All types</option>
-                                            @foreach($propertyTypes as $type)
-                                                <option value="{{ $type }}" @selected(request('property_type') == $type)>{{ $type }}</option>
-                                            @endforeach
+                                    <x-filters.filter-field label="Search radius" for="thf_radius">
+                                        <select name="radius_miles" id="thf_radius" class="thf-select">
+                                            <option value="" @selected(!request('radius_miles'))>Only this area</option>
+                                            <option value="0.5" @selected(request('radius_miles') == '0.5')>Within 0.5 miles</option>
+                                            <option value="1" @selected(request('radius_miles') == '1')>Within 1 mile</option>
+                                            <option value="2" @selected(request('radius_miles') == '2')>Within 2 miles</option>
+                                            <option value="3" @selected(request('radius_miles') == '3')>Within 3 miles</option>
+                                            <option value="5" @selected(request('radius_miles') == '5')>Within 5 miles</option>
                                         </select>
                                     </x-filters.filter-field>
-
-                                    @auth
-                                        <x-filters.filter-field label="Agent" for="thf_agent_name">
-                                            <select name="agent_name" id="thf_agent_name" class="thf-select">
-                                                <option value="">All agents</option>
-                                                @foreach($agentNames as $agent)
-                                                    <option value="{{ $agent }}" @selected(request('agent_name') == $agent)>
-                                                        {{ $agent }}@if(isset($agentsWithPaying) && (is_array($agentsWithPaying) ? in_array($agent, $agentsWithPaying) : ($agentsWithPaying->has($agent) ? $agentsWithPaying->get($agent) : $agentsWithPaying->contains($agent)))) ⚡@endif
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </x-filters.filter-field>
-                                    @else
-                                        @if(request('agent_name'))
-                                            <div class="thf-field">
-                                                <span class="thf-label">Agent <i class="fas fa-lock" style="opacity:0.6;font-size:11px;" aria-hidden="true"></i></span>
-                                                <div class="filter-notice">
-                                                    <p><i class="fas fa-user-lock" style="color: var(--gold); margin-right: 6px;" aria-hidden="true"></i>Agent filters are for signed-in users.</p>
-                                                    <a href="{{ route('login', ['redirect' => url()->current()]) }}">Sign in to unlock</a>
-                                                </div>
-                                            </div>
-                                        @endif
-                                    @endauth
                                 </div>
+
+                                <div class="thf-field" style="margin-top:14px;">
+                                    <span class="thf-label">Property type</span>
+                                    <div class="thf-pill-row">
+                                        @php $thfTypes = (array) request('property_types', []); @endphp
+                                        <label class="thf-pill">
+                                            <input type="checkbox" name="property_types[]" value="full_property" @checked(in_array('full_property', $thfTypes, true))>
+                                            <span class="thf-pill__ui">Full property</span>
+                                        </label>
+                                        <label class="thf-pill">
+                                            <input type="checkbox" name="property_types[]" value="studio" @checked(in_array('studio', $thfTypes, true))>
+                                            <span class="thf-pill__ui">Studio</span>
+                                        </label>
+                                        <label class="thf-pill">
+                                            <input type="checkbox" name="property_types[]" value="rooms" @checked(in_array('rooms', $thfTypes, true))>
+                                            <span class="thf-pill__ui">Rooms</span>
+                                        </label>
+                                    </div>
+                                    <span class="thf-sr-only">Leave all unticked to include every type.</span>
+                                </div>
+
+                                {{-- Agent filter hidden for now (not removed). Re-enable with
+                                     SHOW_AGENT_FILTER=true once it is wanted again. --}}
+                                @if(config('services.harborops.show_agent_filter'))
+                                    @auth
+                                        <div class="thf-field" style="margin-top:14px;">
+                                            <x-filters.filter-field label="Agent" for="thf_agent_name">
+                                                <select name="agent_name" id="thf_agent_name" class="thf-select">
+                                                    <option value="">All agents</option>
+                                                    @foreach($agentNames as $agent)
+                                                        <option value="{{ $agent }}" @selected(request('agent_name') == $agent)>{{ $agent }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </x-filters.filter-field>
+                                        </div>
+                                    @endauth
+                                @endif
                             </x-filters.filter-section>
 
                             <x-filters.filter-section title="Budget" description="Monthly rent range (£)">
@@ -1722,7 +1739,7 @@ button {
                                 </div>
                             </x-filters.filter-section>
 
-                            <x-filters.filter-section title="Tenant preferences">
+                            <x-filters.filter-section title="Requirements" description="Who it is for, and what it needs">
                                 <x-filters.filter-toggle-group label="Household">
                                     <label class="thf-segment__opt">
                                         <input type="radio" name="couples_allowed" value="" @checked(!in_array($thfCouples, ['yes', 'no'], true))>
@@ -1737,12 +1754,10 @@ button {
                                         <span>Singles only</span>
                                     </label>
                                 </x-filters.filter-toggle-group>
-                            </x-filters.filter-section>
 
-                            <x-filters.filter-section title="Features">
-                                <div class="thf-fields-grid thf-fields-grid--2">
+                                <div class="thf-fields-grid thf-fields-grid--2" style="margin-top:14px;">
                                     <div class="thf-field">
-                                        <span class="thf-label">Room amenities</span>
+                                        <span class="thf-label">Must have</span>
                                         <div class="thf-pill-row">
                                             <label class="thf-pill">
                                                 <input type="checkbox" name="ensuite" value="yes" @checked(request('ensuite') == 'yes')>
@@ -1750,12 +1765,13 @@ button {
                                             </label>
                                         </div>
                                     </div>
-                                    <x-filters.filter-field label="Bedrooms" for="thf_room_count">
+
+                                    <x-filters.filter-field label="Bedrooms in the property" for="thf_room_count">
                                         <select name="room_count" id="thf_room_count" class="thf-select">
                                             <option value="">Any</option>
                                             @foreach($roomCounts ?? [] as $count)
                                                 @if($count !== null && $count !== '')
-                                                    <option value="{{ $count }}" @selected(request('room_count') == $count)>{{ $count }} {{ $count == 1 ? 'room' : 'rooms' }}</option>
+                                                    <option value="{{ $count }}" @selected(request('room_count') == $count)>{{ $count }} {{ $count == 1 ? 'bedroom' : 'bedrooms' }}</option>
                                                 @endif
                                             @endforeach
                                         </select>
@@ -2113,5 +2129,6 @@ button {
             });
         });
     </script>
+    @include('partials.agent-assistant')
 </body>
 </html>

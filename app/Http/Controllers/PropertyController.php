@@ -53,6 +53,52 @@ class PropertyController extends Controller
      *
      * @return ScrapedListingsApiService|PropertyGoogleSheetsService|null
      */
+    /**
+     * Property-type buckets and radius search.
+     *
+     * Types arrive as property_types[] (full_property / studio / rooms). Radius
+     * needs a centre: rather than geocode the typed area, take the centroid of
+     * the listings whose location already matches it — no API call, and it lands
+     * exactly where our own stock is.
+     */
+    protected function applyTypeAndRadius($request, array &$filters, $feedService): void
+    {
+        $types = array_values(array_filter((array) $request->input('property_types', [])));
+        if ($types) {
+            $filters['property_types'] = $types;
+        }
+
+        $radius = (float) $request->input('radius_miles', 0);
+        if ($radius <= 0 || ! $request->filled('location') || ! $feedService) {
+            return;
+        }
+
+        try {
+            $term = strtolower(trim((string) $request->location));
+            $matches = $feedService->getAllProperties()->filter(function ($p) use ($term) {
+                return str_contains(strtolower((string) ($p['location'] ?? '')), $term)
+                    || str_contains(strtolower((string) ($p['postcode'] ?? '')), $term)
+                    || str_contains(strtolower((string) ($p['title'] ?? '')), $term);
+            })->filter(fn ($p) => is_numeric($p['latitude'] ?? null) && is_numeric($p['longitude'] ?? null));
+
+            if ($matches->isEmpty()) {
+                return; // nothing to centre on; fall back to the text match
+            }
+
+            $filters['radius_center'] = [
+                (float) $matches->avg(fn ($p) => (float) $p['latitude']),
+                (float) $matches->avg(fn ($p) => (float) $p['longitude']),
+            ];
+            $filters['radius_miles'] = $radius;
+
+            // Radius supersedes the text match, otherwise it could only ever
+            // narrow the same area rather than widen around it.
+            unset($filters['location']);
+        } catch (\Throwable $e) {
+            \Log::warning('Radius filter failed', ['error' => $e->getMessage()]);
+        }
+    }
+
     protected function getFeedService()
     {
         if (ScrapedListingsApiService::isConfigured()) {
@@ -255,6 +301,8 @@ class PropertyController extends Controller
                 if ($request->filled('property_type')) {
                     $filters['property_type'] = $request->property_type;
                 }
+
+                $this->applyTypeAndRadius($request, $filters, $feedService);
 
                 if ($request->filled('available_date')) {
                     $filters['available_date'] = $request->available_date;
@@ -543,6 +591,8 @@ class PropertyController extends Controller
                 if ($request->filled('property_type')) {
                     $filters['property_type'] = $request->property_type;
                 }
+
+                $this->applyTypeAndRadius($request, $filters, $feedService);
 
                 if ($request->filled('available_date')) {
                     $filters['available_date'] = $request->available_date;

@@ -54,108 +54,105 @@ Route::get('/properties/map', [PropertyController::class, 'map'])->name('propert
 Route::get('/properties/{property}', [PropertyController::class, 'show'])->name('properties.show');
 Route::get('/manage/properties', [PropertyManagementController::class, 'index'])->name('properties.manage');
 
-// Debug route for testing Google Sheets properties (remove in production)
-Route::get('/test-properties-sheets', [\App\Http\Controllers\PropertyDebugController::class, 'testSheets'])->name('test.properties.sheets');
-Route::get('/test-properties-sheets-old', function () {
-    try {
-        $spreadsheetId = config('services.google.properties.spreadsheet_id');
-        $sheetName = config('services.google.properties.sheet_name', 'Properties');
-        
-        $debugInfo = [
-            'configured' => !empty($spreadsheetId),
-            'spreadsheet_id' => $spreadsheetId,
-            'sheet_name' => $sheetName,
-        ];
-        
-        if ($spreadsheetId) {
-            try {
-                $client = new \Google\Client();
-                $client->setApplicationName('Property Scraper App');
-                $client->setScopes([\Google\Service\Sheets::SPREADSHEETS_READONLY]);
-                $client->setAccessType('offline');
-                
-                $credentialsPath = config('services.google.properties.credentials_path') 
-                    ?? config('services.google.sheets.credentials_path');
-                
-                if ($credentialsPath && file_exists($credentialsPath)) {
-                    $client->setAuthConfig($credentialsPath);
-                } else {
-                    $credentialsJson = config('services.google.properties.credentials_json')
-                        ?? config('services.google.sheets.credentials_json');
-                    if ($credentialsJson) {
-                        $credentials = json_decode($credentialsJson, true);
-                        if ($credentials) {
-                            $client->setAuthConfig($credentials);
-                        }
-                    }
-                }
-                
-                $sheetsService = new \Google\Service\Sheets($client);
-                
-                // Try to get sheet metadata first
-                try {
-                    $spreadsheet = $sheetsService->spreadsheets->get($spreadsheetId);
-                    $sheets = $spreadsheet->getSheets();
-                    $debugInfo['available_sheets'] = array_map(function($sheet) {
-                        return $sheet->getProperties()->getTitle();
-                    }, $sheets);
-                } catch (\Exception $e) {
-                    $debugInfo['sheet_metadata_error'] = $e->getMessage();
-                }
-                
-                // Try to read data
-                $range = $sheetName . '!A1:Z10';
-                $response = $sheetsService->spreadsheets_values->get($spreadsheetId, $range);
-                $values = $response->getValues();
-                
-                $debugInfo['raw_data'] = [
-                    'has_data' => !empty($values),
-                    'row_count' => $values ? count($values) : 0,
-                    'first_row' => $values && isset($values[0]) ? $values[0] : null,
-                    'second_row' => $values && isset($values[1]) ? $values[1] : null,
-                    'all_rows_preview' => $values ? array_slice($values, 0, 3) : null,
-                ];
-            } catch (\Exception $e) {
-                $debugInfo['google_api_error'] = [
-                    'message' => $e->getMessage(),
-                    'code' => $e->getCode(),
-                ];
-            }
-        }
-        
-        // Try service
-        try {
-            $service = app(\App\Services\PropertyGoogleSheetsService::class);
-            $service->clearCache();
-            $properties = $service->getAllProperties();
-            $filterValues = $service->getFilterValues();
-            
-            $debugInfo['properties_count'] = $properties->count();
-            $debugInfo['sample_properties'] = $properties->take(3)->map(function ($p) {
-                return [
-                    'id' => $p['id'] ?? 'NO ID',
-                    'title' => $p['title'] ?? 'NO TITLE',
-                    'location' => $p['location'] ?? 'NO LOCATION',
-                    'price' => $p['price'] ?? 'NO PRICE',
-                ];
-            });
-            $debugInfo['filter_values'] = [
-                'locations_count' => $filterValues['locations']->count(),
-                'property_types_count' => $filterValues['propertyTypes']->count(),
-                'available_dates_count' => $filterValues['available_dates']->count(),
-            ];
-        } catch (\Exception $e) {
-            $debugInfo['service_error'] = $e->getMessage();
-        }
-        
-        return response()->json($debugInfo, JSON_PRETTY_PRINT);
-    } catch (\Exception $e) {
-        return response()->json([
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ], 500);
+// Agent search assistant: plain-English search, signed-in agents only.
+Route::middleware('auth')->post('/agent-search', function (Request $request) {
+    $question = trim((string) $request->input('q', ''));
+    if ($question === '') {
+        return response()->json(['error' => 'Ask me something.'], 422);
     }
-})->name('test.properties.sheets');
+
+    $assistant = app(\App\Services\AgentSearchAssistant::class);
+    if (! $assistant->isConfigured()) {
+        return response()->json([
+            'error' => 'The assistant is not configured yet — ANTHROPIC_API_KEY is missing.',
+        ], 503);
+    }
+
+    $feed = app(\App\Services\ScrapedListingsApiService::class)->getAllProperties();
+    $locations = $feed->pluck('location')->filter()->unique()->values()->all();
+
+    $spec = $assistant->parse($question, $locations);
+    if (! $spec) {
+        return response()->json(['error' => 'Could not understand that — try rephrasing.'], 502);
+    }
+
+    $found = $assistant->search($spec, $feed);
+
+    $hub = $found['hub'] ?? null;
+
+    $shape = fn ($p) => [
+        'id' => $p['id'] ?? null,
+        'title' => $p['title'] ?? 'Untitled',
+        'location' => $p['location'] ?? null,
+        'price' => $p['price'] ?? null,
+        'type' => \App\Support\PropertyClassifier::bucket($p),
+        'photo' => $p['first_photo_url'] ?? null,
+        'agent' => $p['agent_name'] ?? null,
+        'commission' => $assistant->paysCommission($p),
+        // An estimated fee must read as an estimate: the rate behind it is a
+        // default until the real agency terms are entered.
+        'fee' => $p['commission_value'] ?? null,
+        'fee_estimated' => (bool) ($p['commission_estimated'] ?? false),
+        'zone' => $p['zone'] ?? null,
+        'station' => $p['nearest_station'] ?? null,
+        'lines' => array_slice((array) ($p['station_lines'] ?? []), 0, 3),
+        'walk' => $p['walk_minutes'] ?? null,
+        'beds' => $p['bedrooms'] ?? null,
+        'house_size' => $p['house_size'] ?? null,
+        'room_type' => $p['room_type'] ?? null,
+        'journey' => $hub && isset($p['journey_minutes'][$hub])
+            ? [
+                'minutes' => $p['journey_minutes'][$hub]['minutes'],
+                'changes' => $p['journey_minutes'][$hub]['changes'],
+            ]
+            : null,
+        'why' => $p['why'] ?? null,
+        'url' => ! empty($p['id']) ? url('/properties/' . $p['id']) : null,
+    ];
+
+    return response()->json([
+        'model' => $assistant->provider() . '/' . $assistant->model(),
+        'explanation' => $spec['explanation'] ?? '',
+        'matched' => $found['matched'],
+        'radius' => $found['radius'],
+        'hub' => $found['hub_label'] ?? null,
+        'unplaced' => $found['unplaced'] ?? null,
+        'unanswerable' => $found['unanswerable'] ?? [],
+        'why_none' => $found['why_none'] ?? [],
+        'max_journey' => $found['max_journey'] ?? null,
+        'widened' => (bool) ($found['widened'] ?? false),
+        'relaxed' => $found['relaxed'] ?? [],
+        'commission_only' => (bool) ($spec['commission_only'] ?? false),
+        'groups' => [
+            'commission' => $found['commission']->take(24)->map($shape)->values(),
+            'standard' => $found['standard']->take(24)->map($shape)->values(),
+            'alternatives' => $found['alternatives']->map($shape)->values(),
+        ],
+    ]);
+})->name('agent.search');
+
+// Supplier room photos live in private Drive folders, so they are streamed
+// through here with the service account rather than linked directly. Only ids
+// discovered while indexing a supplier folder are servable, so this cannot be
+// used to fetch arbitrary Drive files.
+Route::get('/supplier-photo/{fileId}', function (string $fileId) {
+    $photos = app(\App\Services\SupplierPhotoService::class);
+
+    if (! $photos->isAllowed($fileId)) {
+        abort(404);
+    }
+
+    $file = $photos->download($fileId);
+    if (! $file) {
+        abort(404);
+    }
+
+    return response($file['body'], 200, [
+        'Content-Type' => $file['mime'],
+        'Cache-Control' => 'public, max-age=86400',
+    ]);
+})->where('fileId', '[A-Za-z0-9_-]+')->name('supplier.photo');
+
 Route::get('/rental-codes/agent-earnings', [RentalCodeController::class, 'agentEarnings'])->name('rental-codes.agent-earnings');
 // New ID-based payroll route
 Route::get('/rental-codes/agent-payroll/{agentId}', [RentalCodeController::class, 'agentPayrollById'])
@@ -330,10 +327,24 @@ Route::middleware('guest')->group(function () {
     })->name('login');
     
     Route::post('/login', function (Request $request) {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
+        $input = $request->validate([
+            'email' => ['required', 'string'],
             'password' => ['required'],
         ]);
+
+        // Agents sign in with a short username (e.g. "agent") rather than a full
+        // address, so resolve a bare identifier to the matching account's email.
+        $identifier = trim($input['email']);
+        if (! str_contains($identifier, '@')) {
+            $resolved = \App\Models\User::where('email', 'like', $identifier . '@%')
+                ->orderBy('id')
+                ->value('email');
+            if ($resolved) {
+                $identifier = $resolved;
+            }
+        }
+
+        $credentials = ['email' => $identifier, 'password' => $input['password']];
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();

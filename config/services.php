@@ -52,6 +52,13 @@ return [
         ],
     ],
 
+    // TfL open data. Everything we use works without a key at roughly 50
+    // requests a minute; an app key raises that to 500 and only speeds up the
+    // transport:build-* commands, so it is optional.
+    'tfl' => [
+        'app_key' => env('TFL_APP_KEY'),
+    ],
+
     'harborops' => [
         // Primary property feed: Harbor Ops scraped-listings public API
         'base_url' => env('HARBOROPS_API_URL'),
@@ -59,6 +66,71 @@ return [
         'cache_timeout' => env('HARBOROPS_CACHE_TIMEOUT', 300), // 5 minutes
         // Portal domain used to build login-gated landlord deep links (/go/landlord/<id>)
         'portal_domain' => env('HARBOROPS_PORTAL_DOMAIN', 'harborops.co.uk'),
+
+        // Only listings whose status is in this list are shown. The upstream feed
+        // has no "let"/"taken" value, so this is an allowlist rather than a blocklist.
+        // Comma-separated, case-insensitive.
+        'available_statuses' => env('HARBOROPS_AVAILABLE_STATUSES', 'available'),
+        // Roughly half the feed has no status at all. Upstream treated blank as
+        // available; set this to true to keep that behaviour.
+        'include_blank_status' => env('HARBOROPS_INCLUDE_BLANK_STATUS', false),
+        // Hide listings the upstream scraper has not re-checked in this many days
+        // (0 disables). Staleness, not status, is what surfaces already-let rooms.
+        'max_age_days' => (int) env('HARBOROPS_MAX_AGE_DAYS', 0),
+        // Some feed rows are empty stubs: no title, no price, no advert. A card
+        // with no title and "N/A" is worse than no card, so require both.
+        'require_title_and_price' => env('HARBOROPS_REQUIRE_TITLE_AND_PRICE', true),
+        // Agent filter is hidden for now rather than deleted; flip to true to restore.
+        'show_agent_filter' => env('SHOW_AGENT_FILTER', false),
+    ],
+
+    // Supplier rooms from the "Room targets" spreadsheet, Targets tab. This is the
+    // only source that includes every agency (Banksia, Javier, AP/Horizon, Soreva)
+    // in one normalised shape.
+    'supplier_targets' => [
+        'spreadsheet_id' => env('SUPPLIER_TARGETS_SHEET_ID'),
+        'tab' => env('SUPPLIER_TARGETS_TAB', 'Targets'),
+        'credentials_path' => env('SUPPLIER_TARGETS_CREDENTIALS'),
+        'cache_timeout' => env('SUPPLIER_TARGETS_CACHE_TIMEOUT', 900),
+        // Availability horizon, matching the AP portfolio sync's 62 days.
+        'window_days' => env('SUPPLIER_TARGETS_WINDOW_DAYS', 62),
+        // Empty = all suppliers. Comma-separated to restrict.
+        'suppliers' => env('SUPPLIER_TARGETS_SUPPLIERS', ''),
+    ],
+
+    // AP / Horizon portfolio workbook. A real .xlsx in Drive, so it is downloaded
+    // and parsed rather than read through the Sheets API (which 400s on it).
+    // Used to fill price gaps the Targets tab and the feed both have.
+    'ap_portfolio' => [
+        'file_id' => env('AP_PORTFOLIO_FILE_ID'),
+    ],
+
+    // Claude, for the agent search assistant. Haiku is the cheapest capable
+    // model for turning a request into filters ($1/$5 per million tokens);
+    // set ANTHROPIC_MODEL to claude-sonnet-5 or claude-opus-5 for more nuance.
+    // Agent search assistant. The job is structured parsing against a fixed
+    // JSON schema, which small models do well, so the cheapest tier is a
+    // reasonable fit. Switch provider/model with env alone.
+    //   openai  gpt-5-nano      $0.05/$0.40 per 1M  (~GBP 0.09 / 1k searches)
+    //   openai  gpt-5.6-luna    $0.20/$1.20         (~GBP 0.30 / 1k)
+    //   anthropic claude-haiku-4-5  $1.00/$5.00     (~GBP 1.30 / 1k)
+    'assistant' => [
+        'provider' => env('ASSISTANT_PROVIDER', 'openai'),
+    ],
+
+    'anthropic' => [
+        'api_key' => env('ANTHROPIC_API_KEY'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-haiku-4-5'),
+    ],
+
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'model' => env('OPENAI_MODEL', 'gpt-5-nano'),
+        // Any provider exposing an OpenAI-compatible /chat/completions
+        // endpoint can be used by pointing this at their base URL. The
+        // assistant only needs strict JSON-schema output; nothing else here
+        // is OpenAI-specific.
+        'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
     ],
 
     'twilio' => [

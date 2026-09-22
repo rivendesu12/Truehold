@@ -325,7 +325,7 @@ def scrape_listing_advanced(url):
                     # Prefer data-src attribute (more reliable), then href
                     photo_url = link.get("data-src") or link.get("href")
                     if photo_url:
-                        # Ensure it's a full URL and points to large version
+                        # Ensure it\'s a full URL and points to large version
                         if not photo_url.startswith("http"):
                             photo_url = "https://" + photo_url.lstrip("/")
                         # Convert square/medium to large if needed
@@ -358,7 +358,7 @@ def scrape_listing_advanced(url):
                     # Prefer data-src attribute (more reliable), then href
                     photo_url = link.get("data-src") or link.get("href")
                     if photo_url:
-                        # Ensure it's a full URL and points to large version
+                        # Ensure it\'s a full URL and points to large version
                         if not photo_url.startswith("http"):
                             photo_url = "https://" + photo_url.lstrip("/")
                         # Convert square/medium to large if needed

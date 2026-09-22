@@ -33,9 +33,35 @@ trait FiltersPropertyCollection
             });
         }
 
-        if (isset($filters['property_type'])) {
+        // Property type is presented as three buckets rather than the ~14 raw
+        // values the sources use ("Double", "En-Suite", "Ensuite", "double room",
+        // "Master", "Flat", …). Accepts one bucket or several.
+        if (! empty($filters['property_types'])) {
+            $wanted = array_filter((array) $filters['property_types']);
+            if ($wanted) {
+                $properties = $properties->filter(function ($property) use ($wanted) {
+                    return in_array(\App\Support\PropertyClassifier::bucket($property), $wanted, true);
+                });
+            }
+        } elseif (isset($filters['property_type'])) {
+            // Legacy single raw-value filter, kept so existing shared links work.
             $properties = $properties->filter(function ($property) use ($filters) {
                 return stripos($property['property_type'] ?? '', $filters['property_type']) !== false;
+            });
+        }
+
+        // Radius search: keep listings within N miles of the centre of whatever
+        // the location term matched, so "Wapping + 1 mile" also finds Shadwell.
+        if (! empty($filters['radius_miles']) && ! empty($filters['radius_center'])) {
+            $miles = (float) $filters['radius_miles'];
+            [$centerLat, $centerLng] = $filters['radius_center'];
+            $properties = $properties->filter(function ($property) use ($miles, $centerLat, $centerLng) {
+                $lat = $property['latitude'] ?? null;
+                $lng = $property['longitude'] ?? null;
+                if (! is_numeric($lat) || ! is_numeric($lng)) {
+                    return false;
+                }
+                return \App\Support\PropertyClassifier::milesBetween((float) $lat, (float) $lng, $centerLat, $centerLng) <= $miles;
             });
         }
 
@@ -280,4 +306,5 @@ trait FiltersPropertyCollection
             ];
         }
     }
+
 }
