@@ -971,6 +971,31 @@ SYS;
             }
         }
 
+        // When the budget is what stands in the way, the useful answer is the
+        // number that would work. "The cheapest that meets everything else is
+        // GBP 1,040" is something an agent can take straight back to a client;
+        // "no results" is not.
+        if (! empty($spec['max_price'])) {
+            $withoutPrice = $spec;
+            unset($withoutPrice['max_price']);
+
+            $affordableElsewhere = $this->applyPreferences($properties, $withoutPrice);
+
+            if ($affordableElsewhere->isNotEmpty()) {
+                $cheapest = $affordableElsewhere->pluck('price')
+                    ->filter(fn ($v) => is_numeric($v))
+                    ->min();
+
+                if ($cheapest !== null && (float) $cheapest > (float) $spec['max_price']) {
+                    $out[] = sprintf(
+                        'the cheapest that meets everything else is GBP %s, GBP %s over the budget',
+                        number_format((float) $cheapest),
+                        number_format((float) $cheapest - (float) $spec['max_price'])
+                    );
+                }
+            }
+        }
+
         if ($out) {
             return $out;
         }

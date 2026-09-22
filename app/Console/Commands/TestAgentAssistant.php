@@ -55,8 +55,12 @@ class TestAgentAssistant extends Command
             'expect' => ['couples' => true, 'place' => 'stratford'],
         ],
         [
+            // A real gap in stock, not a logic error: the three en-suites
+            // under GBP 900 are in zones 5, 6 and 9, and the cheapest in zone
+            // 1-2 is GBP 1,040. What matters is that the agent is told that.
             'q' => 'double room zone 1 or 2 max 900, must have own bathroom',
             'expect' => ['ensuite_only' => true, 'max_price' => 900, 'property_types' => ['rooms']],
+            'expect_none' => true,
         ],
         [
             // A journey, not a radius. The destination is an area, not a station.
