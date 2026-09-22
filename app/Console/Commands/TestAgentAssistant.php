@@ -171,7 +171,7 @@ class TestAgentAssistant extends Command
             // zone 5, and none with parking. There is no answer to give, so
             // what matters is that the agent is told why.
             'q' => 'two bed flat with parking in zone 3 or 4, up to 2000',
-            'expect' => ['property_types' => ['full_property'], 'parking' => true, 'max_zone' => 4, 'max_price' => 2000],
+            'expect' => ['property_types' => ['full_property'], 'parking' => true, 'max_zone' => 4, 'max_price' => 2000, 'min_bedrooms' => 2],
             'expect_none' => true,
         ],
         [

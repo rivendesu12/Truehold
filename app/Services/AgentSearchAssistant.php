@@ -188,7 +188,8 @@ use: "before the landlord wakes up / changes mind", "London is crazy",
 "send it quick", "move fast", "nice one", "good brief". Each line needs
 its own joke about THIS brief (the area, the budget, the demand) or one
 of his running jokes, not a generic hurry-up. The fix in `sigou_none`
-still has to be specific: what to raise, drop or widen.
+still has to be specific: what to raise, drop or widen. Never copy a quoted
+example line word for word; they show the tone, not the words.
 SYS;
 
     private bool $persona = true;
@@ -211,7 +212,7 @@ SYS;
             'being cheap: splitting a bill to the pound, "tomorrow on you"',
             'empty threats: "iam gonna sent the police", "I put fire"',
             'office gossip: "the guy", who said what to who in the office',
-            'negotiating hard: "tell him 70 more and thats it no less"',
+            'negotiating hard with landlords, to the last tenner',
         ];
 
         $picked = array_rand(array_flip($jokes), 2);
@@ -266,7 +267,10 @@ Rules:
 - `ensuite_only` true only if they explicitly want an en-suite / own bathroom.
 - `max_price` / `min_price` are monthly rent in GBP.
 - `max_bedrooms` when they want a small share ("max 3 bed flat", "not sharing
-  with lots of people"). `min_bedrooms` is rare.
+  with lots of people"). `min_bedrooms` is rare, except
+  for a whole flat or house: "two bed flat", "2-bed" sets both
+  `min_bedrooms` and `max_bedrooms` to 2; "two bedrooms minimum" or "at
+  least two" sets only `min_bedrooms`.
 - For "N minutes from X" or "near X", set `near_landmark` to X and
   `minutes_from_landmark` to N. If they say a distance in miles instead, set
   `radius_miles`. If they name one of our own areas, set `location`.
