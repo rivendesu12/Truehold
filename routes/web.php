@@ -94,6 +94,22 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         return response()->json(['error' => 'Could not understand that — try rephrasing.'], 502);
     }
 
+    // The office WiFi. The model only spots the question; the details come
+    // from config and never go to the model.
+    if (! empty($spec['wifi'])) {
+        $wifi = config('services.office_wifi');
+
+        return response()->json([
+            'wifi' => ! empty($wifi['ssid']) ? [
+                'ssid' => $wifi['ssid'],
+                'password' => $wifi['password'],
+                'qr_url' => $wifi['qr_url'],
+            ] : null,
+            'sigou' => ! empty($wifi['ssid']) ? (string) ($spec['sigou'] ?? '') : 'Nobody told me the WiFi yet, ask Giaco',
+            'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
+        ]);
+    }
+
     // A sourcing agreement, not a search.
     $wants = (array) ($spec['agreement'] ?? []);
     if (! empty($wants['wanted'])) {

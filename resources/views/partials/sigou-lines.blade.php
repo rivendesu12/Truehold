@@ -195,6 +195,12 @@ window.SigouLines = (function () {
         return pick(['Ready bro. Check the name with the ID and download', 'Agreement ready. Now get the signature before he change mind 😂']);
     };
 
-    return {greeting, fresh, agreement, poke: () => pick(pokes), nudge: () => pick(nudges), thinking, result, error, offline};
+    const wifi = () => pick([
+        'Here the WiFi bro. Dont give it to the whole building',
+        'WiFi for the client. Fast one, 10 gig, better than my love life 😂',
+        'Copy and send. And tell the client no Netflix in the office',
+    ]);
+
+    return {greeting, fresh, agreement, wifi, poke: () => pick(pokes), nudge: () => pick(nudges), thinking, result, error, offline};
 })();
 </script>

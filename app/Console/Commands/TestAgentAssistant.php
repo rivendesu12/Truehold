@@ -67,6 +67,13 @@ class TestAgentAssistant extends Command
             'expect' => ['client_name' => 'Anna Nowak', 'fee' => 220]],
     ];
 
+    /** Asking for the office WiFi, in the ways agents actually do. */
+    private const WIFI_CASES = [
+        'whats the office wifi',
+        'client needs the wifi password',
+        'malaka give me the internet password for the client',
+    ];
+
     /** Fields that are Sigou talking, not search filters. */
     private const PERSONA_FIELDS = AgentSearchAssistant::NOT_FILTERS;
 
@@ -297,6 +304,9 @@ class TestAgentAssistant extends Command
             if (! empty($spec['agreement']['wanted'])) {
                 $misses[] = 'taken for a sourcing agreement, no search';
             }
+            if (! empty($spec['wifi'])) {
+                $misses[] = 'taken for a wifi request, no search';
+            }
 
             if ($this->option('compare')) {
                 $plain = $plainAssistant->parse($case['q'], $locations);
@@ -381,6 +391,17 @@ class TestAgentAssistant extends Command
         $this->newLine();
         $this->table(['sourcing agreement', 'result', 'what it got wrong', 'Sigou says'], $dealRows);
 
+        // The office WiFi.
+        $wifiOk = 0;
+        foreach (self::WIFI_CASES as $q) {
+            $spec = $assistant->parse($q, $locations);
+            $ok = $spec && ! empty($spec['wifi']) && empty($spec['agreement']['wanted']);
+            $wifiOk += $ok ? 1 : 0;
+            if (! $ok) {
+                $this->warn("wifi MISS: {$q}");
+            }
+        }
+
         // Small talk: answered in character, nothing searched.
         $chatOk = 0;
         $chatRows = [];
@@ -401,7 +422,8 @@ class TestAgentAssistant extends Command
         $total = count(self::CASES);
         $this->newLine();
         $this->info("Passed {$passed}/{$total} on {$assistant->provider()}/{$assistant->model()}, follow-ups {$followOk}/" . count(self::FOLLOWUP_CASES)
-            . ", agreements {$dealOk}/" . count(self::AGREEMENT_CASES) . ", small talk {$chatOk}/" . count(self::CHAT_CASES));
+            . ", agreements {$dealOk}/" . count(self::AGREEMENT_CASES) . ", wifi {$wifiOk}/" . count(self::WIFI_CASES)
+            . ", small talk {$chatOk}/" . count(self::CHAT_CASES));
 
         if ($this->option('compare')) {
             $this->info("Without the Sigou persona: {$plainPassed}/{$total}");
@@ -420,7 +442,7 @@ class TestAgentAssistant extends Command
         }
 
         return $passed === $total && $chatOk === count(self::CHAT_CASES) && $followOk === count(self::FOLLOWUP_CASES)
-            && $dealOk === count(self::AGREEMENT_CASES)
+            && $dealOk === count(self::AGREEMENT_CASES) && $wifiOk === count(self::WIFI_CASES)
             ? self::SUCCESS : self::FAILURE;
     }
 

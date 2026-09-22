@@ -103,6 +103,14 @@
     padding:10px 16px;font-weight:700;font-size:14px;cursor:pointer;text-decoration:none}
 .th-ask__deallink{font-size:13px;color:#42536b}
 
+/* Office WiFi card */
+.th-ask__wifirow{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:9px 12px;margin:0 0 8px}
+.th-ask__wifirow div{flex:1;min-width:0}
+.th-ask__wifirow span{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7b8598}
+.th-ask__wifirow b{display:block;font-size:15px;word-break:break-all;font-family:ui-monospace,Menlo,monospace}
+.th-ask__copy{flex:none;border:0;border-radius:8px;background:#0b5d4e;color:#fff;font-weight:700;font-size:13px;padding:8px 12px;cursor:pointer}
+.th-ask__wifirow + .th-ask__dealbtn{margin-top:6px}
+
 /* Sigou */
 .th-ask__fab{padding:6px 18px 6px 6px}
 .th-ask__avatar{flex:none;border-radius:50%;box-shadow:0 0 0 2px rgba(255,255,255,.85)}
@@ -407,6 +415,27 @@
 
     const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
 
+    const wifiCard = (w) => {
+        const row = (label, value) => '<div class="th-ask__wifirow"><div><span>' + label + '</span><b>' + esc(value) + '</b></div>'
+            + '<button type="button" class="th-ask__copy" data-copy="' + esc(value) + '">Copy</button></div>';
+        return '<div class="th-ask__deal"><h4>Office WiFi</h4>'
+            + row('Network', w.ssid) + row('Password', w.password)
+            + (w.qr_url ? '<a class="th-ask__dealbtn" href="' + esc(w.qr_url) + '" target="_blank" rel="noopener">Show the QR code for the client</a>' : '')
+            + '</div>';
+    };
+
+    body.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.th-ask__copy');
+        if (!btn) return;
+        try {
+            await navigator.clipboard.writeText(btn.dataset.copy);
+            btn.textContent = 'Copied';
+            setTimeout(() => { btn.textContent = 'Copy'; }, 1600);
+        } catch (err) {
+            btn.textContent = 'Select it';
+        }
+    });
+
     const agreementCard = (a) => {
         if (a.template) {
             return '<div class="th-ask__deal"><h4>Sourcing agreement — blank template</h4>'
@@ -510,6 +539,16 @@
                 body.innerHTML = '<p class="th-ask__err">' + esc(data.error || 'Something went wrong.') + '</p>';
                 Sigou.set('sad', 4000);
                 say(SigouLines.error());
+                return;
+            }
+
+            // The office WiFi: network and password to copy, and the QR page.
+            if ('wifi' in data) {
+                body.innerHTML = data.wifi ? wifiCard(data.wifi) : '';
+                Sigou.set('happy', 2000);
+                say((data.sigou || '').trim() || SigouLines.wifi());
+                lastQ = q;
+                input.value = '';
                 return;
             }
 

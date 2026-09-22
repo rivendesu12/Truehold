@@ -59,6 +59,14 @@ return [
         'app_key' => env('TFL_APP_KEY'),
     ],
 
+    // The office WiFi, which Sigou hands to agents for clients. In .env, not
+    // here: the repository is public.
+    'office_wifi' => [
+        'ssid' => env('OFFICE_WIFI_SSID'),
+        'password' => env('OFFICE_WIFI_PASSWORD'),
+        'qr_url' => env('OFFICE_WIFI_QR_URL'),
+    ],
+
     'harborops' => [
         // Primary property feed: Harbor Ops scraped-listings public API
         'base_url' => env('HARBOROPS_API_URL'),

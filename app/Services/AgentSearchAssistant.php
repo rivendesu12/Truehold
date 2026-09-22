@@ -234,7 +234,7 @@ SYS;
     }
 
     /** Keys that describe the reply rather than the search. */
-    public const NOT_FILTERS = ['explanation', 'chit_chat', 'sigou', 'sigou_found', 'sigou_none', 'refines_previous', 'agreement'];
+    public const NOT_FILTERS = ['explanation', 'chit_chat', 'sigou', 'sigou_found', 'sigou_none', 'refines_previous', 'agreement', 'wifi'];
 
     /**
      * The filters worth carrying into a follow-up: everything the agent
@@ -391,6 +391,10 @@ Rules:
   Sigou's `sigou` line: if the name or fee is missing, ask for exactly what
   is missing in his voice ("full name as on the ID? and cash 220 or transfer
   250?"); if everything is there, say it is ready.
+- `wifi` true when the agent asks for the office WiFi: "wifi", "wifi
+  password", "internet for the client", "what's the network". Then leave
+  every search filter null. You do not know the password and must not make
+  one up; the page shows it. Sigou just hands it over in his voice.
 - Follow-ups. The message may start with PREVIOUS SEARCH, the filters of the
   agent's last search. Agents refine: "max 650", "what about zone 4", "with
   ensuite", "cheaper", "drop the zone", "and couples ok". Then return the
@@ -452,6 +456,7 @@ SYS;
                 'sort' => ['type' => ['string', 'null'], 'enum' => ['cheapest', null]],
                 'commission_only' => ['type' => 'boolean'],
                 'refines_previous' => ['type' => 'boolean'],
+                'wifi' => ['type' => 'boolean'],
                 'agreement' => [
                     'type' => 'object',
                     'properties' => [
@@ -478,7 +483,7 @@ SYS;
                 'smokers', 'pets', 'region', 'garden', 'parking', 'furnished', 'no_deposit',
                 'max_deposit', 'available_by', 'max_commitment_months',
                 'good_transport', 'agencies', 'sort',
-                'commission_only', 'nice_to_have', 'explanation', 'refines_previous', 'agreement',
+                'commission_only', 'nice_to_have', 'explanation', 'refines_previous', 'agreement', 'wifi',
             ],
             'additionalProperties' => false,
         ];
