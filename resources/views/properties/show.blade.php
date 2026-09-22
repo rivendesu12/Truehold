@@ -1961,7 +1961,13 @@ html {
                 <!-- Sidebar -->
                 <div class="details-sidebar">
                     
-                    <!-- Property Manager Card -->
+                    {{-- Property Manager Card. Agents only, in full: a client sent
+                         this link is meant to see the property, not that there is an
+                         intermediary and information being withheld from them. The
+                         card used to render its heading and a "available to
+                         registered users" notice to everyone, which told a client
+                         exactly that. --}}
+                    @auth
                     <div class="manager-card">
                         <h3 class="card-title">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -1996,16 +2002,9 @@ html {
                             @else
                                 <p style="color: var(--gray); font-size: 14px;">No agent assigned</p>
                             @endif
-                        @else
-                            <div class="locked-content">
-                                <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                                </svg>
-                                <p class="locked-text">Please contact your agent for more details</p>
-                                <p class="locked-subtext">Property manager information available to registered users</p>
-                        </div>
                         @endauth
                                 </div>
+                    @endauth
 
                     <!-- Location Card -->
                     @if($property->latitude && $property->longitude && $property->latitude !== 'N/A' && $property->longitude !== 'N/A')
