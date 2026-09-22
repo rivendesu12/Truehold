@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use App\Support\FieldValue;
 use App\Support\LondonRegion;
 use App\Support\PropertyClassifier;
+use App\Support\RoomFacts;
 
 /**
  * Turns an agent's plain-English request into concrete search filters.
@@ -663,10 +664,7 @@ SYS;
         }
 
         if (! empty($spec['ensuite_only'])) {
-            $results = $results->filter(function ($p) {
-                $hay = strtolower(($p['property_type'] ?? '') . ' ' . ($p['title'] ?? '') . ' ' . ($p['description'] ?? ''));
-                return str_contains($hay, 'ensuite') || str_contains($hay, 'en-suite') || str_contains($hay, 'en suite');
-            });
+            $results = $results->filter(fn ($p) => RoomFacts::isEnsuite($p));
         }
 
         // Bedrooms of the dwelling: its own count for a whole flat, the size
@@ -769,11 +767,18 @@ SYS;
 
         if (! empty($spec['room_type'])) {
             $wanted = strtolower((string) $spec['room_type']);
+
             $results = $results->filter(function ($p) use ($wanted) {
-                if (strtolower((string) ($p['room_type'] ?? '')) === $wanted) {
-                    return true;
+                if ($wanted === 'ensuite') {
+                    return RoomFacts::isEnsuite($p);
                 }
-                // The type is often only in the advert text.
+
+                $stated = strtolower((string) ($p['room_type'] ?? ''));
+                if ($stated !== '') {
+                    return $stated === $wanted;
+                }
+
+                // Only where no type is stated does the advert text get a say.
                 $hay = strtolower(($p['title'] ?? '') . ' ' . ($p['description'] ?? ''));
                 return str_contains($hay, $wanted);
             });

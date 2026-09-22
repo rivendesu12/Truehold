@@ -70,6 +70,80 @@ final class RoomFacts
         return $facts;
     }
 
+    /**
+     * Does this listing actually offer an en-suite?
+     *
+     * A substring search over the description does not answer this. One advert
+     * read "one main bathroom shared between four residents, plus one ensuite
+     * room in the house" — the en-suite is a different room, and the room
+     * being advertised is a double with a shared bathroom. It was being
+     * returned for "give me ensuite" anyway.
+     *
+     * So the stated room type wins whenever there is one: a room the feed
+     * calls a double is not an en-suite, whatever the prose mentions. Only
+     * where no type is stated does the wording get a say, and then only when
+     * it is not plainly describing someone else's bathroom.
+     */
+    public static function isEnsuite(array $property): bool
+    {
+        $stated = preg_replace('/[^a-z]/', '', strtolower(trim(
+            (string) ($property['room_type'] ?? $property['room1_type'] ?? '')
+        )));
+
+        if ($stated === 'ensuite') {
+            return true;
+        }
+
+        if (in_array($stated, ['double', 'single', 'twin', 'studio'], true)) {
+            return false;
+        }
+
+        // Some sources put it in the type column instead.
+        if (self::mentionsEnsuite(strtolower((string) ($property['property_type'] ?? '')))) {
+            return true;
+        }
+
+        // The advertiser's own headline is about the room they are letting.
+        if (self::mentionsEnsuite(strtolower((string) ($property['title'] ?? '')))) {
+            return true;
+        }
+
+        $description = strtolower((string) ($property['description'] ?? ''));
+
+        return self::mentionsEnsuite($description) && ! self::ensuiteBelongsElsewhere($description);
+    }
+
+    protected static function mentionsEnsuite(string $text): bool
+    {
+        return (bool) preg_match('/\ben[\s-]?suite\b/', $text);
+    }
+
+    /**
+     * Wording that shows the en-suite is another room's, or that this room
+     * shares a bathroom.
+     */
+    protected static function ensuiteBelongsElsewhere(string $text): bool
+    {
+        $patterns = [
+            // "one ensuite room in the house", "another en-suite", "1 ensuite"
+            '/\b(?:one|two|three|another|other|\d+)\s+en[\s-]?suite\b/',
+            // "the other rooms are ensuite"
+            '/\bother\s+rooms?\b[^.]{0,40}\ben[\s-]?suite\b/',
+            // this room's own bathroom is shared
+            '/\bshared?\s+bathroom\b/',
+            '/\bbathroom\b[^.]{0,30}\bshared\b/',
+            '/\bshare\s+(?:a|the|one)?\s*bathroom\b/',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $text)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     protected static function text(array $property): string
     {
         return trim(

@@ -107,6 +107,12 @@ class TestAgentAssistant extends Command
             'expect' => ['good_transport' => true, 'ensuite_only' => true, 'sort' => 'cheapest'],
         ],
         [
+            // Was returning a double with a shared bathroom, because the advert
+            // mentioned "one ensuite room in the house" — a different room.
+            'q' => 'give me ensuite up to zone 3, max budget 1000',
+            'expect' => ['ensuite_only' => true, 'max_zone' => 3, 'max_price' => 1000],
+        ],
+        [
             'q' => 'rooms in E14 under 1000',
             'expect' => ['place' => 'e14', 'max_price' => 1000, 'property_types' => ['rooms']],
         ],
