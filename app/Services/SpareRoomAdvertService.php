@@ -193,6 +193,7 @@ class SpareRoomAdvertService
 
         $totalRooms = $this->intAfter($lines, 'Total # rooms');
         $roomType = $this->roomType($lines);
+        $photos = $this->photos($html);
 
         return [
             'id' => 'spareroom-' . $advertId,
@@ -203,7 +204,7 @@ class SpareRoomAdvertService
             'price' => $price,
             'property_type' => $this->propertyType($title, $roomType),
             'room1_type' => $roomType,
-            'location' => $this->location($lines),
+            'location' => $this->location($lines, $html),
             'postcode' => $this->outcode($html),
             'latitude' => $lat,
             'longitude' => $lng,
@@ -232,7 +233,10 @@ class SpareRoomAdvertService
             'max_age' => $this->intAfter($lines, 'Max age'),
             'gender' => $this->valueAfter($lines, 'Gender'),
             'pref_occupation' => $this->occupation($lines),
-            'photo_count' => 0,
+            'first_photo_url' => $photos[0] ?? null,
+            'photos' => $photos ?: null,
+            'all_photos' => $photos ? implode(', ', $photos) : null,
+            'photo_count' => count($photos),
             'updatable' => false,
             'updated_at' => now()->toIso8601String(),
         ];
@@ -365,11 +369,79 @@ class SpareRoomAdvertService
         return $text !== '' ? mb_substr($text, 0, 4000) : null;
     }
 
-    protected function location(array $lines): ?string
+    /**
+     * The advert's own photographs, from SpareRoom's image host.
+     *
+     * Cards were falling back to a placeholder because nothing was collected
+     * here. The page serves the same photo at several sizes; only the large
+     * ones are kept, in the order they appear, so the first is the one the
+     * advertiser chose as their main image.
+     *
+     * @return array<int, string>
+     */
+    protected function photos(string $html): array
+    {
+        preg_match_all(
+            '#https://photos\d*\.spareroom\.co\.uk/images/flatshare/listings/large/[^\s"\'<>]+\.(?:jpe?g|png|webp)#i',
+            $html,
+            $m
+        );
+
+        $photos = [];
+        foreach ($m[0] ?? [] as $url) {
+            if (! in_array($url, $photos, true)) {
+                $photos[] = $url;
+            }
+        }
+
+        // If only thumbnails are present, take those rather than none.
+        if (! $photos && preg_match_all(
+            '#https://photos\d*\.spareroom\.co\.uk/images/flatshare/listings/[^\s"\'<>]+\.(?:jpe?g|png|webp)#i',
+            $html,
+            $m2
+        )) {
+            $photos = array_values(array_unique($m2[0]));
+        }
+
+        return array_slice($photos, 0, 12);
+    }
+
+    /**
+     * Where the room is, in words. The structured "London N15" line is
+     * preferred; failing that the title or the outcode, because "Location not
+     * specified" on a card that does have a location is just a worse card.
+     */
+    protected function location(array $lines, string $html = ''): ?string
     {
         foreach ($lines as $line) {
             if (preg_match('/^London\s+([A-Z]{1,2}\d{1,2}[A-Z]?)$/', $line, $m)) {
                 return 'London ' . $m[1];
+            }
+        }
+
+        // The area name SpareRoom prints next to the map, e.g. "Whitechapel".
+        foreach ($lines as $i => $line) {
+            if (strcasecmp($line, 'Area info') === 0) {
+                $station = trim((string) ($lines[$i + 1] ?? ''));
+                $station = preg_replace('/\s+Station$/i', '', $station);
+                if ($station !== '' && ! str_contains(strtolower($station), 'tube map')) {
+                    return $station;
+                }
+            }
+        }
+
+        if ($outcode = $this->outcode($html)) {
+            return 'London ' . $outcode;
+        }
+
+        // Last resort: a postcode district written in the title.
+        foreach ($lines as $line) {
+            if (preg_match('/\b([A-Z]{1,2}\d{1,2}[A-Z]?)\b/', $line, $m)
+                && in_array(strtoupper(preg_replace('/\d.*/', '', $m[1])), [
+                    'E', 'EC', 'N', 'NW', 'SE', 'SW', 'W', 'WC', 'BR', 'CR', 'DA',
+                    'EN', 'HA', 'IG', 'KT', 'RM', 'SM', 'TW', 'UB', 'WD',
+                ], true)) {
+                return 'London ' . strtoupper($m[1]);
             }
         }
 
@@ -378,7 +450,16 @@ class SpareRoomAdvertService
 
     protected function outcode(string $html): ?string
     {
-        return preg_match('/flatshare London ([A-Z]{1,2}\d{1,2}[A-Z]?)\b/', $html, $m) ? $m[1] : null;
+        if (preg_match('/flatshare London ([A-Z]{1,2}\d{1,2}[A-Z]?)\b/', $html, $m)) {
+            return $m[1];
+        }
+
+        // Not every advert carries the keywords meta tag the line above reads.
+        if (preg_match('/(?:flatshare|房|room)[^<]{0,40}?\b([A-Z]{1,2}\d{1,2}[A-Z]?)\b/', $html, $m2)) {
+            return $m2[1];
+        }
+
+        return null;
     }
 
     /** @return array{0: ?float, 1: ?float} */
