@@ -127,3 +127,14 @@ it('hands over the blank template when that is all they want', function () {
         ->assertJsonPath('agreement.template', true)
         ->assertJsonPath('agreement.template_url', route('agreement.template'));
 });
+
+it('settles a short or lower-case name on the team spelling', function () {
+    $seen = [];
+    fakeAgreementAssistant($seen, ['agreement for Anna Nowak 250' => ['client_name' => 'Anna Nowak', 'fee' => 250]]);
+    $this->actingAs(User::factory()->create(['name' => 'Agent']));
+
+    $this->post('/tools/sourcing-agreement/pdf', ['client_name' => 'Maria Lopez', 'fee' => 250, 'sign_as' => 'ema'])->assertOk();
+
+    $this->postJson('/agent-search', ['q' => 'agreement for Anna Nowak 250'])
+        ->assertJsonPath('agreement.sign_as', 'Emanuela');
+});

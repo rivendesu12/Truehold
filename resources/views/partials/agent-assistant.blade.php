@@ -25,6 +25,12 @@
             <div id="thAskResults"></div>
         </div>
 
+        <datalist id="thAskAgents">
+            @foreach (config('truehold.agents', []) as $agent)
+                <option value="{{ $agent }}"></option>
+            @endforeach
+        </datalist>
+
         <form class="th-ask__form" id="thAskForm">
             <button type="button" class="th-ask__new" id="thAskNew" hidden title="Forget the last search and start a new one">New search</button>
             <input type="search" id="thAskInput" class="th-ask__input" autocomplete="off"
@@ -459,6 +465,11 @@
             + '</form>';
     };
 
+    body.addEventListener('input', (e) => {
+        const row = e.target.closest('.th-ask__dealrow');
+        if (row) row.classList.toggle('is-missing', !e.target.value.trim());
+    });
+
     body.addEventListener('click', async (e) => {
         const btn = e.target.closest('.th-ask__copy');
         if (!btn) return;
@@ -488,7 +499,7 @@
             + field('fee', 'Sourcing fee (£)',
                 '<input name="fee" type="number" min="1" step="1" required value="' + esc(a.fee == null ? '' : a.fee) + '">', '£220 cash · £250 transfer')
             + field('date', 'Date', '<input name="date" type="date" value="' + esc(a.date || '') + '">')
-            + field('sign_as', 'Your name (signs as the Sourcer)', '<input name="sign_as" required maxlength="60" placeholder="e.g. Giacomo" value="' + esc(a.sign_as || '') + '">')
+            + field('sign_as', 'Your name (signs as the Sourcer)', '<input name="sign_as" list="thAskAgents" autocomplete="off" required maxlength="60" placeholder="Pick or type your name" value="' + esc(a.sign_as || '') + '">')
             + '<p class="th-ask__dealnote">Referral bonus £' + esc(a.referral) + ' per referred client, filled in for you. The client signs by hand.</p>'
             + '<div class="th-ask__dealbtns"><button type="submit" class="th-ask__dealbtn">Download PDF</button>'
             + '<button type="submit" class="th-ask__dealbtn th-ask__dealbtn--alt" formaction="' + esc(a.invoice_url || '/tools/invoice/pdf') + '">Invoice too</button>'

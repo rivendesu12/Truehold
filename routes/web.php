@@ -183,7 +183,7 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
             'date' => $date,
             // Never the login: agents share one ("Agent"). Asked once, then
             // remembered on that device from the last agreement they signed.
-            'sign_as' => $given('sign_as') ?: $request->session()->get('sigou.signer'),
+            'sign_as' => \App\Support\AgentName::canonical($given('sign_as')) ?: $request->session()->get('sigou.signer'),
         ];
         $missing = array_keys(array_filter([
             'client_name' => ! $details['client_name'],
@@ -315,7 +315,7 @@ Route::middleware('auth')->post('/tools/sourcing-agreement/pdf', function (Reque
         'sign_as' => ['required', 'string', 'max:60'],
     ], ['sign_as.required' => 'Whose name goes on it? Fill in the agent signing as the Sourcer.']);
 
-    $sourcer = trim($data['sign_as']);
+    $sourcer = \App\Support\AgentName::canonical($data['sign_as']);
     $request->session()->put('sigou.signer', $sourcer);
     $agreement = app(\App\Services\SourcingAgreement::class);
 
