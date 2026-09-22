@@ -98,6 +98,14 @@ return [
         'file_id' => env('AP_PORTFOLIO_FILE_ID'),
     ],
 
+    // Claude, for the agent search assistant. Haiku is the cheapest capable
+    // model for turning a request into filters ($1/$5 per million tokens);
+    // set ANTHROPIC_MODEL to claude-sonnet-5 or claude-opus-5 for more nuance.
+    'anthropic' => [
+        'api_key' => env('ANTHROPIC_API_KEY'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-haiku-4-5'),
+    ],
+
     'twilio' => [
         'account_sid' => env('TWILIO_ACCOUNT_SID'),
         'auth_token' => env('TWILIO_AUTH_TOKEN'),

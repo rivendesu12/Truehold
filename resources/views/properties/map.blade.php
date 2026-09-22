@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta name="description" content="Browse properties on an interactive map - TrueHold Premium Property Listings">
     <meta name="theme-color" content="#1e3a5f">
@@ -2527,5 +2528,6 @@ select.filter-input option {
             });
         });
     </script>
+    @include('partials.agent-assistant')
 </body>
 </html>

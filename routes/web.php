@@ -54,6 +54,49 @@ Route::get('/properties/map', [PropertyController::class, 'map'])->name('propert
 Route::get('/properties/{property}', [PropertyController::class, 'show'])->name('properties.show');
 Route::get('/manage/properties', [PropertyManagementController::class, 'index'])->name('properties.manage');
 
+// Agent search assistant: plain-English search, signed-in agents only.
+Route::middleware('auth')->post('/agent-search', function (Request $request) {
+    $question = trim((string) $request->input('q', ''));
+    if ($question === '') {
+        return response()->json(['error' => 'Ask me something.'], 422);
+    }
+
+    $assistant = app(\App\Services\AgentSearchAssistant::class);
+    if (! $assistant->isConfigured()) {
+        return response()->json([
+            'error' => 'The assistant is not configured yet — ANTHROPIC_API_KEY is missing.',
+        ], 503);
+    }
+
+    $feed = app(\App\Services\ScrapedListingsApiService::class)->getAllProperties();
+    $locations = $feed->pluck('location')->filter()->unique()->values()->all();
+
+    $spec = $assistant->parse($question, $locations);
+    if (! $spec) {
+        return response()->json(['error' => 'Could not understand that — try rephrasing.'], 502);
+    }
+
+    $found = $assistant->search($spec, $feed);
+
+    return response()->json([
+        'explanation' => $spec['explanation'] ?? '',
+        'matched' => $found['matched'],
+        'radius' => $found['radius'],
+        'commission_only' => (bool) ($spec['commission_only'] ?? false),
+        'results' => $found['results']->take(12)->map(fn ($p) => [
+            'id' => $p['id'] ?? null,
+            'title' => $p['title'] ?? 'Untitled',
+            'location' => $p['location'] ?? null,
+            'price' => $p['price'] ?? null,
+            'type' => \App\Services\Concerns\FiltersPropertyCollection::propertyTypeBucket($p),
+            'photo' => $p['first_photo_url'] ?? null,
+            'agent' => $p['agent_name'] ?? null,
+            'commission' => $assistant->paysCommission($p),
+            'url' => $p['id'] ? url('/properties/' . $p['id']) : null,
+        ])->values(),
+    ]);
+})->name('agent.search');
+
 // Supplier room photos live in private Drive folders, so they are streamed
 // through here with the service account rather than linked directly. Only ids
 // discovered while indexing a supplier folder are servable, so this cannot be
