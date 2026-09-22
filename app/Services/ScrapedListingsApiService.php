@@ -113,6 +113,16 @@ class ScrapedListingsApiService
                 $all = $all->map(fn ($p) => $transport->annotate($p));
             }
 
+            // What each listing is worth to us, so "prioritise commission"
+            // can rank by money rather than by a yes/no flag.
+            $commission = app(CommissionRates::class);
+            $all = $all->map(fn ($p) => $commission->annotate($p));
+
+            // What the listing actually offers: bedrooms for a whole flat,
+            // house size and room type for a room. The feed states these only
+            // for rooms, so whole flats had no bedroom count at all.
+            $all = $all->map(fn ($p) => array_merge($p, \App\Support\RoomFacts::extract($p)));
+
             if (config('services.harborops.require_title_and_price', true)) {
                 $all = $all->filter(
                     fn ($p) => trim((string) ($p['title'] ?? '')) !== '' && ! empty($p['price'])

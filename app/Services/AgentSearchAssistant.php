@@ -6,6 +6,7 @@ use Anthropic\Client as AnthropicClient;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Support\PropertyClassifier;
 
 /**
  * Turns an agent's plain-English request into concrete search filters.
@@ -84,6 +85,17 @@ class AgentSearchAssistant
                 . implode(', ', array_slice($knownLocations, 0, 120))
             : '';
 
+        // Naming the destinations we hold real journey times for keeps the
+        // model from asking for a number we would have to invent.
+        $transport = app(TransportIndex::class);
+        if ($transport->hasJourneyTimes()) {
+            $labels = array_map(fn ($h) => $h['label'] ?? '', $transport->hubs());
+            $locationHint .= "\n\nDestinations we hold real journey times to: "
+                . implode(', ', array_filter($labels))
+                . ". Areas served by one of these (Soho, the City, Shoreditch, Docklands,"
+                . " Westfield and so on) count as that destination.";
+        }
+
         $system = <<<'SYS'
 You convert a letting agent's plain-English request into search filters for a
 London room-and-flat listings site. You never invent listings; you only produce
@@ -104,6 +116,21 @@ Rules:
   its nearest station. For "up to zone 3", "zone 2 or 3", "no further than
   zone 4", set `max_zone` to the highest acceptable number. Do NOT convert a
   zone into a distance or a landmark.
+- We hold real public-transport journey times from every listing to the
+  destinations listed below. For "30 minutes from Bond Street", "under an
+  hour to Canary Wharf", "close to the City", set `near_landmark` to the
+  destination as they said it and `minutes_from_landmark` to the number of
+  minutes. Do NOT convert minutes into miles — we measure the actual journey.
+- `direct_only` true when they want no changes ("direct", "no changes", "one
+  train", "straight through"). It only means anything alongside a landmark.
+- `lines` for a named tube line ("on the Jubilee", "Victoria line"). Use the
+  line's proper name: Jubilee, Victoria, Central, Northern, Piccadilly,
+  District, Circle, Bakerloo, Metropolitan, Hammersmith & City, Waterloo &
+  City, Elizabeth line, DLR, Mildmay, Windrush, Weaver, Lioness, Suffragette,
+  Liberty, Tram.
+- `min_bedrooms` / `max_bedrooms` are bedrooms in the property. For a whole
+  flat that is its size; for a room advert it is the size of the houseshare
+  ("no more than a 4-bed house").
 - For "near a tube", "close to the station", "good transport links", set
   `max_walk_to_station` to the acceptable walk in minutes (default 10 if they
   just say near a tube; 15 for "reasonable transport").
@@ -131,6 +158,8 @@ SYS;
                 'couples' => ['type' => ['boolean', 'null']],
                 'max_zone' => ['type' => ['number', 'null']],
                 'max_walk_to_station' => ['type' => ['number', 'null']],
+                'direct_only' => ['type' => 'boolean'],
+                'lines' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'commission_only' => ['type' => 'boolean'],
                 'explanation' => ['type' => 'string'],
             ],
@@ -138,7 +167,8 @@ SYS;
                 'location', 'near_landmark', 'minutes_from_landmark', 'radius_miles',
                 'min_price', 'max_price', 'property_types', 'ensuite_only',
                 'min_bedrooms', 'max_bedrooms', 'couples', 'max_zone',
-                'max_walk_to_station', 'commission_only', 'explanation',
+                'max_walk_to_station', 'direct_only', 'lines',
+                'commission_only', 'explanation',
             ],
             'additionalProperties' => false,
         ];
@@ -238,13 +268,46 @@ SYS;
     {
         $radius = $spec['radius_miles'] ?? null;
         $center = $this->resolveLandmark($spec['near_landmark'] ?? null);
+        $transport = app(TransportIndex::class);
 
-        // The brief can carry two distance constraints at once — "up to zone 3"
-        // and "within 30 minutes of Bond Street". Honour the tighter of the two
-        // rather than letting one overwrite the other.
-        if ($center && ! empty($spec['minutes_from_landmark'])) {
+        // "30 minutes from Bond Street" is a journey, not a circle. Where the
+        // destination is one we hold real times to, filter on those minutes and
+        // leave geography alone; the straight-line proxy below is only for
+        // destinations we have no journey data for, and it is labelled as such.
+        $hub = null;
+        if ($transport->hasJourneyTimes() && ! empty($spec['near_landmark'])) {
+            $hub = $transport->resolveHub((string) $spec['near_landmark']);
+        }
+
+        // A journey filter is only honest if we hold times for nearly every
+        // listing. While the index is still building, a listing whose station
+        // has not been computed yet would silently vanish from "30 minutes
+        // from Bond Street" — so below that bar, fall back to the straight-line
+        // proxy, which at least labels itself as one.
+        if ($hub) {
+            $covered = $properties->filter(fn ($p) => isset($p['journey_minutes'][$hub]))->count();
+            if ($properties->count() > 0 && $covered / $properties->count() < 0.9) {
+                Log::info('Journey filter skipped: thin coverage', [
+                    'hub' => $hub, 'covered' => $covered, 'of' => $properties->count(),
+                ]);
+                $hub = null;
+            }
+        }
+
+        if ($hub && ! empty($spec['minutes_from_landmark'])) {
+            $spec['_hub'] = $hub;
+            $spec['_max_journey'] = (int) $spec['minutes_from_landmark'];
+            $center = null;
+            $radius = null;
+        } elseif ($center && ! empty($spec['minutes_from_landmark'])) {
+            // The brief can carry two distance constraints at once — "up to
+            // zone 3" and "within 30 minutes". Honour the tighter of the two.
             $fromMinutes = round($spec['minutes_from_landmark'] * self::MILES_PER_MINUTE, 2);
             $radius = $radius ? min((float) $radius, $fromMinutes) : $fromMinutes;
+        }
+
+        if ($hub && ! empty($spec['direct_only'])) {
+            $spec['_hub'] = $hub;
         }
 
         // "near Canary Wharf" with no distance given still has to mean near it.
@@ -286,6 +349,18 @@ SYS;
 
         $plan = [['spec' => $spec, 'center' => $center, 'radius' => $radius, 'widened' => false, 'relaxed' => []]];
 
+        // A journey search widens in minutes, not miles: ten more minutes on
+        // the tube is what an agent would offer next, and it is a number the
+        // client understands.
+        if (! empty($spec['_max_journey'])) {
+            foreach ([10, 20] as $extra) {
+                $looser = $spec;
+                $looser['_max_journey'] = (int) $spec['_max_journey'] + $extra;
+                $plan[] = ['spec' => $looser, 'center' => null, 'radius' => null, 'widened' => true, 'relaxed' => []];
+            }
+            $ladder = [];
+        }
+
         foreach ($ladder as $step) {
             $plan[] = ['spec' => $spec, 'center' => $wideCenter, 'radius' => $step, 'widened' => true, 'relaxed' => []];
         }
@@ -322,8 +397,12 @@ SYS;
         return [
             'results' => $onBrief,
             'matched' => $onBrief->count(),
-            'commission' => $onBrief->filter(fn ($p) => $this->paysCommission($p))->values(),
+            'commission' => $onBrief->filter(fn ($p) => $this->paysCommission($p))
+                ->sortByDesc(fn ($p) => $p['commission_value'] ?? 0)->values(),
             'standard' => $onBrief->reject(fn ($p) => $this->paysCommission($p))->values(),
+            'hub' => $spec['_hub'] ?? null,
+            'hub_label' => ! empty($spec['_hub']) ? $transport->hubLabel($spec['_hub']) : null,
+            'max_journey' => $spec['_max_journey'] ?? null,
             'alternatives' => $alternatives,
             'center' => $center,
             'radius' => $radius,
@@ -349,6 +428,32 @@ SYS;
     ): Collection {
         $seen = $onBrief->pluck('id')->filter()->flip();
         $out = collect();
+
+        // A longer journey than asked for. The agent can offer "it's 40 minutes
+        // rather than 30" with a straight face; they cannot offer "it's 1.4
+        // miles further out" to someone who asked about their commute.
+        if (! empty($spec['_hub']) && ! empty($spec['_max_journey'])) {
+            $hub = $spec['_hub'];
+            $asked = (int) $spec['_max_journey'];
+            $looser = $spec;
+            $looser['_max_journey'] = $asked + 20;
+
+            foreach ($this->applyPreferences($properties, $looser) as $p) {
+                if (isset($seen[$p['id'] ?? ''])) {
+                    continue;
+                }
+                $minutes = (int) ($p['journey_minutes'][$hub]['minutes'] ?? 0);
+                if ($minutes <= $asked) {
+                    continue;
+                }
+                $p['why'] = sprintf(
+                    '%d minutes door to door, past the %d you asked for',
+                    $minutes,
+                    $asked
+                );
+                $out->push($p);
+            }
+        }
 
         // A bit further out than asked.
         if ($center && $radius) {
@@ -405,7 +510,9 @@ SYS;
         }
 
         // Commission-paying first here too, and keep it short enough to scan.
-        return $out->sortByDesc(fn ($p) => $this->paysCommission($p) ? 1 : 0)->take(10)->values();
+        return $out
+            ->sortByDesc(fn ($p) => ($this->paysCommission($p) ? 1_000_000 : 0) + ($p['commission_value'] ?? 0))
+            ->take(10)->values();
     }
 
     /** Everything that is not geography. */
@@ -431,13 +538,53 @@ SYS;
             });
         }
 
+        // Bedrooms of the dwelling: its own count for a whole flat, the size
+        // of the houseshare for a room. RoomFacts fills both, including for
+        // whole flats, which the feed never states.
+        $beds = fn ($p) => $p['bedrooms'] ?? $p['house_size'] ?? $p['total_rooms'] ?? null;
+
         if (! empty($spec['max_bedrooms'])) {
             $results = $results->filter(fn ($p) =>
-                ! empty($p['total_rooms']) && (int) $p['total_rooms'] <= (int) $spec['max_bedrooms']);
+                is_numeric($beds($p)) && (int) $beds($p) <= (int) $spec['max_bedrooms']);
         }
         if (! empty($spec['min_bedrooms'])) {
             $results = $results->filter(fn ($p) =>
-                ! empty($p['total_rooms']) && (int) $p['total_rooms'] >= (int) $spec['min_bedrooms']);
+                is_numeric($beds($p)) && (int) $beds($p) >= (int) $spec['min_bedrooms']);
+        }
+
+        // Real journey time to a destination we hold times for.
+        if (! empty($spec['_hub']) && ! empty($spec['_max_journey'])) {
+            $hub = $spec['_hub'];
+            $limit = (int) $spec['_max_journey'];
+            $results = $results->filter(function ($p) use ($hub, $limit) {
+                $leg = $p['journey_minutes'][$hub] ?? null;
+                return $leg && (int) $leg['minutes'] <= $limit;
+            });
+        }
+
+        if (! empty($spec['_hub']) && ! empty($spec['direct_only'])) {
+            $hub = $spec['_hub'];
+            $results = $results->filter(function ($p) use ($hub) {
+                $leg = $p['journey_minutes'][$hub] ?? null;
+                return $leg && (int) $leg['changes'] === 0;
+            });
+        }
+
+        // A named tube line, from the lines TfL says serve the nearest station.
+        $lines = array_filter(array_map('strval', (array) ($spec['lines'] ?? [])));
+        if ($lines) {
+            $results = $results->filter(function ($p) use ($lines) {
+                $served = array_map('strtolower', (array) ($p['station_lines'] ?? []));
+                foreach ($lines as $wanted) {
+                    $wanted = strtolower(trim(preg_replace('/\s+line$/i', '', $wanted)));
+                    foreach ($served as $have) {
+                        if ($wanted !== '' && str_contains($have, $wanted)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            });
         }
 
         // Real fare zone from the nearest station, not a radius.

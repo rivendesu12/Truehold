@@ -78,6 +78,8 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
 
     $found = $assistant->search($spec, $feed);
 
+    $hub = $found['hub'] ?? null;
+
     $shape = fn ($p) => [
         'id' => $p['id'] ?? null,
         'title' => $p['title'] ?? 'Untitled',
@@ -87,9 +89,23 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         'photo' => $p['first_photo_url'] ?? null,
         'agent' => $p['agent_name'] ?? null,
         'commission' => $assistant->paysCommission($p),
+        // An estimated fee must read as an estimate: the rate behind it is a
+        // default until the real agency terms are entered.
+        'fee' => $p['commission_value'] ?? null,
+        'fee_estimated' => (bool) ($p['commission_estimated'] ?? false),
         'zone' => $p['zone'] ?? null,
         'station' => $p['nearest_station'] ?? null,
+        'lines' => array_slice((array) ($p['station_lines'] ?? []), 0, 3),
         'walk' => $p['walk_minutes'] ?? null,
+        'beds' => $p['bedrooms'] ?? null,
+        'house_size' => $p['house_size'] ?? null,
+        'room_type' => $p['room_type'] ?? null,
+        'journey' => $hub && isset($p['journey_minutes'][$hub])
+            ? [
+                'minutes' => $p['journey_minutes'][$hub]['minutes'],
+                'changes' => $p['journey_minutes'][$hub]['changes'],
+            ]
+            : null,
         'why' => $p['why'] ?? null,
         'url' => ! empty($p['id']) ? url('/properties/' . $p['id']) : null,
     ];
@@ -99,6 +115,8 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         'explanation' => $spec['explanation'] ?? '',
         'matched' => $found['matched'],
         'radius' => $found['radius'],
+        'hub' => $found['hub_label'] ?? null,
+        'max_journey' => $found['max_journey'] ?? null,
         'widened' => (bool) ($found['widened'] ?? false),
         'relaxed' => $found['relaxed'] ?? [],
         'commission_only' => (bool) ($spec['commission_only'] ?? false),

@@ -52,6 +52,13 @@ return [
         ],
     ],
 
+    // TfL open data. Everything we use works without a key at roughly 50
+    // requests a minute; an app key raises that to 500 and only speeds up the
+    // transport:build-* commands, so it is optional.
+    'tfl' => [
+        'app_key' => env('TFL_APP_KEY'),
+    ],
+
     'harborops' => [
         // Primary property feed: Harbor Ops scraped-listings public API
         'base_url' => env('HARBOROPS_API_URL'),

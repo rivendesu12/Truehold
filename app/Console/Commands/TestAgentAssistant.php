@@ -31,7 +31,7 @@ class TestAgentAssistant extends Command
         ],
         [
             'q' => 'something up to zone 3 up to 700 a month',
-            'expect' => ['max_price' => 700, 'radius_miles' => '~'],
+            'expect' => ['max_price' => 700, 'max_zone' => 3],
         ],
         [
             'q' => 'studio in Canary Wharf under 1500',
@@ -57,6 +57,23 @@ class TestAgentAssistant extends Command
         [
             'q' => 'double room zone 1 or 2 max 900, must have own bathroom',
             'expect' => ['ensuite_only' => true, 'max_price' => 900, 'property_types' => ['rooms']],
+        ],
+        [
+            // A journey, not a radius. The destination is an area, not a station.
+            'q' => 'client works in the City, needs to be under 40 minutes door to door',
+            'expect' => ['place' => 'city', 'minutes_from_landmark' => 40],
+        ],
+        [
+            'q' => 'somewhere on the Jubilee line, budget 800',
+            'expect' => ['lines' => 'jubilee', 'max_price' => 800],
+        ],
+        [
+            'q' => 'needs a direct train to Canary Wharf, no changes, up to 1100',
+            'expect' => ['direct_only' => true, 'place' => 'canary', 'max_price' => 1100],
+        ],
+        [
+            'q' => 'student at UCL, half an hour max, cheapest you have',
+            'expect' => ['place' => 'euston|ucl|kings', 'minutes_from_landmark' => 30],
         ],
     ];
 
@@ -92,7 +109,16 @@ class TestAgentAssistant extends Command
                 // and the search handles them equivalently, so accept either.
                 if ($key === 'place') {
                     $hay = strtolower(trim(($spec['near_landmark'] ?? '') . ' ' . ($spec['location'] ?? '')));
-                    if (! str_contains($hay, strtolower((string) $want))) {
+                    // Several readings can be right: a client "at UCL" is near
+                    // Euston or King's Cross, and either lands them correctly.
+                    $ok = false;
+                    foreach (explode('|', strtolower((string) $want)) as $option) {
+                        if ($option !== '' && str_contains($hay, $option)) {
+                            $ok = true;
+                            break;
+                        }
+                    }
+                    if (! $ok) {
                         $misses[] = "place not recognised (got '" . $hay . "')";
                     }
                     continue;
@@ -117,6 +143,17 @@ class TestAgentAssistant extends Command
                 } elseif (is_numeric($want)) {
                     if (! is_numeric($got) || abs((float) $got - (float) $want) > 0.01) {
                         $misses[] = "{$key}=" . var_export($got, true);
+                    }
+                } elseif (is_array($got)) {
+                    $hit = false;
+                    foreach ($got as $item) {
+                        if (str_contains(strtolower((string) $item), strtolower((string) $want))) {
+                            $hit = true;
+                            break;
+                        }
+                    }
+                    if (! $hit) {
+                        $misses[] = "{$key}=" . json_encode($got);
                     }
                 } else {
                     if (! is_string($got) || ! str_contains(strtolower($got), strtolower((string) $want))) {

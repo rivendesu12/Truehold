@@ -65,6 +65,7 @@
     font-size:11px;letter-spacing:0}
 .th-ask__secnote{margin:0 0 6px;font-size:12px;color:#7b8598}
 .th-ask__why{display:block;color:#8a6d1f;font-size:12px;margin-top:2px}
+.th-ask__jny{display:block;color:#1f6d4a;font-size:12px;margin-top:2px}
 .th-ask__stn{display:block;color:#7b8598;font-size:12px}
 </style>
 
@@ -118,15 +119,38 @@
                 return;
             }
 
+            // "3 bed" for a whole flat, "room in a 4-bed" for a share.
+            const size = (r) => {
+                if (r.beds === 0) return 'studio';
+                if (r.beds) return r.beds + ' bed';
+                if (r.house_size) return (r.room_type ? r.room_type + ' ' : '')
+                    + 'room in a ' + r.house_size + '-bed';
+                return r.room_type || '';
+            };
+
+            const commissionTag = (r) => {
+                if (!r.commission) return '';
+                const fee = r.fee ? ' \u00b7 ~' + money(r.fee) : '';
+                return ' <span class="th-ask__tag" title="'
+                    + (r.fee_estimated ? 'Estimated: no rate set for this agency yet' : 'From the agreed rate')
+                    + '">COMMISSION' + fee + '</span>';
+            };
+
             const row = (r) => '<a class="th-ask__res" href="' + esc(r.url) + '" target="_blank" rel="noopener">'
                 + (r.photo ? '<img src="' + esc(r.photo) + '" alt="" loading="lazy">' : '<img alt="">')
                 + '<span><b>' + esc(r.title)
-                + (r.commission ? ' <span class="th-ask__tag">COMMISSION</span>' : '')
+                + commissionTag(r)
                 + '</b><small>' + esc(r.location || '') + ' \u00b7 ' + money(r.price)
+                + (size(r) ? ' \u00b7 ' + esc(size(r)) : '')
                 + (r.zone ? ' \u00b7 zone ' + r.zone : '')
                 + (r.agent ? ' \u00b7 ' + esc(r.agent) : '') + '</small>'
                 + (r.station ? '<small class="th-ask__stn">' + esc(r.station)
-                    + (r.walk ? ', ' + r.walk + ' min walk' : '') + '</small>' : '')
+                    + (r.walk ? ', ' + r.walk + ' min walk' : '')
+                    + (r.lines && r.lines.length ? ' \u00b7 ' + esc(r.lines.join(', ')) : '')
+                    + '</small>' : '')
+                + (r.journey ? '<small class="th-ask__jny">' + r.journey.minutes + ' min door to door'
+                    + (r.journey.changes === 0 ? ', direct' : ', ' + r.journey.changes
+                        + (r.journey.changes === 1 ? ' change' : ' changes')) + '</small>' : '')
                 + (r.why ? '<small class="th-ask__why">' + esc(r.why) + '</small>' : '')
                 + '</span></a>';
 
@@ -146,9 +170,11 @@
 
             html += '<p class="th-ask__hint"><strong>' + onBrief + '</strong> match'
                  + (onBrief === 1 ? '' : 'es')
-                 + (data.radius ? ' within <strong>' + data.radius + ' miles</strong> straight-line' : '')
+                 + (data.hub && data.max_journey
+                        ? ' within <strong>' + data.max_journey + ' minutes</strong> of ' + esc(data.hub)
+                        : (data.radius ? ' within <strong>' + data.radius + ' miles</strong> straight-line' : ''))
                  + (data.widened ? ' <em>(nothing exactly there — showing nearby)</em>' : '')
-                 + ((data.relaxed || []).includes('bedrooms') ? ' <em>(we don\'t hold bedroom counts for these)</em>' : '')
+                 + ((data.relaxed || []).includes('bedrooms') ? ' <em>(bedroom count dropped \u2014 too few listings state one)</em>' : '')
                  + '</p>';
 
             html += section('Commission — meets the brief', g.commission);

@@ -26,6 +26,15 @@ final class PropertyClassifier
             return 'studio';
         }
 
+        // "3-Bedroom Flat Share in E3" carries property_type "Flat" but lets a
+        // single room. The share wording in the title is the reliable signal;
+        // without it these were offered as whole three-bed flats.
+        foreach (['flat share', 'flatshare', 'house share', 'houseshare', 'room in', 'rooms in', 'room available'] as $needle) {
+            if (str_contains($title, $needle)) {
+                return 'rooms';
+            }
+        }
+
         foreach (['flat', 'apartment', 'house', 'whole', 'full property', 'maisonette'] as $needle) {
             if (str_contains($raw, $needle)) {
                 return 'full_property';
