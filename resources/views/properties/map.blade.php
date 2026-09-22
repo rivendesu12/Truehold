@@ -2113,21 +2113,42 @@ select.filter-input option {
             window.markers = markers;
         }
 
+        // Widest view we ever open at: roughly Greater London. Stops a handful of
+        // out-of-town listings (Liverpool, Cardiff) from zooming the whole map out.
+        const MIN_ZOOM = 11;
+        const MAX_ZOOM = 16;
+
         function fitMapToProperties(properties) {
             if (properties.length === 0) return;
 
-            const bounds = new google.maps.LatLngBounds();
-            properties.forEach(property => {
-                const lat = parseFloat(property.latitude);
-                const lng = parseFloat(property.longitude);
-                bounds.extend({ lat, lng });
-            });
+            const points = properties
+                .map(p => ({ lat: parseFloat(p.latitude), lng: parseFloat(p.longitude) }))
+                .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
 
-                map.fitBounds(bounds);
-            
-            // Don't zoom in too much for single property
+            if (points.length === 0) return;
+
+            // Fit to where the listings actually are, not to the extremes. With
+            // enough points, drop the outer 5% on each axis so a few far-flung
+            // ones cannot drag the view out to show half the country.
+            let used = points;
+            if (points.length >= 10) {
+                const pick = (arr, q) => arr[Math.min(arr.length - 1, Math.max(0, Math.floor(arr.length * q)))];
+                const lats = points.map(p => p.lat).sort((a, b) => a - b);
+                const lngs = points.map(p => p.lng).sort((a, b) => a - b);
+                const latLo = pick(lats, 0.05), latHi = pick(lats, 0.95);
+                const lngLo = pick(lngs, 0.05), lngHi = pick(lngs, 0.95);
+                const trimmed = points.filter(p => p.lat >= latLo && p.lat <= latHi && p.lng >= lngLo && p.lng <= lngHi);
+                if (trimmed.length > 0) used = trimmed;
+            }
+
+            const bounds = new google.maps.LatLngBounds();
+            used.forEach(p => bounds.extend(p));
+            map.fitBounds(bounds);
+
             const listener = google.maps.event.addListener(map, "idle", function() {
-                if (map.getZoom() > 16) map.setZoom(16);
+                const z = map.getZoom();
+                if (z > MAX_ZOOM) map.setZoom(MAX_ZOOM);
+                else if (z < MIN_ZOOM) map.setZoom(MIN_ZOOM);
                 google.maps.event.removeListener(listener);
             });
         }
