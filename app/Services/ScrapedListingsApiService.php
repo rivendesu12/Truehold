@@ -120,6 +120,12 @@ class ScrapedListingsApiService
                 $all = $all->map(fn ($p) => $transport->annotate($p));
             }
 
+            // Real pictures for the spreadsheet-sourced rows. Those arrive with
+            // no photo fields at all but many carry a Drive folder, so their
+            // photographs exist and were simply never resolved — the cards
+            // were showing a stock image of someone else's flat instead.
+            $all = $this->attachDrivePhotos($all);
+
             // What each listing is worth to us, so "prioritise commission"
             // can rank by money rather than by a yes/no flag.
             $commission = app(CommissionRates::class);
@@ -137,6 +143,58 @@ class ScrapedListingsApiService
             }
 
             return $all->values();
+        });
+    }
+
+    /**
+     * Resolve Drive folders into servable photo URLs.
+     *
+     * Only for rows that have no photos of their own: the feed's own SpareRoom
+     * rows already carry theirs. Photos are streamed through the supplier-photo
+     * proxy because the folders are private, and the route is given relative so
+     * a cached row survives a domain change and can never go mixed-content.
+     */
+    protected function attachDrivePhotos(Collection $properties): Collection
+    {
+        $photos = app(SupplierPhotoService::class);
+
+        return $properties->map(function (array $property) use ($photos) {
+            $hasPhotos = ! empty($property['all_photos'])
+                || ! empty($property['photos'])
+                || (! empty($property['first_photo_url']) && $property['first_photo_url'] !== 'N/A');
+
+            if ($hasPhotos) {
+                return $property;
+            }
+
+            $folder = $property['drive_room_folder'] ?: ($property['drive_folder_url'] ?? null);
+            if (empty($folder)) {
+                return $property;
+            }
+
+            try {
+                $ids = $photos->photosForRoom($folder, $property['source_room'] ?? null);
+            } catch (\Throwable $e) {
+                // A folder we cannot read must not take the whole feed down.
+                Log::warning('Drive photo lookup failed', [
+                    'listing' => $property['id'] ?? null,
+                    'error' => $e->getMessage(),
+                ]);
+                return $property;
+            }
+
+            if (! $ids) {
+                return $property;
+            }
+
+            $urls = array_map(fn ($id) => route('supplier.photo', ['fileId' => $id], false), $ids);
+
+            $property['photos'] = $urls;
+            $property['all_photos'] = implode(', ', $urls);
+            $property['first_photo_url'] = $urls[0];
+            $property['photo_count'] = count($urls);
+
+            return $property;
         });
     }
 

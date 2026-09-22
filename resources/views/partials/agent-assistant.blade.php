@@ -51,6 +51,10 @@
 .th-ask__res{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid #eef1f6;text-decoration:none;color:inherit;align-items:center}
 .th-ask__res:hover{background:#fafbfe}
 .th-ask__res img{width:92px;height:68px;object-fit:cover;border-radius:7px;background:#eef1f6;flex:none}
+/* An empty <img> renders as a blank grey box that reads like a broken page.
+   Say there is no photo instead, so the agent knows to check the source. */
+.th-ask__noimg{width:92px;height:68px;border-radius:7px;background:#f2f4f8;border:1px dashed #cfd6e4;
+  flex:none;display:flex;align-items:center;justify-content:center;color:#8b93a4;font-size:11px}
 .th-ask__res b{display:block;font-size:14px;line-height:1.35;margin-bottom:3px}
 .th-ask__res small{color:#687180;font-size:12.5px}
 .th-ask__tag{display:inline-block;background:#e7f6ec;color:#1d6b38;border-radius:4px;
@@ -138,7 +142,11 @@
             };
 
             const row = (r) => '<a class="th-ask__res" href="' + esc(r.url) + '" target="_blank" rel="noopener">'
-                + (r.photo ? '<img src="' + esc(r.photo) + '" alt="" loading="lazy">' : '<img alt="">')
+                + (r.photo
+                    ? '<img src="' + esc(r.photo) + '" alt="" loading="lazy"'
+                        + ' onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),'
+                        + '{className:\'th-ask__noimg\',textContent:\'no photo\'}))">'
+                    : '<span class="th-ask__noimg">no photo</span>')
                 + '<span><b>' + esc(r.title)
                 + commissionTag(r)
                 + '</b><small>' + esc(r.location || '') + ' \u00b7 ' + money(r.price)

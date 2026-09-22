@@ -86,7 +86,10 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         'location' => $p['location'] ?? null,
         'price' => $p['price'] ?? null,
         'type' => \App\Support\PropertyClassifier::bucket($p),
-        'photo' => $p['first_photo_url'] ?? null,
+        // Same order the property cards use: the high-quality set first, then
+        // the single photo field. The panel was only reading the latter, so a
+        // listing whose pictures live in `photos` showed an empty grey box.
+        'photo' => \App\Support\PropertyPhoto::best($p),
         'agent' => $p['agent_name'] ?? null,
         'commission' => $assistant->paysCommission($p),
         // An estimated fee must read as an estimate: the rate behind it is a
