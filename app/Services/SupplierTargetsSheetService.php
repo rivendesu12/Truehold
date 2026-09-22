@@ -183,6 +183,11 @@ class SupplierTargetsSheetService
         $area = $cell(self::COL_AREA);
         $postcode = $cell(self::COL_POSTCODE);
 
+        $folderUrl = $this->extractHyperlink($cell(self::COL_PICTURES));
+        $photoIds = app(SupplierPhotoService::class)->photosForRoom($folderUrl, $roomNo);
+        // Relative, so cached rows survive a domain change and never go mixed-content.
+        $photoUrls = array_map(fn ($id) => route('supplier.photo', ['fileId' => $id], false), $photoIds);
+
         $title = $property . ($roomNo !== '' ? ' — Room ' . $roomNo : '');
 
         $descriptionParts = array_filter([
@@ -206,9 +211,9 @@ class SupplierTargetsSheetService
             'description' => implode(' · ', $descriptionParts),
             'property_type' => $cell(self::COL_ROOM_TYPE) ?: 'Room',
             'available_date' => $availableDate->toDateString(),
-            'photo_count' => 0,
-            'first_photo_url' => null,
-            'all_photos' => [],
+            'photo_count' => count($photoUrls),
+            'first_photo_url' => $photoUrls[0] ?? null,
+            'all_photos' => $photoUrls,
             // No source advert, so properties:check-availability skips these by design.
             'url' => null,
             'pictures_folder_url' => $this->extractHyperlink($cell(self::COL_PICTURES)),

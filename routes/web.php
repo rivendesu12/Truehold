@@ -54,6 +54,28 @@ Route::get('/properties/map', [PropertyController::class, 'map'])->name('propert
 Route::get('/properties/{property}', [PropertyController::class, 'show'])->name('properties.show');
 Route::get('/manage/properties', [PropertyManagementController::class, 'index'])->name('properties.manage');
 
+// Supplier room photos live in private Drive folders, so they are streamed
+// through here with the service account rather than linked directly. Only ids
+// discovered while indexing a supplier folder are servable, so this cannot be
+// used to fetch arbitrary Drive files.
+Route::get('/supplier-photo/{fileId}', function (string $fileId) {
+    $photos = app(\App\Services\SupplierPhotoService::class);
+
+    if (! $photos->isAllowed($fileId)) {
+        abort(404);
+    }
+
+    $file = $photos->download($fileId);
+    if (! $file) {
+        abort(404);
+    }
+
+    return response($file['body'], 200, [
+        'Content-Type' => $file['mime'],
+        'Cache-Control' => 'public, max-age=86400',
+    ]);
+})->where('fileId', '[A-Za-z0-9_-]+')->name('supplier.photo');
+
 Route::get('/rental-codes/agent-earnings', [RentalCodeController::class, 'agentEarnings'])->name('rental-codes.agent-earnings');
 // New ID-based payroll route
 Route::get('/rental-codes/agent-payroll/{agentId}', [RentalCodeController::class, 'agentPayrollById'])
