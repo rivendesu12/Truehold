@@ -1079,38 +1079,82 @@ SYS;
         return $labels;
     }
 
+    /** Which feed column each ask reads, for reporting how well it is filled. */
+    private const ASK_COLUMNS = [
+        'bills_included' => ['bills_included', 'bills included'],
+        'garden' => ['garden', 'a garden'],
+        'parking' => ['parking', 'parking'],
+        'smokers' => ['smoking_ok', 'whether smoking is allowed'],
+        'couples' => ['couples_ok', 'whether couples are accepted'],
+        'furnished' => ['furnishings', 'whether it is furnished'],
+        'students' => ['pref_occupation', 'the tenant type wanted'],
+        'no_deposit' => ['deposit', 'the deposit'],
+        'max_deposit' => ['deposit', 'the deposit'],
+        'available_by' => ['available_date', 'the date it is available'],
+        'max_commitment_months' => ['min_term', 'the minimum term'],
+        'max_house_size' => ['total_rooms', 'the size of the house'],
+        'room_type' => ['room1_type', 'the room type'],
+    ];
+
     /**
-     * Asks the feed cannot answer at all, so the agent is told rather than
-     * shown a confidently empty list.
+     * Asks the data cannot fully answer, so the agent is told rather than
+     * shown a confidently short list.
+     *
+     * The important case is not a column that is empty everywhere — it is one
+     * that a whole source never fills. Garden, parking, smoking, deposit and
+     * minimum term are blank on all 105 spreadsheet- and sheet-sourced rooms,
+     * so filtering on any of them quietly drops a third of the stock: not
+     * because those rooms have no garden, but because nobody wrote it down.
+     * An agent told "3 results" would never know.
      *
      * @return array<int, string>
      */
     protected function unanswerable(array $spec, Collection $properties): array
     {
         $out = [];
+        $total = $properties->count();
 
-        // Two columns exist in the feed and are empty in every single row.
-        if (! empty($spec['pets'])) {
-            $out[] = 'whether pets are allowed';
+        if ($total === 0) {
+            return $out;
         }
 
-        foreach ([
-            'bills_included' => 'bills_included',
-            'garden' => 'garden',
-            'parking' => 'parking',
-            'no_deposit' => 'deposit',
-            'max_deposit' => 'deposit',
-            'available_by' => 'available_date',
-            'max_commitment_months' => 'min_term',
-        ] as $ask => $field) {
-            if (empty($spec[$ask])) {
+        if (! empty($spec['pets'])) {
+            $out[] = 'whether pets are allowed (no listing says)';
+        }
+
+        foreach (self::ASK_COLUMNS as $ask => [$field, $label]) {
+            $value = $spec[$ask] ?? null;
+
+            if ($value === null || $value === false || $value === '' || $value === []) {
                 continue;
             }
 
-            $known = $properties->filter(fn ($p) => ($p[$field] ?? null) !== null && ($p[$field] ?? '') !== '')->count();
+            $unknown = $properties->filter(
+                fn ($p) => ($p[$field] ?? null) === null || trim((string) ($p[$field] ?? '')) === ''
+            );
 
-            if ($properties->count() > 0 && $known / $properties->count() < 0.25) {
-                $out[] = str_replace('_', ' ', $field);
+            if ($unknown->isEmpty()) {
+                continue;
+            }
+
+            $share = $unknown->count() / $total;
+
+            if ($share >= 0.99) {
+                $out[] = "{$label} (no listing says)";
+            } elseif ($share >= 0.15) {
+                // Naming the agencies makes it actionable: those are the ones
+                // to ring rather than rule out.
+                $agencies = $unknown->pluck('agent_name')
+                    ->map(fn ($n) => $n ?: 'unattributed')
+                    ->countBy()->sortDesc()->take(2)->keys()->implode(' and ');
+
+                $out[] = sprintf(
+                    '%s — %d of %d listings do not say, so they were left out (mostly %s)',
+                    $label,
+                    $unknown->count(),
+                    $total,
+                    $agencies
+                );
             }
         }
 
