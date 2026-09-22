@@ -292,11 +292,16 @@ class TransportIndex
                     continue;
                 }
 
-                if ($needle === $candidate
-                    || str_contains($needle, $candidate)
-                    || str_contains($candidate, $needle)) {
-                    // Prefer the longest match, so "canary wharf" beats "the city"
-                    // when both happen to appear.
+                // An exact match wins outright. Preferring the longest match
+                // alone sent "UCL" to Stratford, because "ucl east" contains
+                // "ucl" and is the longer string.
+                if ($needle === $candidate) {
+                    return $key;
+                }
+
+                if (str_contains($needle, $candidate) || str_contains($candidate, $needle)) {
+                    // Otherwise the longest, so "canary wharf" beats "the city"
+                    // when both happen to appear in one phrase.
                     if (strlen($candidate) > $bestLength) {
                         $best = $key;
                         $bestLength = strlen($candidate);
