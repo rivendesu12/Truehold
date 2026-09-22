@@ -299,6 +299,43 @@ class TransportIndex
         return $best;
     }
 
+    /**
+     * Find a station by an agent's wording — "Ealing Broadway", "ealing
+     * broadway station", "Kings Cross". Prefers the longest name that matches,
+     * so "Shepherd's Bush" does not lose to a shorter partial.
+     *
+     * This is what lets a brief name any of London's 509 stations rather than
+     * only the handful anyone thought to hardcode.
+     */
+    public function findStation(string $name): ?array
+    {
+        $needle = strtolower(trim(preg_replace('/\s+(underground|tube|rail|dlr)?\s*station$/i', '', trim($name))));
+
+        if (strlen($needle) < 3) {
+            return null;
+        }
+
+        $best = null;
+        $bestLength = 0;
+
+        foreach ($this->stations() as $station) {
+            $candidate = strtolower($station['name']);
+
+            if ($candidate === $needle) {
+                return $station;
+            }
+
+            if (str_contains($needle, $candidate) || str_contains($candidate, $needle)) {
+                if (strlen($candidate) > $bestLength) {
+                    $best = $station;
+                    $bestLength = strlen($candidate);
+                }
+            }
+        }
+
+        return $best;
+    }
+
     /** Human label for a hub key. */
     public function hubLabel(string $key): string
     {

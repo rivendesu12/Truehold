@@ -658,7 +658,12 @@ SYS;
                 return $coords;
             }
         }
-        return null;
+
+        // Anything else the agent names: fall back to the real station index,
+        // so every London station works rather than the dozen listed above.
+        $station = app(TransportIndex::class)->findStation($needle);
+
+        return $station ? [(float) $station['lat'], (float) $station['lng']] : null;
     }
 
     /** Centre of our own listings matching a term, else a known landmark. */
