@@ -120,19 +120,25 @@
 .th-sigou[data-state=typing] .sg-brows{transform:translateY(-5px)}
 .th-sigou[data-state=typing] .sg-white{transform:scale(1.14)}
 
-/* thinking: a long drag on the vape, then the cloud. One 2.8s loop:
-   arm up, inhale (tip glows, eyes narrow), arm down, blow. */
-.th-sigou[data-state=thinking] .sg-vape{display:inline}
-.th-sigou[data-state=thinking] .sg-vape-arm{animation:sgVapeArm 2.8s ease-in-out infinite}
-.th-sigou[data-state=thinking] .sg-led{animation:sgLed 2.8s linear infinite}
-.th-sigou[data-state=thinking] .sg-eyes{animation:sgChill 2.8s ease-in-out infinite}
-.th-sigou[data-state=thinking] .sg-brows{animation:sgBlowBrows 2.8s ease-in-out infinite}
-.th-sigou[data-state=thinking] .sg-m--flat{display:inline;animation:sgMouthShut 2.8s linear infinite}
-.th-sigou[data-state=thinking] .sg-m--o{display:inline;animation:sgMouthBlow 2.8s linear infinite}
-.th-sigou[data-state=thinking] .sg-cloud{opacity:0;animation:sgCloud 2.8s ease-out infinite}
-.th-sigou[data-state=thinking] .sg-cloud--2{animation-name:sgCloud2}
-.th-sigou[data-state=thinking] .sg-cloud--3{animation-name:sgCloud3}
-.th-sigou[data-state=thinking] .sg-cloud--4{animation-name:sgCloud4}
+/* Vaping: "thinking" loops while a search runs, "vape" is a single puff he
+   sneaks in while idle. One 3.2s cycle: arm up, a long drag (chest rises,
+   light glows, eyes go heavy), arm down, head back, blow. */
+.th-sigou:is([data-state=thinking],[data-state=vape]) .sg-vape{display:inline}
+.th-sigou:is([data-state=thinking],[data-state=vape]) .sg-vape-arm{animation:sgVapeArm 3.2s cubic-bezier(.45,.05,.35,1) infinite}
+.th-sigou:is([data-state=thinking],[data-state=vape]) .sg-led{animation:sgLed 3.2s linear infinite}
+.th-sigou:is([data-state=thinking],[data-state=vape]) .sg-eyes{animation:sgChill 3.2s ease-in-out infinite}
+.th-sigou:is([data-state=thinking],[data-state=vape]) .sg-brows{animation:sgBlowBrows 3.2s ease-in-out infinite}
+.th-sigou:is([data-state=thinking],[data-state=vape]) .sg-head{transform-box:view-box;transform-origin:100px 150px;animation:sgVapeHead 3.2s ease-in-out infinite}
+.th-sigou:is([data-state=thinking],[data-state=vape]) .sg-body{animation:sgChest 3.2s ease-in-out infinite}
+.th-sigou:is([data-state=thinking],[data-state=vape]) .sg-m--flat{display:inline;animation:sgMouthShut 3.2s linear infinite}
+.th-sigou:is([data-state=thinking],[data-state=vape]) .sg-m--o{display:inline;animation:sgMouthBlow 3.2s linear infinite}
+.th-sigou:is([data-state=thinking],[data-state=vape]) .sg-cloud{opacity:0;animation:sgCloud1 3.2s ease-out infinite}
+.th-sigou:is([data-state=thinking],[data-state=vape]) .sg-cloud--2{animation-name:sgCloud2}
+.th-sigou:is([data-state=thinking],[data-state=vape]) .sg-cloud--3{animation-name:sgCloud3}
+.th-sigou:is([data-state=thinking],[data-state=vape]) .sg-cloud--4{animation-name:sgCloud4}
+.th-sigou:is([data-state=thinking],[data-state=vape]) .sg-cloud--5{animation-name:sgCloud5}
+.th-sigou:is([data-state=thinking],[data-state=vape]) .sg-cloud--6{animation-name:sgCloud6}
+.th-sigou[data-state=vape] .sg-m--flat,.th-sigou[data-state=vape] .sg-m--o{animation-iteration-count:1}
 
 /* happy: rubs his hands */
 .th-sigou[data-state=happy] .sg-m--grin,.th-sigou[data-state=happy] .sg-rub{display:inline}
@@ -156,19 +162,21 @@
 @keyframes sgBreathe{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
 @keyframes sgWaggle{0%,100%{transform:translateY(0)}25%,75%{transform:translateY(-8px)}50%{transform:translateY(0)}}
 @keyframes sgNod{50%{transform:translateY(2px)}}
-@keyframes sgVapeArm{0%,56%,100%{transform:translate(34px,74px) rotate(12deg)}16%,44%{transform:translate(0,0) rotate(0)}}
-@keyframes sgLed{0%,18%,46%,100%{opacity:.35;transform:scale(1)}24%,40%{opacity:1;transform:scale(1.6)}}
-@keyframes sgChill{0%,14%,50%,100%{transform:scaleY(1)}22%,44%{transform:scaleY(.45)}}
-@keyframes sgBlowBrows{0%,50%,100%{transform:translateY(0)}62%,80%{transform:translateY(-5px)}}
-@keyframes sgMouthShut{0%,54%{opacity:1}56%,88%{opacity:0}90%,100%{opacity:1}}
-@keyframes sgMouthBlow{0%,54%{opacity:0}56%,88%{opacity:1}90%,100%{opacity:0}}
-@keyframes sgCloud{0%,55%{opacity:0;transform:translate(0,0) scale(.3)}60%{opacity:1;transform:translate(-4px,-4px) scale(.8)}100%{opacity:0;transform:translate(-30px,-66px) scale(2.6)}}
-@keyframes sgCloud2{0%,58%{opacity:0;transform:translate(0,0) scale(.3)}64%{opacity:1;transform:translate(-12px,-2px) scale(.9)}100%{opacity:0;transform:translate(-52px,-46px) scale(2.8)}}
-@keyframes sgCloud3{0%,61%{opacity:0;transform:translate(0,0) scale(.3)}67%{opacity:1;transform:translate(6px,-8px) scale(.9)}100%{opacity:0;transform:translate(16px,-80px) scale(2.5)}}
-/* the last one swallows his face for a moment */
-@keyframes sgCloud4{0%,64%{opacity:0;transform:translate(0,0) scale(.3)}78%{opacity:.97;transform:translate(0,-30px) scale(4.2)}90%{opacity:.7;transform:translate(0,-42px) scale(4.8)}100%{opacity:0;transform:translate(0,-56px) scale(5.2)}}
-@keyframes sgRubL{from{transform:translate(-4px,1px)}to{transform:translate(4px,-1px)}}
-@keyframes sgRubR{from{transform:translate(4px,-1px)}to{transform:translate(-4px,1px)}}
+@keyframes sgVapeArm{0%,62%,100%{transform:translate(30px,78px) rotate(14deg)}15%{transform:translate(1px,2px) rotate(1deg)}18%,46%{transform:translate(0,0) rotate(0)}}
+@keyframes sgLed{0%,18%,48%,100%{opacity:.25;transform:scale(1)}24%,44%{opacity:1;transform:scale(1.7)}}
+@keyframes sgChill{0%,16%,54%,100%{transform:scaleY(1)}26%,46%{transform:scaleY(.42)}}
+@keyframes sgBlowBrows{0%,52%,100%{transform:translateY(0)}64%,82%{transform:translateY(-5px)}}
+@keyframes sgVapeHead{0%,100%{transform:rotate(0) translateY(0)}20%,46%{transform:rotate(1.5deg) translateY(1px)}60%,84%{transform:rotate(-6deg) translateY(-3px)}}
+@keyframes sgChest{0%,16%,100%{transform:translateY(0)}44%{transform:translateY(-3px)}58%{transform:translateY(1px)}}
+@keyframes sgMouthShut{0%,56%{opacity:1}58%,90%{opacity:0}92%,100%{opacity:1}}
+@keyframes sgMouthBlow{0%,56%{opacity:0}58%,90%{opacity:1}92%,100%{opacity:0}}
+@keyframes sgCloud1{0%,57%{opacity:0;transform:translate(0,0) scale(.3)}62%{opacity:1;transform:translate(-3px,-6px) scale(.9)}100%{opacity:0;transform:translate(-28px,-78px) scale(2.8)}}
+@keyframes sgCloud2{0%,59%{opacity:0;transform:translate(0,0) scale(.3)}65%{opacity:.95;transform:translate(-12px,-4px) scale(1)}100%{opacity:0;transform:translate(-58px,-50px) scale(3)}}
+@keyframes sgCloud3{0%,61%{opacity:0;transform:translate(0,0) scale(.3)}67%{opacity:.95;transform:translate(6px,-10px) scale(.9)}100%{opacity:0;transform:translate(22px,-86px) scale(2.6)}}
+/* the big one swallows his face for a moment */
+@keyframes sgCloud4{0%,63%{opacity:0;transform:translate(0,0) scale(.3)}77%{opacity:.96;transform:translate(0,-32px) scale(4.2)}90%{opacity:.6;transform:translate(0,-46px) scale(4.9)}100%{opacity:0;transform:translate(0,-60px) scale(5.3)}}
+@keyframes sgCloud5{0%,66%{opacity:0;transform:translate(0,0) scale(.3)}72%{opacity:.9;transform:translate(-6px,-12px) scale(1)}100%{opacity:0;transform:translate(-38px,-104px) scale(2.4)}}
+@keyframes sgCloud6{0%,69%{opacity:0;transform:translate(0,0) scale(.3)}75%{opacity:.85;transform:translate(8px,-14px) scale(1)}100%{opacity:0;transform:translate(40px,-96px) scale(2.2)}}
 @keyframes sgShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
 @keyframes sgDrip{0%{transform:translateY(0);opacity:1}100%{transform:translateY(14px);opacity:0}}
 @keyframes thPop{from{transform:scale(.96);opacity:.4}to{transform:scale(1);opacity:1}}
@@ -292,6 +300,14 @@
         }
         if (Sigou.mood === 'idle' && Math.random() < 0.18) Sigou.waggle();
         setTimeout(glanceLoop, rand(1600, 4200));
+    })();
+
+    // He is always vaping: a sneaky puff every so often while idle.
+    (function puffLoop() {
+        setTimeout(() => {
+            if (Sigou.mood === 'idle') Sigou.set('vape', 3200);
+            puffLoop();
+        }, rand(16000, 32000));
     })();
 
     let raf = 0;

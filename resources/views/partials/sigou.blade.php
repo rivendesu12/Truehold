@@ -25,7 +25,18 @@
             <stop offset="0" stop-color="#9a9ea6"/>
             <stop offset="1" stop-color="#7d8189"/>
         </linearGradient>
-        <filter id="{{ $u }}soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.2"/></filter>
+        <linearGradient id="{{ $u }}mary" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f4e88e"/>
+            <stop offset=".55" stop-color="#eeb88e"/>
+            <stop offset="1" stop-color="#df6f82"/>
+        </linearGradient>
+        {{-- Vapour: soft puffs pushed through a noise field, so they curl and
+             wisp as they drift instead of reading as circles. --}}
+        <filter id="{{ $u }}soft" x="-60%" y="-60%" width="220%" height="220%">
+            <feTurbulence type="fractalNoise" baseFrequency=".045" numOctaves="2" seed="7" result="n"/>
+            <feDisplacementMap in="SourceGraphic" in2="n" scale="14" xChannelSelector="R" yChannelSelector="G" result="d"/>
+            <feGaussianBlur in="d" stdDeviation="1.8"/>
+        </filter>
         <clipPath id="{{ $u }}clip"><circle cx="100" cy="100" r="100"/></clipPath>
     </defs>
 
@@ -122,21 +133,31 @@
             <path class="sg-sweat" d="M146 62 C141 71 140 76 146 78 C152 76 151 71 146 62 Z" fill="#8ec5f2"/>
         </g>
 
-        {{-- vaping, for searching: he always is --}}
+        {{-- vaping: a Lost Mary BM600, triple mango. He always is. --}}
         <g class="sg-vape">
             <g class="sg-cloud-set" filter="url(#{{ $u }}soft)">
-                <circle class="sg-cloud sg-cloud--1" cx="98" cy="136" r="13" fill="#f7f9fb"/>
-                <circle class="sg-cloud sg-cloud--2" cx="90" cy="133" r="11" fill="#eef2f6"/>
-                <circle class="sg-cloud sg-cloud--3" cx="105" cy="131" r="10" fill="#fbfcfd"/>
-                <circle class="sg-cloud sg-cloud--4" cx="98" cy="126" r="12" fill="#f4f7fa"/>
+                <circle class="sg-cloud sg-cloud--1" cx="98" cy="134" r="12" fill="#f7f9fb"/>
+                <circle class="sg-cloud sg-cloud--2" cx="92" cy="132" r="10" fill="#eef2f6"/>
+                <circle class="sg-cloud sg-cloud--3" cx="104" cy="131" r="9" fill="#fbfcfd"/>
+                <circle class="sg-cloud sg-cloud--4" cx="98" cy="128" r="12" fill="#f3f6f9"/>
+                <circle class="sg-cloud sg-cloud--5" cx="95" cy="133" r="8" fill="#ffffff"/>
+                <circle class="sg-cloud sg-cloud--6" cx="101" cy="130" r="7" fill="#eaeef3"/>
             </g>
             <g class="sg-vape-arm">
-                <path d="M150 220 C150 196 146 176 134 158 L118 150 L112 166 C126 178 132 196 132 220 Z" fill="url(#{{ $u }}knit)"/>
-                <rect x="100" y="134" width="30" height="8" rx="3.5" fill="#3a4863" transform="rotate(-18 115 138)"/>
-                <rect x="100" y="134" width="7" height="8" rx="3" fill="#1d2433" transform="rotate(-18 115 138)"/>
-                <circle class="sg-led" cx="127" cy="132.5" r="2.2" fill="#7cf7c8"/>
-                <ellipse cx="124" cy="147" rx="13" ry="11" fill="#eab990"/>
-                <path d="M116 143 q8 -3 16 1 M115 149 q9 -2 17 1" stroke="#c98a63" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <path d="M156 230 C156 202 148 182 136 166" stroke="#61656c" stroke-width="29" fill="none" stroke-linecap="round"/>
+                <path d="M156 230 C156 202 148 182 136 166" stroke="#a3a7ae" stroke-width="24" fill="none" stroke-linecap="round"/>
+                <path d="M146 214 C145 198 140 186 132 176" stroke="#8a8e95" stroke-width="3" fill="none" stroke-linecap="round"/>
+                <path d="M143 173 l-10 -10" stroke="#8a8e95" stroke-width="6" stroke-linecap="round"/>
+                <g transform="translate(108 140) rotate(-58)">
+                    <rect x="-4.6" y="-9" width="9.2" height="11" rx="3" fill="#f1e38a"/>
+                    <rect x="-11" y="0" width="22" height="33" rx="5.5" fill="url(#{{ $u }}mary)"/>
+                    <rect x="-9" y="2" width="4" height="29" rx="2" fill="#fff" opacity=".18"/>
+                    <rect x="-1.4" y="5" width="2.8" height="19" rx="1" fill="#fff" opacity=".8"/>
+                    <circle class="sg-led" cx="0" cy="30" r="2.4" fill="#fff6c9"/>
+                </g>
+                <ellipse cx="133" cy="159" rx="12" ry="10" fill="#eab990"/>
+                <path d="M125 156 q7 -4 15 0 M124 161 q8 -3 16 1" stroke="#c98a63" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <ellipse cx="123" cy="154" rx="5" ry="3.3" fill="#eab990" transform="rotate(-30 123 154)"/>
             </g>
         </g>
 
