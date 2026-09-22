@@ -41,11 +41,38 @@ class CommissionRates
     {
         $paying = $property['paying'] ?? null;
 
-        if (is_string($paying)) {
+        if (is_string($paying) && trim($paying) !== '') {
             return strtolower(trim($paying)) === 'yes';
         }
 
-        return (bool) $paying;
+        if (is_bool($paying) || is_numeric($paying)) {
+            return (bool) $paying;
+        }
+
+        // The feed leaves this blank on every spreadsheet-sourced row, so our
+        // own suppliers were invisible to a commission search. An agency we
+        // have an arrangement with is named in config, not guessed at.
+        return $this->hasArrangement($property);
+    }
+
+    /** Is this agency on the list of ones we know pay? */
+    public function hasArrangement(array $property): bool
+    {
+        $key = $this->normalise($property['agent_name'] ?? $property['landlord_name'] ?? null);
+
+        if ($key === '') {
+            return false;
+        }
+
+        foreach ((array) config('commission.always_pay', []) as $listed) {
+            $listed = $this->normalise((string) $listed);
+
+            if ($listed !== '' && (str_contains($key, $listed) || str_contains($listed, $key))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

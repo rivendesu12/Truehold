@@ -51,6 +51,24 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Company codes in the scraped spreadsheets
+    |--------------------------------------------------------------------------
+    |
+    | The feed's spreadsheet rows carry the operating company in their raw
+    | data but no agency name, so 82 listings were anonymous: they could not
+    | be filtered by agency, and a commission search could never reach them.
+    | Javier trades as both JMS and FENIX.
+    |
+    */
+    'sheet_companies' => [
+        'jms' => 'Javier (JMS)',
+        'fenix' => 'Javier (FENIX)',
+        'smart share' => 'Smart Share',
+        'smartshare' => 'Smart Share',
+    ],
+
     'soreva' => [
         'spreadsheet_id' => env('SOREVA_SHEET_ID', '1GNk7Taim-VaiEFgOTVnOk5vNs_jrqV78PVYoeM3may8'),
         // The tab written for letting agents. The other tabs are internal

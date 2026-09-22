@@ -126,6 +126,10 @@ class ScrapedListingsApiService
                 $all = $all->map(fn ($p) => $transport->annotate($p));
             }
 
+            // Name the agency behind each spreadsheet row, and pick up the
+            // photo folder, both of which the feed hides in its raw data.
+            $all = $all->map(fn ($p) => $this->attributeSheetRow($p));
+
             // Real pictures for the spreadsheet-sourced rows. Those arrive with
             // no photo fields at all but many carry a Drive folder, so their
             // photographs exist and were simply never resolved — the cards
@@ -199,6 +203,79 @@ class ScrapedListingsApiService
         }
 
         return null;
+    }
+
+    /**
+     * Recover the agency and the photo folder from a spreadsheet row's raw data.
+     *
+     * The feed maps almost none of what it scrapes: 82 rows arrived with no
+     * agency name at all, so they could not be filtered by agency and a
+     * commission search could never reach them — which is why Javier's E14
+     * en-suites were missing. Their raw data names the operating company
+     * (JMS and FENIX are both Javier) and carries a folder link to the
+     * photographs.
+     *
+     * Their raw data also carries tenant names and phone numbers. Those are
+     * read past and never copied onto the listing.
+     */
+    protected function attributeSheetRow(array $property): array
+    {
+        $raw = $property['raw_row'] ?? null;
+
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true);
+        }
+
+        if (! is_array($raw)) {
+            return $property;
+        }
+
+        if (empty($property['agent_name'])) {
+            $company = strtolower(trim((string) ($raw['Company'] ?? $raw['company'] ?? '')));
+            $mapped = config('suppliers.sheet_companies')[$company] ?? null;
+
+            if ($mapped === null && $company !== '') {
+                // An unmapped company is still better named than anonymous.
+                $mapped = ucwords($company);
+            }
+
+            if ($mapped !== null) {
+                $property['agent_name'] = $mapped;
+                $property['landlord_name'] = $property['landlord_name'] ?: $mapped;
+            }
+        }
+
+        foreach (['Folder link', 'folder link', 'Folder Link'] as $key) {
+            $link = trim((string) ($raw[$key] ?? ''));
+
+            if ($link !== '' && empty($property['drive_folder_url'])) {
+                $folder = $this->extractSheetHyperlink($link);
+
+                if ($folder !== null) {
+                    $property['drive_folder_url'] = $folder;
+                }
+                break;
+            }
+        }
+
+        if (empty($property['postcode'])) {
+            $postcode = trim((string) ($raw['Post Code'] ?? $raw['Postcode'] ?? ''));
+            if ($postcode !== '') {
+                $property['postcode'] = strtoupper($postcode);
+            }
+        }
+
+        return $property;
+    }
+
+    /** A folder link may be a bare url or a =HYPERLINK() formula. */
+    protected function extractSheetHyperlink(string $value): ?string
+    {
+        if (preg_match('/HYPERLINK\(\s*"([^"]+)"/i', $value, $m)) {
+            $value = $m[1];
+        }
+
+        return str_starts_with($value, 'http') ? $value : null;
     }
 
     /**

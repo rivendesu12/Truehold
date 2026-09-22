@@ -26,6 +26,24 @@ return [
     // Enter real rates below and the pound values appear on their own.
     'default_percent' => 0,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Agencies that pay, regardless of the feed
+    |--------------------------------------------------------------------------
+    |
+    | The feed's `paying` column is only filled for its own SpareRoom rows.
+    | Every spreadsheet-sourced row has it blank, so our own suppliers could
+    | never appear in a commission search even though they are precisely the
+    | agencies we have arrangements with. Normalised agency keys listed here
+    | count as paying whatever the feed says.
+    |
+    | Use `php artisan commission:agencies` to see the keys in the live feed.
+    |
+    */
+    'always_pay' => [
+        //
+    ],
+
     // Real figures go here. Delete a line to fall back to the default.
     // Example:
     //   'banksia rooms' => ['type' => 'percent', 'value' => 100],
