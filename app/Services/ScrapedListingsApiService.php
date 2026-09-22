@@ -103,7 +103,54 @@ class ScrapedListingsApiService
             // to them — the sheet's own "Available From" gate does.
             $supplier = app(SupplierTargetsSheetService::class)->getAllProperties();
 
-            return $feed->concat($supplier)->values();
+            return $this->geocodeMissing($feed->concat($supplier))->values();
+        });
+    }
+
+    /**
+     * Fill in coordinates for listings the feed gives none for.
+     *
+     * The spreadsheet-sourced rows in the feed carry no lat/long, so they can
+     * never appear on the map — but most do have a full postcode in the title
+     * or location. Extract it and geocode in one bulk lookup.
+     */
+    protected function geocodeMissing(Collection $properties): Collection
+    {
+        $geocoder = app(PostcodeGeocoder::class);
+        $pattern = '/\b([A-Z]{1,2}[0-9][A-Z0-9]?)\s*([0-9][A-Z]{2})\b/i';
+
+        $wanted = [];
+        $perRow = [];
+
+        foreach ($properties as $i => $property) {
+            if (! empty($property['latitude']) && ! empty($property['longitude'])) {
+                continue;
+            }
+
+            $haystack = ($property['title'] ?? '') . ' '
+                . ($property['location'] ?? '') . ' '
+                . ($property['description'] ?? '');
+
+            if (preg_match($pattern, $haystack, $m)) {
+                $postcode = $geocoder->normalise($m[1] . $m[2]);
+                $perRow[$i] = $postcode;
+                $wanted[] = $postcode;
+            }
+        }
+
+        if (! $wanted) {
+            return $properties;
+        }
+
+        $coords = $geocoder->lookupMany($wanted);
+
+        return $properties->map(function (array $property, $i) use ($perRow, $coords) {
+            if (isset($perRow[$i], $coords[$perRow[$i]])) {
+                $property['latitude'] = $coords[$perRow[$i]]['lat'];
+                $property['longitude'] = $coords[$perRow[$i]]['lng'];
+                $property['geocoded_from_postcode'] = true;
+            }
+            return $property;
         });
     }
 
