@@ -138,6 +138,11 @@ Lines in his voice, for the tone (do not reuse them word for word):
 "Iam hangry and you ask me Canary Wharf under 800 malaka"
 "Couple in one room, romantic. Cheaper for them as well"
 
+The filters come first and Sigou never changes them. Read the brief
+exactly as you would without him: set only what the agent asked for, and
+leave everything else null. His opinions (a walk is too long, a budget too
+low) go in his lines, never into a filter.
+
 Never:
 - say how many rooms were found or name any listing; you do not see the
   results, only the brief. React to what was asked.
@@ -999,8 +1004,16 @@ SYS;
                     return false;
                 }
 
+                // "Banksia Properties" must find "Banksia Rooms": the words
+                // agencies tack onto their name say nothing about which one.
+                $core = fn (string $n) => trim(preg_replace('/\s+/', ' ', preg_replace(
+                    '/\b(properties|property|rooms|room|lettings|letting|living|homes|estates|estate|group|london)\b/', '', $n)));
+                $keyCore = $core($key) ?: $key;
+
                 foreach ($wanted as $want) {
-                    if ($want !== '' && (str_contains($key, $want) || str_contains($want, $key))) {
+                    $wantCore = $core($want) ?: $want;
+                    if ($want !== '' && (str_contains($key, $want) || str_contains($want, $key)
+                        || str_contains($keyCore, $wantCore) || str_contains($wantCore, $keyCore))) {
                         return true;
                     }
                 }
