@@ -110,6 +110,12 @@ class ScrapedListingsApiService
             $direct = app(SorevaSheetService::class)->getAllProperties()
                 ->concat(app(SpareRoomAdvertService::class)->getAllProperties());
 
+            // Some of these advertisers are also scraped into the Harbor Ops
+            // feed, so the same advert arrives twice. Our own copy wins: it
+            // carries the right agency name and the commission flag, which the
+            // feed's copy does not.
+            $feed = $this->rejectDuplicatesOf($feed, $direct);
+
             $all = $this->geocodeMissing($this->fillMissingPrices($feed->concat($supplier)->concat($direct)));
 
             // Attach the nearest station, its fare zone and a walking estimate,
@@ -144,6 +150,55 @@ class ScrapedListingsApiService
 
             return $all->values();
         });
+    }
+
+    /**
+     * Drop feed rows that are the same SpareRoom advert as one we sourced
+     * directly.
+     *
+     * The feed writes the reference as "spareroom:18427068" and we write
+     * "18427068", so the ids match once the prefix is stripped. Matching on
+     * the advert id rather than the title matters: four rooms in the same
+     * Wembley house share one generic title at four different rents, and
+     * collapsing those would lose real stock.
+     */
+    protected function rejectDuplicatesOf(Collection $feed, Collection $direct): Collection
+    {
+        $ids = $direct
+            ->map(fn ($p) => $this->spareRoomAdvertId($p))
+            ->filter()
+            ->flip();
+
+        if ($ids->isEmpty()) {
+            return $feed;
+        }
+
+        return $feed->reject(function (array $property) use ($ids) {
+            $id = $this->spareRoomAdvertId($property);
+
+            return $id !== null && $ids->has($id);
+        });
+    }
+
+    /** The numeric SpareRoom advert id, however the source spells it. */
+    protected function spareRoomAdvertId(array $property): ?string
+    {
+        $ref = (string) ($property['external_ref'] ?? '');
+
+        if (preg_match('/(?:^|:)(\d{6,9})$/', $ref, $m)) {
+            return $m[1];
+        }
+
+        foreach (['link', 'url'] as $field) {
+            $value = (string) ($property[$field] ?? '');
+
+            if (preg_match('/flatshare_id=(\d{6,9})/', $value, $m)
+                || preg_match('#spareroom\.co\.uk/(\d{6,9})\b#', $value, $m)) {
+                return $m[1];
+            }
+        }
+
+        return null;
     }
 
     /**

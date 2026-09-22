@@ -91,7 +91,11 @@ final class RoomFacts
         // room2 en-suite, so reading only the first slot wrongly rules it out.
         $stated = [];
 
-        foreach (['room_type', 'room1_type', 'room2_type', 'room3_type', 'room4_type'] as $field) {
+        // Deliberately not `room_type`: that field is derived by this class
+        // from the advert text, so trusting it here would make the text
+        // authoritative through the back door — which is the bug this method
+        // exists to fix. Only the source's own room slots count as stated.
+        foreach (['room1_type', 'room2_type', 'room3_type', 'room4_type'] as $field) {
             $value = preg_replace('/[^a-z]/', '', strtolower(trim((string) ($property[$field] ?? ''))));
 
             if ($value !== '' && $value !== 'nowlet') {
