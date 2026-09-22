@@ -135,9 +135,11 @@ return [
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'model' => env('OPENAI_MODEL', 'gpt-5-nano'),
-        // minimal | low | medium | high. Empty sends nothing (the model's
+        // none | low | medium | high (this model has no "minimal"). "none":
+        // measured 40/40 on assistant:test --quick, faster, and cheaper than
+        // low; empty sends nothing (the model's
         // own default, medium, which spends far more on hidden thinking).
-        'reasoning_effort' => env('OPENAI_REASONING_EFFORT', 'low'),
+        'reasoning_effort' => env('OPENAI_REASONING_EFFORT', 'none'),
         // USD per 1M tokens, for assistant:usage estimates (gpt-5.6-luna).
         'price' => [
             'input' => (float) env('OPENAI_PRICE_INPUT', 0.20),
