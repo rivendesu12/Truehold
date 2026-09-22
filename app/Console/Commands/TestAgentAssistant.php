@@ -39,6 +39,33 @@ class TestAgentAssistant extends Command
      * including the ones needing inference rather than keyword matching.
      */
     private const CASES = [
+        // Wording traps. Describing the tenant, or wishing for something, must
+        // not remove rooms: "she is a student" once filtered out 124 listings.
+        [
+            'q' => 'room for my client, she is a student, under 800 in east london',
+            'expect' => ['students' => 'none', 'max_price' => 800, 'region' => 'east'],
+        ],
+        [
+            'q' => 'professional guy, works in canary wharf, 28 years old, budget 900',
+            'expect' => ['students' => 'none', 'minutes_from_landmark' => 'none', 'radius_miles' => 'none', 'max_price' => 900],
+        ],
+        [
+            'q' => 'double room zone 2 max 950, ideally ensuite and bills included would be nice',
+            'expect' => ['ensuite_only' => 'none', 'bills_included' => 'none', 'max_zone' => 2, 'nice_to_have' => ['ensuite', 'bills_included']],
+        ],
+        [
+            'q' => 'she is a nurse, quiet, french, needs something near stratford under 850',
+            'expect' => ['students' => 'none', 'place' => 'stratford', 'max_price' => 850],
+        ],
+        [
+            // Needs, not descriptions: these must still filter.
+            'q' => 'couple with a cat, he smokes, under 1200',
+            'expect' => ['couples' => true, 'pets' => true, 'smokers' => true, 'max_price' => 1200],
+        ],
+        [
+            'q' => 'asap, anything under 750, parking would be a bonus',
+            'expect' => ['available_by' => '~', 'parking' => 'none', 'nice_to_have' => ['parking'], 'max_price' => 750],
+        ],
         [
             'q' => 'ensuite within 20 minutes of Bond Street',
             'expect' => ['ensuite_only' => true, 'place' => 'bond', 'minutes_from_landmark' => 20],
@@ -156,7 +183,7 @@ class TestAgentAssistant extends Command
         ],
         [
             'q' => 'professional house, no students, garden would be nice',
-            'expect' => ['students' => false, 'garden' => true],
+            'expect' => ['students' => false, 'garden' => 'none', 'nice_to_have' => ['garden']],
         ],
         [
             'q' => 'anything at all, just show me the cheapest rooms you have',
@@ -348,7 +375,12 @@ class TestAgentAssistant extends Command
                     continue;
                 }
 
-                if ($want === '~') {
+                if ($want === 'none') {
+                    // Must not be set: a description or a wish is not a filter.
+                    if (! empty($got)) {
+                        $misses[] = "{$key} set to " . json_encode($got) . ' (should be left out)';
+                    }
+                } elseif ($want === '~') {
                     // Only needs to be present and non-empty.
                     if (empty($got)) {
                         $misses[] = $key;

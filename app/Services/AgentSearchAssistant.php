@@ -261,10 +261,21 @@ London room-and-flat listings site. You never invent listings; you only produce
 filters. Return JSON only.
 
 Rules:
+- A filter removes rooms, so set one only for something the client NEEDS.
+  * Describing the tenant is context, not a filter: "she is a student", "he
+    is a professional", "works in Canary Wharf", "she is 24", "nurse",
+    "French", "quiet guy". Set nothing for these. Only a need the landlord
+    can refuse on is a filter: a couple, a pet, a smoker, a date to move by.
+  * A wish is not a need: "would be nice", "ideally", "preferably", "if
+    possible", "bonus if". Put it in `nice_to_have` (it sorts the rooms that
+    have it to the top) and leave the filter null.
+- `nice_to_have` values: garden, parking, bills_included, ensuite,
+  near_station, no_deposit. Empty when there are no wishes.
 - `property_types` uses exactly these values: full_property (a whole flat or
   house), studio, rooms (any room in a shared property, including en-suite).
   Empty array means no type preference.
-- `ensuite_only` true only if they explicitly want an en-suite / own bathroom.
+- `ensuite_only` true only if they need an en-suite / own bathroom ("must
+  have", "needs", or simply "ensuite room"). "Ideally ensuite" is a wish.
 - `max_price` / `min_price` are monthly rent in GBP.
 - `max_bedrooms` when they want a small share ("max 3 bed flat", "not sharing
   with lots of people"). `min_bedrooms` is rare, except
@@ -274,6 +285,8 @@ Rules:
 - For "N minutes from X" or "near X", set `near_landmark` to X and
   `minutes_from_landmark` to N. If they say a distance in miles instead, set
   `radius_miles`. If they name one of our own areas, set `location`.
+  Where the tenant works or studies, with no time, distance or "near", is
+  context: set nothing for it.
 - Tube zones are real data we hold per listing, taken from the fare zone of
   its nearest station. For "up to zone 3", "zone 2 or 3", "no further than
   zone 4", set `max_zone` to the highest acceptable number. Do NOT convert a
@@ -301,11 +314,14 @@ Rules:
   from `max_bedrooms`, which is the size of a whole flat being rented.
 - `room_type` one of double, single, ensuite, twin, studio — only when they
   name it.
-- `bills_included` true for "bills included", "all in", "no extra bills".
+- `bills_included` true for "bills included", "all in", "no extra bills" as
+  a requirement; "ideally bills included" is a wish.
 - `couples` true for a couple or two people sharing a room.
-- `students` true when the tenant is a student; false when they want a
-  professional house or say no students. "Professional house, no students"
-  sets it to false — do not leave it out.
+- `students` null almost always. Nearly every room accepts students, so a
+  tenant who IS a student sets nothing. true only for "student house" or
+  "must accept students". false when they want a professional house or say
+  no students: "Professional house, no students" sets it to false. A tenant
+  who is a professional also sets nothing.
 - `smokers` true only if they need smoking allowed.
 - `region` for a compass area: "east London", "south London", "north west
   London", "central". Values: central, north, south, east, west, north_east,
@@ -318,14 +334,15 @@ Rules:
   "half an hour into the City" sets `near_landmark` and
   `minutes_from_landmark`, not `region`.
 - `pets` true if they need pets allowed.
-- `garden`, `parking` true whenever they express any wish for one, including
-  a soft one ("a garden would be nice"). Set it rather than dropping it: if
-  nothing matches, the search relaxes it and tells the agent it did.
+- `garden`, `parking` true when they need one ("must have parking", "has a
+  car, needs parking"). A soft wish ("a garden would be nice") goes in
+  `nice_to_have` instead.
 - `furnished` true or false when they say; null when they do not care.
 - `no_deposit` true for "no deposit", "zero deposit". `max_deposit` for a
   stated figure.
 - `available_by` an ISO date when they need to move by then. "ASAP", "now",
-  "immediately" means today's date. "from October" means the 1st of October.
+  "immediately", "this week" mean two weeks from today (a room free next
+  Monday still suits them). "from October" means the 1st of October.
 - `max_commitment_months` when they want a short let: "3 months max",
   "short term", "not tied in for a year".
 - `good_transport` true for vague transport asks — "good transport links",
@@ -389,6 +406,8 @@ SYS;
                 'agencies' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'sort' => ['type' => ['string', 'null'], 'enum' => ['cheapest', null]],
                 'commission_only' => ['type' => 'boolean'],
+                'nice_to_have' => ['type' => 'array', 'items' => ['type' => 'string',
+                    'enum' => ['garden', 'parking', 'bills_included', 'ensuite', 'near_station', 'no_deposit']]],
                 'explanation' => ['type' => 'string'],
             ],
             'required' => [
@@ -400,7 +419,7 @@ SYS;
                 'smokers', 'pets', 'region', 'garden', 'parking', 'furnished', 'no_deposit',
                 'max_deposit', 'available_by', 'max_commitment_months',
                 'good_transport', 'agencies', 'sort',
-                'commission_only', 'explanation',
+                'commission_only', 'nice_to_have', 'explanation',
             ],
             'additionalProperties' => false,
         ];
@@ -907,11 +926,36 @@ SYS;
 
         $results = $this->applyTenantPreferences($results, $spec);
 
-        if (($spec['sort'] ?? null) === 'cheapest') {
-            $results = $results->sortBy(fn ($p) => (float) ($p['price'] ?? PHP_INT_MAX));
+        // Wishes never remove a room; the rooms that have more of them come
+        // first, cheapest first within that when asked.
+        $wishes = array_values(array_filter((array) ($spec['nice_to_have'] ?? [])));
+        $cheapest = ($spec['sort'] ?? null) === 'cheapest';
+
+        if ($wishes || $cheapest) {
+            $results = $results->sortBy(fn ($p) => [
+                -$this->wishesMet($p, $wishes),
+                $cheapest ? (float) ($p['price'] ?? PHP_INT_MAX) : 0,
+            ]);
         }
 
         return $results;
+    }
+
+    /** How many of the agent's nice-to-haves a listing states it has. */
+    protected function wishesMet(array $p, array $wishes): int
+    {
+        $met = 0;
+        foreach ($wishes as $wish) {
+            $met += match ($wish) {
+                'garden', 'parking', 'bills_included' => FieldValue::tribool($p[$wish] ?? null) === true,
+                'ensuite' => RoomFacts::isEnsuite($p),
+                'near_station' => is_numeric($p['walk_minutes'] ?? null) && (int) $p['walk_minutes'] <= 10,
+                'no_deposit' => FieldValue::number($p['deposit'] ?? null) === 0,
+                default => false,
+            } ? 1 : 0;
+        }
+
+        return $met;
     }
 
     /**
@@ -1028,7 +1072,9 @@ SYS;
             if ($by) {
                 $results = $results->filter(function ($p) use ($by) {
                     $date = FieldValue::date($p['available_date'] ?? null);
-                    return $date !== null && $date->lessThanOrEqualTo($by);
+                    // No date stated reads as available now, which is how
+                    // the cards show it; dropping them lost whole agencies.
+                    return $date === null || $date->lessThanOrEqualTo($by);
                 });
             }
         }
