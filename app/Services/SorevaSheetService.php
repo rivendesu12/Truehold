@@ -16,6 +16,10 @@ use Illuminate\Support\Facades\Log;
  * range read here stops at K deliberately. None of that belongs on a public
  * property site and none of it is fetched.
  *
+ * The Property column holds =HYPERLINK() formulas pointing at each property's
+ * photo folder, so the sheet is read as formulas rather than display values —
+ * read as values, the links are invisible and every room looks photoless.
+ *
  * Their status column is its own vocabulary — AVAILABLE, AVAILABLE 01/09/2025,
  * BOOKED, ON HOLD/RELOCATION, LEASE COMFIRMED — and only a status beginning
  * with AVAILABLE means a room can be let.
@@ -65,7 +69,9 @@ class SorevaSheetService
             $response = Http::withToken($token)->timeout(30)->get(
                 'https://sheets.googleapis.com/v4/spreadsheets/' . $id
                     . '/values/' . rawurlencode($tab) . '!' . self::RANGE,
-                ['valueRenderOption' => 'FORMATTED_VALUE']
+                // FORMULA, not FORMATTED_VALUE: the latter returns "Colmer Road"
+                // for a =HYPERLINK() cell and throws the folder link away.
+                ['valueRenderOption' => 'FORMULA']
             );
         } catch (\Throwable $e) {
             Log::warning('Soreva sheet fetch failed', ['error' => $e->getMessage()]);
@@ -101,10 +107,14 @@ class SorevaSheetService
      */
     protected function mapRow(array $row): ?array
     {
-        $get = fn (int $i) => trim((string) ($row[$i] ?? ''));
+        // Reading formulas means a linked cell arrives as =HYPERLINK(url, label),
+        // so the label is what we want for display and the url for photos.
+        $raw = fn (int $i) => trim((string) ($row[$i] ?? ''));
+        $get = fn (int $i) => $this->cellLabel($raw($i));
 
         $status = $get(0);
         $property = $get(1);
+        $folderUrl = $this->extractHyperlink($raw(1));
         $rent = $get(3);
         $room = $get(4);
         $postcode = strtoupper($get(5));
@@ -125,6 +135,16 @@ class SorevaSheetService
 
         $roomType = $this->roomType($room);
         $rooms = is_numeric($get(9)) ? (int) $get(9) : null;
+
+        // Their property links point at the photo folders, so the same
+        // private-Drive proxy the other suppliers use serves these too.
+        $photoIds = $folderUrl
+            ? app(SupplierPhotoService::class)->photosForRoom($folderUrl, $room)
+            : [];
+        $photoUrls = array_map(
+            fn ($id) => route('supplier.photo', ['fileId' => $id], false),
+            $photoIds
+        );
 
         $title = trim($property . ($room !== '' ? ' — ' . $room : ''));
 
@@ -158,10 +178,37 @@ class SorevaSheetService
             'total_rooms' => $rooms,
             'couples_ok' => $get(7) !== '' ? $get(7) : null,
             'source_room' => $room !== '' ? $room : null,
-            'photo_count' => 0,
+            'first_photo_url' => $photoUrls[0] ?? null,
+            'photos' => $photoUrls ?: null,
+            'all_photos' => $photoUrls ? implode(', ', $photoUrls) : null,
+            'photo_count' => count($photoUrls),
+            'drive_folder_url' => $folderUrl,
             'updatable' => false,
             'updated_at' => now()->toIso8601String(),
         ];
+    }
+
+    /**
+     * The text a person sees in the cell: the label of a =HYPERLINK(), or the
+     * cell itself when it is plain.
+     */
+    protected function cellLabel(string $value): string
+    {
+        if (preg_match('/HYPERLINK\(\s*"[^"]*"\s*,\s*"([^"]*)"/i', $value, $m)) {
+            return trim($m[1]);
+        }
+
+        // A formula we cannot read is not a value; better blank than "=A1*2".
+        return str_starts_with($value, '=') ? '' : $value;
+    }
+
+    protected function extractHyperlink(string $value): ?string
+    {
+        if (preg_match('/HYPERLINK\(\s*"([^"]+)"/i', $value, $m)) {
+            return $m[1];
+        }
+
+        return str_starts_with($value, 'http') ? $value : null;
     }
 
     protected function isAvailable(string $status): bool
