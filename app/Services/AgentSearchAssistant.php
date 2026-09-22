@@ -155,8 +155,9 @@ Rules:
   name it.
 - `bills_included` true for "bills included", "all in", "no extra bills".
 - `couples` true for a couple or two people sharing a room.
-- `students` true when the tenant is a student; false when they specifically
-  want a professional house.
+- `students` true when the tenant is a student; false when they want a
+  professional house or say no students. "Professional house, no students"
+  sets it to false — do not leave it out.
 - `smokers` true only if they need smoking allowed.
 - `region` for a compass area: "east London", "south London", "north west
   London", "central". Values: central, north, south, east, west, north_east,
@@ -954,7 +955,7 @@ SYS;
 
         foreach ($this->conditionLabels($spec) as $key => $label) {
             $alone = $this->applyPreferences($properties, [$key => $spec[$key]]);
-            $singles[] = ['label' => $label, 'count' => $alone->count()];
+            $singles[] = ['key' => $key, 'label' => $label, 'count' => $alone->count()];
         }
 
         usort($singles, fn ($a, $b) => $a['count'] <=> $b['count']);
@@ -967,6 +968,43 @@ SYS;
                     ? "nothing at all matches {$single['label']}"
                     : "only {$single['count']} listings match {$single['label']}";
             }
+        }
+
+        if ($out) {
+            return $out;
+        }
+
+        // No single condition is scarce, so it is the combination that is
+        // empty — 22 en-suites, 194 in zone 2, 124 under GBP 900, and none
+        // that are all three. Saying "0 results" and nothing else leaves the
+        // agent unable to judge which condition to take back to the client,
+        // so add conditions cheapest-first until the answer collapses and
+        // report the step that did it.
+        $applied = [];
+        $labels = [];
+        $previous = $total;
+
+        foreach ($singles as $single) {
+            $applied[$single['key']] = $spec[$single['key']];
+            $labels[] = $single['label'];
+
+            $count = $this->applyPreferences($properties, $applied)->count();
+
+            if ($count === 0) {
+                $last = array_pop($labels);
+                $together = $labels ? implode(' and ', $labels) : null;
+
+                return [$together === null
+                    ? "nothing matches {$last}"
+                    : sprintf(
+                        '%d listings match %s, but none of those also match %s',
+                        $previous,
+                        $together,
+                        $last
+                    )];
+            }
+
+            $previous = $count;
         }
 
         return $out;
