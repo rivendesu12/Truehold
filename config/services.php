@@ -73,6 +73,8 @@ return [
         // Some feed rows are empty stubs: no title, no price, no advert. A card
         // with no title and "N/A" is worse than no card, so require both.
         'require_title_and_price' => env('HARBOROPS_REQUIRE_TITLE_AND_PRICE', true),
+        // Agent filter is hidden for now rather than deleted; flip to true to restore.
+        'show_agent_filter' => env('SHOW_AGENT_FILTER', false),
     ],
 
     // Supplier rooms from the "Room targets" spreadsheet, Targets tab. This is the

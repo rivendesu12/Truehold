@@ -33,9 +33,35 @@ trait FiltersPropertyCollection
             });
         }
 
-        if (isset($filters['property_type'])) {
+        // Property type is presented as three buckets rather than the ~14 raw
+        // values the sources use ("Double", "En-Suite", "Ensuite", "double room",
+        // "Master", "Flat", …). Accepts one bucket or several.
+        if (! empty($filters['property_types'])) {
+            $wanted = array_filter((array) $filters['property_types']);
+            if ($wanted) {
+                $properties = $properties->filter(function ($property) use ($wanted) {
+                    return in_array(self::propertyTypeBucket($property), $wanted, true);
+                });
+            }
+        } elseif (isset($filters['property_type'])) {
+            // Legacy single raw-value filter, kept so existing shared links work.
             $properties = $properties->filter(function ($property) use ($filters) {
                 return stripos($property['property_type'] ?? '', $filters['property_type']) !== false;
+            });
+        }
+
+        // Radius search: keep listings within N miles of the centre of whatever
+        // the location term matched, so "Wapping + 1 mile" also finds Shadwell.
+        if (! empty($filters['radius_miles']) && ! empty($filters['radius_center'])) {
+            $miles = (float) $filters['radius_miles'];
+            [$centerLat, $centerLng] = $filters['radius_center'];
+            $properties = $properties->filter(function ($property) use ($miles, $centerLat, $centerLng) {
+                $lat = $property['latitude'] ?? null;
+                $lng = $property['longitude'] ?? null;
+                if (! is_numeric($lat) || ! is_numeric($lng)) {
+                    return false;
+                }
+                return self::milesBetween((float) $lat, (float) $lng, $centerLat, $centerLng) <= $miles;
             });
         }
 
@@ -279,5 +305,43 @@ trait FiltersPropertyCollection
                 'room_counts' => collect(),
             ];
         }
+    }
+
+    /**
+     * Collapse a source's free-text room type into one of three buckets.
+     *
+     * Sources use "Double", "En suite", "En-Suite", "Ensuite", "Flat", "Master",
+     * "Room", "Single", "Studio", "double", "double room", "single room" …
+     */
+    public static function propertyTypeBucket(array $property): string
+    {
+        $raw = strtolower(trim((string) ($property['property_type'] ?? '')));
+        $title = strtolower((string) ($property['title'] ?? ''));
+
+        if (str_contains($raw, 'studio') || str_contains($title, 'studio')) {
+            return 'studio';
+        }
+
+        // A whole place rather than a room in a share.
+        foreach (['flat', 'apartment', 'house', 'whole', 'full property', 'maisonette'] as $needle) {
+            if (str_contains($raw, $needle)) {
+                return 'full_property';
+            }
+        }
+
+        // Everything else the sources emit is a room of some kind: double,
+        // single, en-suite, master, or a bare "room".
+        return 'rooms';
+    }
+
+    /** Great-circle distance in miles. */
+    public static function milesBetween(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $earth = 3958.8;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        $a = sin($dLat / 2) ** 2
+            + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+        return $earth * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 }
