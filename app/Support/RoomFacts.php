@@ -86,15 +86,25 @@ final class RoomFacts
      */
     public static function isEnsuite(array $property): bool
     {
-        $stated = preg_replace('/[^a-z]/', '', strtolower(trim(
-            (string) ($property['room_type'] ?? $property['room1_type'] ?? '')
-        )));
+        // An advert can offer several rooms, and the en-suite may not be the
+        // first: "Double Room & Ensuite in All Saints" has room1 double and
+        // room2 en-suite, so reading only the first slot wrongly rules it out.
+        $stated = [];
 
-        if ($stated === 'ensuite') {
+        foreach (['room_type', 'room1_type', 'room2_type', 'room3_type', 'room4_type'] as $field) {
+            $value = preg_replace('/[^a-z]/', '', strtolower(trim((string) ($property[$field] ?? ''))));
+
+            if ($value !== '' && $value !== 'nowlet') {
+                $stated[] = $value;
+            }
+        }
+
+        if (in_array('ensuite', $stated, true)) {
             return true;
         }
 
-        if (in_array($stated, ['double', 'single', 'twin', 'studio'], true)) {
+        // Every room this advert states is something other than an en-suite.
+        if ($stated !== []) {
             return false;
         }
 

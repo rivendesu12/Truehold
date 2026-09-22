@@ -167,7 +167,7 @@ class ScrapedListingsApiService
                 return $property;
             }
 
-            $folder = $property['drive_room_folder'] ?: ($property['drive_folder_url'] ?? null);
+            $folder = ($property['drive_room_folder'] ?? null) ?: ($property['drive_folder_url'] ?? null);
             if (empty($folder)) {
                 return $property;
             }
