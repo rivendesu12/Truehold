@@ -493,11 +493,6 @@
             if ((data.relaxed || []).includes('bedrooms')) {
                 html += '<p class="th-ask__warn">Bedroom count set aside \u2014 too few listings state one.</p>';
             }
-            if ((data.unanswerable || []).length) {
-                html += '<p class="th-ask__warn">We hold no data on <strong>'
-                     + esc(data.unanswerable.join(', '))
-                     + '</strong>, so that part of the brief was ignored. You will need to ask the landlord.</p>';
-            }
 
             if (data.unplaced) {
                 html += '<p class="th-ask__warn">We could not place <strong>'

@@ -981,8 +981,11 @@ SYS;
             $wantFurnished = (bool) $spec['furnished'];
             $results = $results->filter(function ($p) use ($wantFurnished) {
                 $value = strtolower(trim((string) ($p['furnishings'] ?? '')));
+                // Not stated is not "no": rooms here are nearly all furnished,
+                // and dropping every listing that is silent on it emptied
+                // whole agencies from the results.
                 if ($value === '') {
-                    return false;
+                    return true;
                 }
                 return $wantFurnished
                     ? str_contains($value, 'furnished') && ! str_contains($value, 'unfurnished')
@@ -991,13 +994,15 @@ SYS;
         }
 
         // "Students only" and "Not suitable for students" are both stated; the
-        // common value is "Available to all", which suits either tenant.
+        // common value is "Available to all", which suits either tenant. A
+        // listing that says nothing stays in: 124 of 277 are silent, nearly
+        // all Javier's, and a student brief was losing every one of them.
         if (isset($spec['students']) && $spec['students'] !== null) {
             $student = (bool) $spec['students'];
             $results = $results->filter(function ($p) use ($student) {
                 $value = strtolower((string) ($p['pref_occupation'] ?? $p['occupation'] ?? ''));
                 if ($value === '') {
-                    return false;
+                    return true;
                 }
                 return $student
                     ? ! str_contains($value, 'not suitable for student')

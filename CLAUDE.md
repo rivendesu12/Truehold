@@ -115,7 +115,10 @@ gating the Blade alone is not enough.
   *different* room.
 - Read all four `roomN_type` slots, not just the first.
 - A filter over a column one source never fills silently drops that whole source.
-  The assistant now reports the shortfall and names the agencies.
+  Preferences where silence usually means yes (students, furnished) keep the
+  silent listings; must-haves (couples, smokers, pets, bills, garden, parking)
+  still need a stated yes. The panel no longer shows the "we hold no data"
+  box (Giaco: confusing, not wanted); `unanswerable` is still in the JSON.
 - Cards show nearest station + walk, not postcode. A district is shown only when
   the listing's own postcode or text confirms it.
 - Don't trust a district scraped from a shared page — SpareRoom pages include
