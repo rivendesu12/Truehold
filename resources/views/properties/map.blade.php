@@ -2039,15 +2039,20 @@ select.filter-input option {
                 });
 
                 marker.addListener('click', () => {
-                    // Get the first image or use a placeholder
-                    const imageUrl = property.first_photo_url || 
-                                   (property.high_quality_photos_array && property.high_quality_photos_array[0]) || 
-                                   'https://via.placeholder.com/380x200/1e3a5f/d4af37?text=No+Image';
+                    // The photograph, however the source gives it to us. The
+                    // fallback is drawn inline rather than fetched: this used to
+                    // point at via.placeholder.com, which has since shut down, so
+                    // the fallback itself failed and left an empty grey box.
+                    const noPhoto = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='380' height='200'%3E%3Crect width='380' height='200' fill='%23f3f5f9'/%3E%3Ctext x='190' y='104' text-anchor='middle' font-family='system-ui,sans-serif' font-size='15' fill='%239aa3b4'%3ENo photo%3C/text%3E%3C/svg%3E";
+                    const photos = property.high_quality_photos_array || property.photos || [];
+                    const imageUrl = property.first_photo_url
+                                   || (Array.isArray(photos) ? photos[0] : null)
+                                   || noPhoto;
                     
                     const content = `
                         <div class="info-window-card" style="position: relative;">
                             <button type="button" class="overlay-close" aria-label="Close" data-overlay-close="1">×</button>
-                            <img src="${imageUrl}" alt="${property.title || 'Property'}" class="info-window-image" onerror="this.src='https://via.placeholder.com/380x200/1e3a5f/d4af37?text=No+Image'">
+                            <img src="${imageUrl}" alt="${property.title || 'Property'}" class="info-window-image" onerror="this.onerror=null;this.src=noPhoto;">
                             <div class="info-window-content">
                                 <div class="info-window-header">
                                     <h3 class="info-window-title">${property.title || 'Property Details'}</h3>

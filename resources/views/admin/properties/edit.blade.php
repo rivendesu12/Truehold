@@ -283,7 +283,7 @@
                 <p class="text-xs font-medium text-gray-700 mb-2">Live Preview:</p>
                 <div class="relative inline-block">
                     <div class="w-64 h-40 bg-gray-200 rounded-lg overflow-hidden">
-                        <img src="{{ $property->first_photo_url ?: 'https://via.placeholder.com/300x200' }}" alt="Preview" class="w-full h-full object-cover">
+                        <img src="{{ $property->first_photo_url ?: 'data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27400%27 height=%27240%27%3E%3Crect width=%27400%27 height=%27240%27 fill=%27%23f3f5f9%27/%3E%3Ctext x=%27200%27 y=%27124%27 text-anchor=%27middle%27 font-family=%27system-ui,sans-serif%27 font-size=%2716%27 fill=%27%239aa3b4%27%3ENo photo%3C/text%3E%3C/svg%3E' }}" alt="Preview" class="w-full h-full object-cover">
                     </div>
                     <span id="flagLivePreview" class="absolute top-2 right-0 px-4 py-2 text-xs font-bold text-white shadow-lg" 
                           style="background: {{ $property->flag_color ?: 'linear-gradient(135deg, #d4af37, #b8941f)' }}; clip-path: polygon(0 0, 100% 0, 100% 100%, 8px 100%, 0 calc(100% - 8px)); display: {{ $property->flag ? 'block' : 'none' }};">

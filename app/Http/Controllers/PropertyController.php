@@ -853,13 +853,17 @@ class PropertyController extends Controller
                 'longitude' => $property->longitude ? (float) $property->longitude : null,
                 'price' => $property->price,
                 'property_type' => $property->property_type,
-                'agent_name' => $property->agent_name,
-                'management_company' => $property->management_company,
+                // Agency identity is for the agent side only. This json sits in
+                // the page source of a public map, so a client sent a map link
+                // could read every sourcing relationship we have.
+                'agent_name' => auth()->check() ? $property->agent_name : null,
+                'management_company' => auth()->check() ? $property->management_company : null,
                 'couples_ok' => $property->couples_ok ?? '',
                 'couples_allowed' => $property->couples_allowed ?? '',
                 'description' => $property->description ?? '',
                 'first_photo_url' => $property->first_photo_url,
                 'high_quality_photos_array' => $property->high_quality_photos_array,
+                'photos' => $property->photos_array ?? null,
                 'total_rooms' => $property->total_rooms ?? '',
                 'room_count' => $property->total_rooms ?? '',
             ];
