@@ -92,8 +92,42 @@ class ScrapedListingsApiService
     public function getAllProperties(): Collection
     {
         return Cache::remember(self::CACHE_KEY, $this->cacheTimeout, function () {
+            $notAccepting = $this->notAcceptingListingIds();
+
+            return $this->fetchAllListings()
+                ->reject(fn ($p) => isset($notAccepting[(string) ($p['id'] ?? '')]))
+                ->filter(fn ($p) => $this->isAvailable($p))
+                ->values();
+        });
+    }
+
+    /**
+     * Every listing the feed returns, with no availability filtering applied.
+     * Used by properties:check-availability so the checker is not filtered by
+     * the data it is itself producing.
+     */
+    public function getAllPropertiesUnfiltered(): Collection
+    {
+        return Cache::remember(self::CACHE_KEY . '_unfiltered', $this->cacheTimeout, function () {
             return $this->fetchAllListings();
         });
+    }
+
+    /**
+     * Listing ids whose source advert is not taking enquiries, keyed for O(1)
+     * lookup. Missing table (before migration) must not break the feed.
+     */
+    protected function notAcceptingListingIds(): array
+    {
+        try {
+            return \Illuminate\Support\Facades\DB::table('property_availability')
+                ->where('accepting_applications', false)
+                ->pluck('listing_id')
+                ->mapWithKeys(fn ($id) => [(string) $id => true])
+                ->all();
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     /**
@@ -107,6 +141,7 @@ class ScrapedListingsApiService
     public function clearCache(): void
     {
         Cache::forget(self::CACHE_KEY);
+        Cache::forget(self::CACHE_KEY . '_unfiltered');
         Log::info('Harbor Ops properties cache cleared', ['cache_key' => self::CACHE_KEY]);
     }
 
@@ -155,10 +190,7 @@ class ScrapedListingsApiService
 
             foreach ($rows as $row) {
                 if (is_array($row)) {
-                    $property = $this->mapRowToProperty($row);
-                    if ($this->isAvailable($property)) {
-                        $properties->push($property);
-                    }
+                    $properties->push($this->mapRowToProperty($row));
                 }
             }
 
