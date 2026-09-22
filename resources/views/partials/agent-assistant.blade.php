@@ -331,6 +331,16 @@
     });
     input.addEventListener('blur', () => { if (Sigou.mood === 'typing') Sigou.set('idle'); });
 
+    // The last search, so it can be recalled with the up arrow and tweaked.
+    let lastQ = '';
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowUp' && !input.value && lastQ) {
+            e.preventDefault();
+            input.value = lastQ;
+            input.setSelectionRange(lastQ.length, lastQ.length);
+        }
+    });
+
     document.getElementById('thAskPoke').addEventListener('click', () => {
         if (Sigou.mood === 'thinking') return;
         Sigou.set(pick(['shocked', 'happy']), 1400);
@@ -421,10 +431,13 @@
                     : '<span class="th-ask__noimg">no photo</span>')
                 + '<span><b>' + esc(r.title)
                 + commissionTag(r)
-                + '</b><small>' + esc(r.location || '') + ' \u00b7 ' + money(r.price)
-                + (size(r) ? ' \u00b7 ' + esc(size(r)) : '')
-                + (r.zone ? ' \u00b7 zone ' + r.zone : '')
-                + (r.agent ? ' \u00b7 ' + esc(r.agent) : '') + '</small>'
+                + '</b><small>' + [
+                    r.location ? esc(r.location) : '',
+                    money(r.price),
+                    size(r) ? esc(size(r)) : '',
+                    r.zone ? 'zone ' + r.zone : '',
+                    r.agent ? esc(r.agent) : '',
+                ].filter(Boolean).join(' \u00b7 ') + '</small>'
                 + (r.station ? '<small class="th-ask__stn">' + esc(r.station)
                     + (r.walk ? ', ' + r.walk + ' min walk' : '')
                     + (r.lines && r.lines.length ? ' \u00b7 ' + esc(r.lines.join(', ')) : '')
@@ -491,6 +504,10 @@
             }
 
             body.innerHTML = html;
+
+            // Sent: clear the box, like any chat. Up-arrow brings it back.
+            lastQ = q;
+            input.value = '';
 
             Sigou.look(0, 0.6);
             if (g.commission.length) Sigou.set('happy', 3200);
