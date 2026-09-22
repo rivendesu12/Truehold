@@ -198,7 +198,9 @@ class SorevaSheetService
                 $area !== '' ? ucwords(strtolower($area)) . ',' : null,
                 $postcode . '.',
                 $rooms ? $rooms . '-bedroom property.' : null,
-                'Soreva Living.',
+                // Deliberately not the agency name: the description is shown
+                // to clients, and naming the supplier on a link an agent
+                // shares hands over the sourcing relationship.
             ]))),
             'price' => $price,
             'property_type' => $this->propertyType($room),
