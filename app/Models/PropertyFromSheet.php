@@ -113,7 +113,8 @@ class PropertyFromSheet
         }
         
         if (is_numeric($price) && $price > 0) {
-            return '£' . number_format($price, 2);
+            // Whole pounds: "£1,100.00" is noise on a rent.
+            return '£' . number_format($price, fmod((float) $price, 1) == 0 ? 0 : 2);
         }
         
         return 'N/A';

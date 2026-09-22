@@ -529,6 +529,7 @@ button {
     }
 }
     </style>
+    @include('partials.mobile')
 </head>
 <body>
     <!-- Navigation -->

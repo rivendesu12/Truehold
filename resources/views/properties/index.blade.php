@@ -1155,6 +1155,13 @@ button {
     border-top: 1px solid var(--light-gray);
 }
 
+.price-period {
+    font-size: 0.55em;
+    font-weight: 500;
+    opacity: 0.6;
+    margin-left: 2px;
+}
+
 .property-price {
     font-size: 28px;
     font-weight: 700;
@@ -1263,13 +1270,33 @@ button {
         padding: 0 16px;
     }
     
-    /* Navigation */
+    /* Navigation: it sticks to the top, so every pixel here is lost from
+       every screen. It was 100px tall on a phone. */
     .navbar {
-        padding: 12px 0;
+        padding: 0;
     }
-    
+
+    .nav-content {
+        padding: 8px 0;
+        gap: 8px;
+    }
+
+    .logo {
+        gap: 10px;
+    }
+
+    .logo-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+    }
+
     .logo-text {
-        font-size: 18px;
+        font-size: 17px;
+    }
+
+    .hero-content {
+        padding: 0;
     }
     
     .logo-icon svg {
@@ -1278,13 +1305,14 @@ button {
     }
     
     .nav-links {
-        gap: 4px;
-        flex-wrap: wrap;
+        gap: 2px;
+        flex-wrap: nowrap;
     }
-    
+
     .nav-link {
-        padding: 8px 12px;
-        font-size: 12px;
+        padding: 10px 10px;
+        font-size: 13px;
+        white-space: nowrap;
     }
     
     .nav-link svg {
@@ -1302,27 +1330,27 @@ button {
         height: 14px;
     }
     
-    /* Hero Section */
+    /* Hero Section: on a phone it filled the whole first screen, so nobody
+       saw a room without scrolling. A slim title band is enough. */
     .hero-header {
-        padding: 48px 0 32px 0;
+        padding: 22px 0 18px 0;
         min-height: auto;
     }
-    
+
     .hero-title {
-        font-size: 32px;
+        font-size: 24px;
         line-height: 1.2;
-        margin-bottom: 12px;
+        margin-bottom: 0;
     }
-    
-    .hero-subtitle {
-        font-size: 15px;
-        margin-bottom: 24px;
-    }
-    
+
+    .hero-subtitle,
     .hero-stats {
-        flex-direction: column;
-        gap: 16px;
-        padding: 20px;
+        display: none;
+    }
+
+    /* Room for the floating Ask button below the last card. */
+    .properties-section {
+        padding-bottom: 96px;
     }
     
     .stat-divider {
@@ -1490,7 +1518,7 @@ button {
 
 @media (max-width: 480px) {
     .hero-title {
-        font-size: 28px;
+        font-size: 22px;
     }
     
     .hero-subtitle {
@@ -1510,7 +1538,16 @@ button {
     }
     
     .nav-links {
-        justify-content: center;
+        justify-content: flex-end;
+    }
+
+    .nav-link svg {
+        display: none;
+    }
+
+    .logo-text {
+        font-size: 15px;
+        letter-spacing: 0.5px;
     }
     
     .properties-grid {
@@ -1522,6 +1559,7 @@ button {
     /* thf-fields-grid--2 handles tablet columns */
         }
     </style>
+    @include('partials.mobile')
 </head>
 <body>
     <!-- Navigation -->
@@ -1566,7 +1604,9 @@ button {
     <!-- Hero Header -->
     <header class="hero-header">
         <div class="hero-background">
-            <img src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80" alt="Luxury Property" class="hero-bg-image">
+            <img src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80"
+                 srcset="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=70 800w, https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80 1920w"
+                 sizes="100vw" alt="" class="hero-bg-image" fetchpriority="low">
             <div class="hero-overlay"></div>
             </div>
         <div class="hero-content">
@@ -1822,9 +1862,9 @@ button {
 
                             <div class="card-image">
                                     @if($property->high_quality_photos_array && count($property->high_quality_photos_array) > 0)
-                                    <img src="{{ $property->high_quality_photos_array[0] }}" alt="{{ $property->title }}" class="card-img">
+                                    <img src="{{ $property->high_quality_photos_array[0] }}" alt="{{ $property->title }}" class="card-img" loading="lazy" decoding="async">
                                     @elseif($property->first_photo_url && $property->first_photo_url !== 'N/A')
-                                    <img src="{{ $property->first_photo_url }}" alt="{{ $property->title }}" class="card-img">
+                                    <img src="{{ $property->first_photo_url }}" alt="{{ $property->title }}" class="card-img" loading="lazy" decoding="async">
                                     @else
                                     {{-- No photograph: say so rather than showing a stock image of
                                          someone else's flat, which is what clients complain about. --}}
@@ -1858,13 +1898,14 @@ button {
                                     <p class="property-description">{{ Str::limit($property->description, 100) }}</p>
                                     @endif
                                 <div class="card-footer">
-                                    <div class="property-price">{{ $property->formatted_price }}</div>
+                                    <div class="property-price">{{ $property->formatted_price }}@unless($property->formatted_price === 'N/A' || \Illuminate\Support\Str::contains(strtolower($property->formatted_price), ['pcm', 'pw', 'month', 'week']))<span class="price-period">/month</span>@endunless</div>
                                     <div class="property-badges">
                                         @if($property->property_type)
                                             <span class="badge badge-room">{{ $property->property_type }}</span>
                                         @endif
-                                        @if($property->available_date && $property->available_date !== 'N/A')
-                                            <span class="badge badge-date">{{ $property->available_date }}</span>
+                                        @php($availableLabel = \App\Support\AvailableLabel::for($property->available_date))
+                                        @if($availableLabel)
+                                            <span class="badge badge-date">{{ $availableLabel }}</span>
                                         @else
                                             <span class="badge badge-available">Available now</span>
                                         @endif

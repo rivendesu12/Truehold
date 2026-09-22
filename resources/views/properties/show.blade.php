@@ -1619,6 +1619,7 @@ html {
             }
         }
     </script>
+    @include('partials.mobile')
 </head>
 <body>
     <!-- Navigation -->

@@ -1284,13 +1284,53 @@ select.filter-input option {
         bottom: 0;
     }
 
+    /* Compact header: the same bar as the list page, on one line. */
+    .logo,
+    .nav-link {
+        text-decoration: none;
+    }
+
+    .nav-content {
+        padding: 8px 0;
+        gap: 8px;
+    }
+
+    .logo {
+        gap: 10px;
+    }
+
+    .logo-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+    }
+
     .nav-links {
-        gap: 4px;
+        gap: 2px;
+        flex-wrap: nowrap;
     }
 
     .nav-link {
-        padding: 10px 12px;
+        padding: 10px 10px;
         font-size: 13px;
+        white-space: nowrap;
+    }
+
+    .nav-link svg {
+        display: none;
+    }
+
+    /* The map is the page: give it the room the header was taking. */
+    .map-header {
+        padding: 10px 0;
+    }
+
+    .map-header-actions {
+        display: none; /* "List view" repeats the Properties tab above it */
+    }
+
+    .map-wrapper {
+        height: calc(100dvh - 190px);
     }
 
     /* Filters */
@@ -1422,6 +1462,7 @@ select.filter-input option {
     }
         }
     </style>
+    @include('partials.mobile')
 </head>
 <body class="map-page">
     <!-- Navigation -->
