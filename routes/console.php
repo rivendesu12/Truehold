@@ -28,6 +28,14 @@ Schedule::command('properties:clear-cache')
     ->hourly()
     ->withoutOverlapping();
 
+// Photographs for the spreadsheet-sourced rooms live in private Drive folders,
+// and resolving them is slow. Warming the cache here, on the half hour, keeps
+// that work off the page request that would otherwise have waited for it.
+Schedule::command('photos:warm')
+    ->hourlyAt(50)
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // Re-checks source adverts for "not currently accepting applications", which
 // is the only reliable signal that a room has gone. Slower cadence because it
 // fetches every advert.

@@ -68,7 +68,10 @@ class SupplierPhotoService
 
         $cacheKey = 'supplier_photos_' . sha1($folderId . '|' . (string) $roomCode);
 
-        return Cache::remember($cacheKey, now()->addHours(12), function () use ($folderId, $roomCode) {
+        // A week, not twelve hours. Folder contents barely change, and every
+        // expiry used to land the next page request with a hundred Drive calls
+        // to make while someone waited for the listings to load.
+        return Cache::remember($cacheKey, now()->addDays(7), function () use ($folderId, $roomCode) {
             try {
                 return $this->resolve($folderId, $roomCode);
             } catch (\Throwable $e) {
@@ -76,6 +79,24 @@ class SupplierPhotoService
                 return [];
             }
         });
+    }
+
+    /**
+     * The same lookup, but never touching the network: null on a cache miss.
+     *
+     * Serving a page must not depend on someone else's API. A listing whose
+     * folder has not been resolved yet simply shows without photographs until
+     * photos:warm fills it in, which is a far better failure than a blank page.
+     */
+    public function cachedPhotosForRoom(?string $folderUrl, ?string $roomCode): ?array
+    {
+        $folderId = $this->folderIdFromUrl($folderUrl);
+
+        if (! $folderId) {
+            return [];
+        }
+
+        return Cache::get('supplier_photos_' . sha1($folderId . '|' . (string) $roomCode));
     }
 
     protected function resolve(string $folderId, ?string $roomCode): array

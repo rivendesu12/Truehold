@@ -146,6 +146,13 @@ class ScrapedListingsApiService
             // for rooms, so whole flats had no bedroom count at all.
             $all = $all->map(fn ($p) => array_merge($p, \App\Support\RoomFacts::extract($p)));
 
+            // The upstream feed sometimes scrapes the same advert twice, and has
+            // returned two rows sharing one listing id. Either breaks links and
+            // shows an agent the same room twice, so one of each survives —
+            // matched on the source advert, never on the title, because four
+            // rooms in one house legitimately share a generic title.
+            $all = $this->deduplicate($all);
+
             if (config('services.harborops.require_title_and_price', true)) {
                 $all = $all->filter(
                     fn ($p) => trim((string) ($p['title'] ?? '')) !== '' && ! empty($p['price'])
@@ -154,6 +161,38 @@ class ScrapedListingsApiService
 
             return $all->values();
         });
+    }
+
+    /**
+     * One row per listing id, and one row per source advert.
+     *
+     * Where two rows describe the same advert the richer one is kept: more
+     * photographs, then a stated agency, then a price. An agent comparing two
+     * identical cards cannot tell which to send.
+     */
+    protected function deduplicate(Collection $properties): Collection
+    {
+        $richness = function (array $p): int {
+            return (int) ($p['photo_count'] ?? 0) * 10
+                + (! empty($p['agent_name']) ? 5 : 0)
+                + (! empty($p['price']) ? 2 : 0)
+                + (! empty($p['description']) ? 1 : 0);
+        };
+
+        $best = [];
+
+        foreach ($properties as $property) {
+            // An advert id groups rows across sources; the listing id catches
+            // the upstream feed repeating itself with no advert to match on.
+            $key = $this->spareRoomAdvertId($property)
+                ?? ('id:' . (string) ($property['id'] ?? uniqid('row', true)));
+
+            if (! isset($best[$key]) || $richness($property) > $richness($best[$key])) {
+                $best[$key] = $property;
+            }
+        }
+
+        return collect(array_values($best));
     }
 
     /**
@@ -290,7 +329,10 @@ class ScrapedListingsApiService
     {
         $photos = app(SupplierPhotoService::class);
 
-        return $properties->map(function (array $property) use ($photos) {
+        // Only a console run may go and fetch; a page request uses the cache.
+        $blocking = app()->runningInConsole();
+
+        return $properties->map(function (array $property) use ($photos, $blocking) {
             $hasPhotos = ! empty($property['all_photos'])
                 || ! empty($property['photos'])
                 || (! empty($property['first_photo_url']) && $property['first_photo_url'] !== 'N/A');
@@ -305,7 +347,12 @@ class ScrapedListingsApiService
             }
 
             try {
-                $ids = $photos->photosForRoom($folder, $property['source_room'] ?? null);
+                // In a web request, only what is already cached: a page load
+                // must never wait on Drive. The warm-up command and the
+                // scheduler do the fetching.
+                $ids = $blocking
+                    ? $photos->photosForRoom($folder, $property['source_room'] ?? null)
+                    : $photos->cachedPhotosForRoom($folder, $property['source_room'] ?? null);
             } catch (\Throwable $e) {
                 // A folder we cannot read must not take the whole feed down.
                 Log::warning('Drive photo lookup failed', [
