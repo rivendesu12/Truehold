@@ -35,11 +35,15 @@ class AgentSearchAssistant
     ];
 
     /**
-     * Rough tube speed including walking and waiting: a minute of travel is
-     * about a third of a mile. Deliberately generous — better to show a few
-     * extra than to hide something an agent would have offered.
+     * Straight-line miles per minute of journey time.
+     *
+     * This is a proxy, not a travel time: it cannot know that Wembley Park is
+     * ~25 minutes on the Jubilee while Canons Park, barely further out, is
+     * closer to 50. 0.22 keeps the circle near zone 3 for a 30-minute ask
+     * rather than throwing it out to 10 miles, and callers are told the figure
+     * is a distance so it is never presented as a journey time.
      */
-    private const MILES_PER_MINUTE = 0.33;
+    private const MILES_PER_MINUTE = 0.22;
 
     /** How far to widen when an exact area match finds nothing, in order. */
     private const WIDEN_MILES = 2.0;
@@ -228,8 +232,12 @@ SYS;
         $radius = $spec['radius_miles'] ?? null;
         $center = $this->resolveLandmark($spec['near_landmark'] ?? null);
 
+        // The brief can carry two distance constraints at once — "up to zone 3"
+        // and "within 30 minutes of Bond Street". Honour the tighter of the two
+        // rather than letting one overwrite the other.
         if ($center && ! empty($spec['minutes_from_landmark'])) {
-            $radius = round($spec['minutes_from_landmark'] * self::MILES_PER_MINUTE, 2);
+            $fromMinutes = round($spec['minutes_from_landmark'] * self::MILES_PER_MINUTE, 2);
+            $radius = $radius ? min((float) $radius, $fromMinutes) : $fromMinutes;
         }
 
         // "near Canary Wharf" with no distance given still has to mean near it.

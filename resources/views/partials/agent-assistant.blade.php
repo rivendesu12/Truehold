@@ -114,6 +114,7 @@
             if (data.explanation) html += '<p class="th-ask__note">' + esc(data.explanation) + '</p>';
             html += '<p class="th-ask__hint"><strong>' + data.matched + '</strong> match'
                  + (data.matched === 1 ? '' : 'es')
+                 + (data.radius ? ' within <strong>' + data.radius + ' miles</strong> straight-line' : '')
                  + (data.widened ? ' <em>(nothing exactly there — showing nearby)</em>' : '')
                  + ((data.relaxed || []).includes('bedrooms') ? ' <em>(we don\'t hold bedroom counts for these)</em>' : '')
                  + (data.commission_only ? ', commission-paying only' : '')
