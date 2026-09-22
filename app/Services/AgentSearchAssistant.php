@@ -169,7 +169,9 @@ Rules:
   "half an hour into the City" sets `near_landmark` and
   `minutes_from_landmark`, not `region`.
 - `pets` true if they need pets allowed.
-- `garden`, `parking` true only if asked for.
+- `garden`, `parking` true whenever they express any wish for one, including
+  a soft one ("a garden would be nice"). Set it rather than dropping it: if
+  nothing matches, the search relaxes it and tells the agent it did.
 - `furnished` true or false when they say; null when they do not care.
 - `no_deposit` true for "no deposit", "zero deposit". `max_deposit` for a
   stated figure.
@@ -763,6 +765,16 @@ SYS;
                 $size = $p['house_size'] ?? $p['total_rooms'] ?? null;
                 return is_numeric($size) && (int) $size <= $limit;
             });
+        }
+
+        // The sources record size and en-suite in one field — its values are
+        // double, single and ensuite — so an advertiser picks one and "en-suite
+        // double" cannot be expressed. Asking for both is unsatisfiable, and
+        // the en-suite is the part a client actually cares about, so the size
+        // is dropped rather than returning nothing.
+        if (! empty($spec['ensuite_only'])
+            && in_array(strtolower((string) ($spec['room_type'] ?? '')), ['double', 'single', 'twin'], true)) {
+            unset($spec['room_type']);
         }
 
         if (! empty($spec['room_type'])) {
