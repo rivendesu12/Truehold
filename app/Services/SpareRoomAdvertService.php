@@ -44,6 +44,14 @@ class SpareRoomAdvertService
             return collect();
         }
 
+        // Crawling is dozens of requests to someone else's site, several
+        // seconds apart by design. Never during a page load: a web request
+        // reads the cache and, if it is cold, serves without these rooms
+        // until the scheduled warm-up fills it in.
+        if (! app()->runningInConsole()) {
+            return collect(Cache::get(self::CACHE_KEY, []));
+        }
+
         return Cache::remember(
             self::CACHE_KEY,
             (int) config('suppliers.spareroom.cache_timeout', 1800),

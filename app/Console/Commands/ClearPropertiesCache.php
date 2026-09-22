@@ -22,7 +22,13 @@ class ClearPropertiesCache extends Command
         app(\App\Services\SorevaSheetService::class)->clearCache();
         app(\App\Services\SpareRoomAdvertService::class)->clearCache();
 
-        $this->info('Properties cache cleared successfully!');
+        // Clearing and walking away leaves the next visitor to rebuild the
+        // feed — which is exactly the wait this is supposed to prevent. Rebuild
+        // it here, where taking a few seconds costs nobody anything.
+        $count = $apiService->getAllProperties()->count();
+
+        $this->info("Properties cache refreshed: {$count} listings.");
+
         return 0;
     }
 }

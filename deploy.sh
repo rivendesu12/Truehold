@@ -16,8 +16,20 @@ echo "==> Running migrations"
 php artisan migrate --force
 
 echo "==> Rebuilding caches"
-php artisan optimize:clear
-php artisan optimize
+# Deliberately not optimize:clear — that wipes the application cache too, and
+# the application cache is where the property feed, the transport annotations
+# and the supplier photo index live. Clearing them leaves the next visitor
+# rebuilding the lot, which meant a 27-second page load after a deploy.
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+echo "==> Refreshing the property feed (so no visitor has to)"
+php artisan photos:warm || true
+php artisan properties:clear-cache || true
 
 echo "==> Fixing permissions"
 chown -R www-data:www-data storage bootstrap/cache

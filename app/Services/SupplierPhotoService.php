@@ -256,7 +256,19 @@ class SupplierPhotoService
 
     public function isAllowed(string $fileId): bool
     {
-        return isset(Cache::get(self::ALLOWED_KEY, [])[$fileId]);
+        if (isset(Cache::get(self::ALLOWED_KEY, [])[$fileId])) {
+            return true;
+        }
+
+        // The allowlist lives in the cache, and a deploy clears the cache —
+        // which made every supplier photograph 404 until the next warm-up.
+        // A file in our own cache directory is proof we resolved and
+        // downloaded it from a folder we were indexing, so it stays servable.
+        if (! preg_match('/^[A-Za-z0-9_-]{10,}$/', $fileId)) {
+            return false;
+        }
+
+        return is_file(storage_path('app/supplier-photos/' . $fileId));
     }
 
     /**
