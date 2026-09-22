@@ -61,16 +61,26 @@ it('starts fresh after New search', function () {
     expect($seen[1])->toBeNull();
 });
 
-it('forgets the last search after 30 minutes', function () {
+it('forgets the last search after 15 minutes', function () {
     $seen = [];
     fakeAssistant($seen);
     $this->actingAs(User::factory()->create());
 
     $this->postJson('/agent-search', ['q' => 'east london up to zone 3'])->assertOk();
-    $this->travel(31)->minutes();
+    $this->travel(16)->minutes();
     $this->postJson('/agent-search', ['q' => 'max 650'])->assertOk();
 
     expect($seen[1])->toBeNull();
+});
+
+it('still remembers at 14 minutes', function () {
+    $seen = [];
+    fakeAssistant($seen);
+    $this->actingAs(User::factory()->create());
+
+    $this->postJson('/agent-search', ['q' => 'east london up to zone 3'])->assertOk();
+    $this->travel(14)->minutes();
+    $this->postJson('/agent-search', ['q' => 'max 650'])->assertOk()->assertJson(['refined' => true]);
 });
 
 it('leaves the search alone when the agent is only chatting', function () {

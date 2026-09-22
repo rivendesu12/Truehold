@@ -72,11 +72,11 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
     $locations = $feed->pluck('location')->filter()->unique()->values()->all();
 
     // The agent's last search, so "max 650" refines it instead of starting
-    // over. Kept 30 minutes, per session; "New search" in the panel drops it.
+    // over. Kept 15 minutes, per session; "New search" in the panel drops it.
     $previous = null;
     if (! $request->boolean('fresh')) {
         $last = $request->session()->get('sigou.last');
-        if (is_array($last) && ($last['at'] ?? 0) > now()->subMinutes(30)->timestamp) {
+        if (is_array($last) && ($last['at'] ?? 0) > now()->subMinutes(15)->timestamp) {
             $previous = $last['filters'] ?? null;
         }
     }
