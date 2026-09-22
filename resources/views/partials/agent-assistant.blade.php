@@ -125,6 +125,9 @@
    light glows, eyes go heavy), arm down, head back, blow. */
 .th-sigou:is([data-state=thinking],[data-state=vape]) .sg-vape{display:inline}
 .th-sigou:is([data-state=thinking],[data-state=vape]) .sg-vape-arm{animation:sgVapeArm 3.2s cubic-bezier(.45,.05,.35,1) infinite}
+/* The arm swings from the shoulder; between drags the vape rests in his
+   hand in front of his chest, never out of shot. */
+.th-sigou .sg-vape-arm{transform-box:view-box;transform-origin:156px 230px}
 .th-sigou:is([data-state=thinking],[data-state=vape]) .sg-led{animation:sgLed 3.2s linear infinite}
 .th-sigou:is([data-state=thinking],[data-state=vape]) .sg-eyes{animation:sgChill 3.2s ease-in-out infinite}
 .th-sigou:is([data-state=thinking],[data-state=vape]) .sg-brows{animation:sgBlowBrows 3.2s ease-in-out infinite}
@@ -162,7 +165,7 @@
 @keyframes sgBreathe{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
 @keyframes sgWaggle{0%,100%{transform:translateY(0)}25%,75%{transform:translateY(-8px)}50%{transform:translateY(0)}}
 @keyframes sgNod{50%{transform:translateY(2px)}}
-@keyframes sgVapeArm{0%,62%,100%{transform:translate(30px,78px) rotate(14deg)}15%{transform:translate(1px,2px) rotate(1deg)}18%,46%{transform:translate(0,0) rotate(0)}}
+@keyframes sgVapeArm{0%,62%,100%{transform:translateY(10px) rotate(-20deg)}15%{transform:translateY(1px) rotate(-1deg)}18%,46%{transform:translateY(0) rotate(0)}}
 @keyframes sgLed{0%,18%,48%,100%{opacity:.25;transform:scale(1)}24%,44%{opacity:1;transform:scale(1.7)}}
 @keyframes sgChill{0%,16%,54%,100%{transform:scaleY(1)}26%,46%{transform:scaleY(.42)}}
 @keyframes sgBlowBrows{0%,52%,100%{transform:translateY(0)}64%,82%{transform:translateY(-5px)}}
@@ -403,6 +406,17 @@
                 body.innerHTML = '<p class="th-ask__err">' + esc(data.error || 'Something went wrong.') + '</p>';
                 Sigou.set('sad', 4000);
                 say(SigouLines.error());
+                return;
+            }
+
+            // Just chatting with him: he answers, no result list.
+            if (data.chat) {
+                body.innerHTML = '';
+                Sigou.set(pick(['happy', 'shocked', 'typing']), 2400);
+                Sigou.waggle();
+                say(SigouLines.result(data, q));
+                lastQ = q;
+                input.value = '';
                 return;
             }
 

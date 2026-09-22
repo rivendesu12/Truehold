@@ -58,7 +58,7 @@ Route::get('/manage/properties', [PropertyManagementController::class, 'index'])
 Route::middleware('auth')->post('/agent-search', function (Request $request) {
     $question = trim((string) $request->input('q', ''));
     if ($question === '') {
-        return response()->json(['error' => 'Ask me something.'], 422);
+        return response()->json(['error' => 'Ask me something, malaka.'], 422);
     }
 
     $assistant = app(\App\Services\AgentSearchAssistant::class);
@@ -74,6 +74,15 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
     $spec = $assistant->parse($question, $locations);
     if (! $spec) {
         return response()->json(['error' => 'Could not understand that — try rephrasing.'], 502);
+    }
+
+    // Just talking to Sigou, not searching: he answers and nothing is filtered.
+    if (! empty($spec['chit_chat'])) {
+        return response()->json([
+            'chat' => true,
+            'sigou' => (string) ($spec['sigou'] ?? ''),
+            'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
+        ]);
     }
 
     $found = $assistant->search($spec, $feed);
@@ -126,6 +135,7 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         'widened' => (bool) ($found['widened'] ?? false),
         'relaxed' => $found['relaxed'] ?? [],
         'commission_only' => (bool) ($spec['commission_only'] ?? false),
+        'sigou' => (string) ($spec['sigou'] ?? ''),
         // What the brief was understood as, so Sigou can comment on it.
         'brief' => array_intersect_key($spec, array_flip([
             'location', 'near_landmark', 'minutes_from_landmark', 'max_price', 'min_price',
