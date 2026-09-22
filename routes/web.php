@@ -116,6 +116,7 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         'matched' => $found['matched'],
         'radius' => $found['radius'],
         'hub' => $found['hub_label'] ?? null,
+        'unplaced' => $found['unplaced'] ?? null,
         'max_journey' => $found['max_journey'] ?? null,
         'widened' => (bool) ($found['widened'] ?? false),
         'relaxed' => $found['relaxed'] ?? [],

@@ -66,6 +66,7 @@
 .th-ask__secnote{margin:0 0 6px;font-size:12px;color:#7b8598}
 .th-ask__why{display:block;color:#8a6d1f;font-size:12px;margin-top:2px}
 .th-ask__jny{display:block;color:#1f6d4a;font-size:12px;margin-top:2px}
+.th-ask__warn{background:#fff6e0;border:1px solid #f0d89a;color:#7a5c12;padding:8px 10px;border-radius:6px;font-size:13px;margin:0 0 10px}
 .th-ask__stn{display:block;color:#7b8598;font-size:12px}
 </style>
 
@@ -176,6 +177,12 @@
                  + (data.widened ? ' <em>(nothing exactly there — showing nearby)</em>' : '')
                  + ((data.relaxed || []).includes('bedrooms') ? ' <em>(bedroom count dropped \u2014 too few listings state one)</em>' : '')
                  + '</p>';
+
+            if (data.unplaced) {
+                html += '<p class="th-ask__warn">We could not place <strong>'
+                     + esc(data.unplaced) + '</strong>, so the results below ignore it. '
+                     + 'Try a station name, or a postcode.</p>';
+            }
 
             html += section('Commission — meets the brief', g.commission);
             html += section('No commission — meets the brief', g.standard);

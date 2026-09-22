@@ -310,6 +310,15 @@ SYS;
             $spec['_hub'] = $hub;
         }
 
+        // The brief named a place we could neither map to a destination we hold
+        // journey times for nor geocode. Silently dropping the constraint turns
+        // "under 40 minutes from the City" into the entire feed, which looks
+        // like an answer and is not one — so say so instead.
+        $unplaced = null;
+        if (! empty($spec['near_landmark']) && ! $hub && ! $center) {
+            $unplaced = (string) $spec['near_landmark'];
+        }
+
         // "near Canary Wharf" with no distance given still has to mean near it.
         if ($center && ! $radius) {
             $radius = self::WIDEN_MILES;
@@ -370,6 +379,17 @@ SYS;
             foreach ($ladder as $step) {
                 $plan[] = ['spec' => $withoutBeds, 'center' => $wideCenter, 'radius' => $step, 'widened' => true, 'relaxed' => ['bedrooms']];
             }
+
+            // A journey brief empties $ladder, so its widened steps have to be
+            // repeated here or "45 minutes from the City in a max 3-bed" would
+            // give up before trying an hour.
+            if (! empty($spec['_max_journey'])) {
+                foreach ([10, 20] as $extra) {
+                    $looser = $withoutBeds;
+                    $looser['_max_journey'] = (int) $spec['_max_journey'] + $extra;
+                    $plan[] = ['spec' => $looser, 'center' => null, 'radius' => null, 'widened' => true, 'relaxed' => ['bedrooms']];
+                }
+            }
         }
 
         $results = collect();
@@ -400,6 +420,7 @@ SYS;
             'commission' => $onBrief->filter(fn ($p) => $this->paysCommission($p))
                 ->sortByDesc(fn ($p) => $p['commission_value'] ?? 0)->values(),
             'standard' => $onBrief->reject(fn ($p) => $this->paysCommission($p))->values(),
+            'unplaced' => $unplaced,
             'hub' => $spec['_hub'] ?? null,
             'hub_label' => ! empty($spec['_hub']) ? $transport->hubLabel($spec['_hub']) : null,
             'max_journey' => $spec['_max_journey'] ?? null,
