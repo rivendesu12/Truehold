@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Anthropic\Client as AnthropicClient;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -40,9 +41,23 @@ class AgentSearchAssistant
      */
     private const MILES_PER_MINUTE = 0.33;
 
+    public function provider(): string
+    {
+        return config('services.assistant.provider', 'openai') === 'anthropic' ? 'anthropic' : 'openai';
+    }
+
+    public function model(): string
+    {
+        return $this->provider() === 'anthropic'
+            ? (string) config('services.anthropic.model', 'claude-haiku-4-5')
+            : (string) config('services.openai.model', 'gpt-5-nano');
+    }
+
     public function isConfigured(): bool
     {
-        return ! empty(config('services.anthropic.api_key'));
+        return $this->provider() === 'anthropic'
+            ? ! empty(config('services.anthropic.api_key'))
+            : ! empty(config('services.openai.api_key'));
     }
 
     /**
@@ -114,27 +129,83 @@ SYS;
         ];
 
         try {
-            $client = new AnthropicClient(apiKey: config('services.anthropic.api_key'));
+            $json = $this->provider() === 'anthropic'
+                ? $this->askAnthropic($system . $locationHint, $question, $schema)
+                : $this->askOpenAi($system . $locationHint, $question, $schema);
 
-            $message = $client->messages->create(
-                model: config('services.anthropic.model', 'claude-haiku-4-5'),
-                maxTokens: 1024,
-                system: $system . $locationHint,
-                messages: [['role' => 'user', 'content' => $question]],
-                outputConfig: ['format' => ['type' => 'json_schema', 'schema' => $schema]],
-            );
-
-            foreach ($message->content as $block) {
-                if ($block->type === 'text') {
-                    $spec = json_decode($block->text, true);
-                    return is_array($spec) ? $spec : null;
-                }
+            if ($json === null) {
+                return null;
             }
+
+            $spec = json_decode($json, true);
+            return is_array($spec) ? $spec : null;
         } catch (\Throwable $e) {
-            Log::warning('Agent search parse failed', ['error' => $e->getMessage()]);
+            Log::warning('Agent search parse failed', [
+                'provider' => $this->provider(),
+                'model' => $this->model(),
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return null;
+    }
+
+    /** Anthropic path, via the official SDK. */
+    protected function askAnthropic(string $system, string $question, array $schema): ?string
+    {
+        $client = new AnthropicClient(apiKey: config('services.anthropic.api_key'));
+
+        $message = $client->messages->create(
+            model: $this->model(),
+            maxTokens: 1024,
+            system: $system,
+            messages: [['role' => 'user', 'content' => $question]],
+            outputConfig: ['format' => ['type' => 'json_schema', 'schema' => $schema]],
+        );
+
+        foreach ($message->content as $block) {
+            if ($block->type === 'text') {
+                return $block->text;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * OpenAI path. Raw HTTP because OpenAI publishes no official PHP SDK;
+     * strict json_schema means the reply is schema-valid, not just JSON-ish.
+     */
+    protected function askOpenAi(string $system, string $question, array $schema): ?string
+    {
+        $response = Http::withToken((string) config('services.openai.api_key'))
+            ->timeout(30)
+            ->acceptJson()
+            ->post('https://api.openai.com/v1/chat/completions', [
+                'model' => $this->model(),
+                'messages' => [
+                    ['role' => 'system', 'content' => $system],
+                    ['role' => 'user', 'content' => $question],
+                ],
+                'response_format' => [
+                    'type' => 'json_schema',
+                    'json_schema' => [
+                        'name' => 'search_filters',
+                        'strict' => true,
+                        'schema' => $schema,
+                    ],
+                ],
+            ]);
+
+        if (! $response->successful()) {
+            Log::warning('OpenAI assistant call failed', [
+                'status' => $response->status(),
+                'body' => substr($response->body(), 0, 300),
+            ]);
+            return null;
+        }
+
+        return $response->json('choices.0.message.content');
     }
 
     /**

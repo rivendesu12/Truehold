@@ -79,6 +79,7 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
     $found = $assistant->search($spec, $feed);
 
     return response()->json([
+        'model' => $assistant->provider() . '/' . $assistant->model(),
         'explanation' => $spec['explanation'] ?? '',
         'matched' => $found['matched'],
         'radius' => $found['radius'],

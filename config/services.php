@@ -101,9 +101,24 @@ return [
     // Claude, for the agent search assistant. Haiku is the cheapest capable
     // model for turning a request into filters ($1/$5 per million tokens);
     // set ANTHROPIC_MODEL to claude-sonnet-5 or claude-opus-5 for more nuance.
+    // Agent search assistant. The job is structured parsing against a fixed
+    // JSON schema, which small models do well, so the cheapest tier is a
+    // reasonable fit. Switch provider/model with env alone.
+    //   openai  gpt-5-nano      $0.05/$0.40 per 1M  (~GBP 0.09 / 1k searches)
+    //   openai  gpt-5.6-luna    $0.20/$1.20         (~GBP 0.30 / 1k)
+    //   anthropic claude-haiku-4-5  $1.00/$5.00     (~GBP 1.30 / 1k)
+    'assistant' => [
+        'provider' => env('ASSISTANT_PROVIDER', 'openai'),
+    ],
+
     'anthropic' => [
         'api_key' => env('ANTHROPIC_API_KEY'),
         'model' => env('ANTHROPIC_MODEL', 'claude-haiku-4-5'),
+    ],
+
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'model' => env('OPENAI_MODEL', 'gpt-5-nano'),
     ],
 
     'twilio' => [
