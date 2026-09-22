@@ -129,8 +129,12 @@ class TestAgentAssistant extends Command
             'expect' => ['smokers' => true, 'max_price' => 850],
         ],
         [
+            // The feed holds nine whole properties, one of them a two-bed in
+            // zone 5, and none with parking. There is no answer to give, so
+            // what matters is that the agent is told why.
             'q' => 'two bed flat with parking in zone 3 or 4, up to 2000',
             'expect' => ['property_types' => ['full_property'], 'parking' => true, 'max_zone' => 4, 'max_price' => 2000],
+            'expect_none' => true,
         ],
         [
             // We hold nothing on pets: this must be reported, not answered.
@@ -238,9 +242,15 @@ class TestAgentAssistant extends Command
 
             $found = $assistant->search($spec, $properties);
 
-            // Parsing correctly but returning nothing is still a failure from
-            // the agent's point of view, unless we genuinely hold no such stock.
-            if (empty($misses) && $found['matched'] === 0) {
+            // A brief can be parsed perfectly and still have no answer in the
+            // stock we hold. That is only acceptable when the search explains
+            // itself, which is what expect_none asserts; otherwise returning
+            // nothing is a failure from the agent's point of view.
+            if (! empty($case['expect_none'])) {
+                if (empty($found['why_none'])) {
+                    $misses[] = 'zero results with no explanation';
+                }
+            } elseif (empty($misses) && $found['matched'] === 0) {
                 $misses[] = 'parsed fine but zero results';
             }
 

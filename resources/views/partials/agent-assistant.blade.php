@@ -203,7 +203,10 @@
             html += section('Other options worth offering', g.alternatives,
                             'Each of these misses the brief in one way, noted underneath.');
 
-            if (!onBrief && !g.alternatives.length) {
+            if (!onBrief && (data.why_none || []).length) {
+                html += '<p class="th-ask__warn">Nothing matched. In the whole feed, '
+                     + esc(data.why_none.join('; ')) + '.</p>';
+            } else if (!onBrief && !g.alternatives.length) {
                 html += '<p class="th-ask__hint">Nothing matched, even stretched. Try widening the area or the budget.</p>';
             }
 

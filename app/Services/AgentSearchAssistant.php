@@ -517,6 +517,7 @@ SYS;
             'standard' => $onBrief->reject(fn ($p) => $this->paysCommission($p))->values(),
             'unplaced' => $unplaced,
             'unanswerable' => $this->unanswerable($spec, $properties),
+            'why_none' => $onBrief->isEmpty() ? $this->diagnose($spec, $properties) : [],
             'hub' => $spec['_hub'] ?? null,
             'hub_label' => ! empty($spec['_hub']) ? $transport->hubLabel($spec['_hub']) : null,
             'max_journey' => $spec['_max_journey'] ?? null,
@@ -898,6 +899,90 @@ SYS;
         }
 
         return $results;
+    }
+
+    /**
+     * When nothing matched, say which condition is doing the damage.
+     *
+     * "0 results" tells an agent nothing about whether to go back to the
+     * client. "We hold 9 whole properties in total, and none of them have
+     * parking" tells them the brief is fine and the stock is not.
+     *
+     * Each condition is counted on its own against the whole feed, so this
+     * reports scarcity rather than guessing at the interaction between them.
+     *
+     * @return array<int, string>
+     */
+    protected function diagnose(array $spec, Collection $properties): array
+    {
+        $total = $properties->count();
+        if ($total === 0) {
+            return [];
+        }
+
+        $singles = [];
+
+        foreach ($this->conditionLabels($spec) as $key => $label) {
+            $alone = $this->applyPreferences($properties, [$key => $spec[$key]]);
+            $singles[] = ['label' => $label, 'count' => $alone->count()];
+        }
+
+        usort($singles, fn ($a, $b) => $a['count'] <=> $b['count']);
+
+        $out = [];
+        foreach (array_slice($singles, 0, 3) as $single) {
+            // Only worth saying when the condition is genuinely scarce.
+            if ($single['count'] <= max(5, (int) ($total * 0.05))) {
+                $out[] = $single['count'] === 0
+                    ? "nothing at all matches {$single['label']}"
+                    : "only {$single['count']} listings match {$single['label']}";
+            }
+        }
+
+        return $out;
+    }
+
+    /** Human wording for each condition the brief actually set. */
+    protected function conditionLabels(array $spec): array
+    {
+        $labels = [];
+
+        $describe = [
+            'property_types' => fn ($v) => implode(' or ', array_map(fn ($t) => str_replace('_', ' ', $t), (array) $v)),
+            'max_price' => fn ($v) => 'a price under GBP ' . number_format((float) $v),
+            'min_price' => fn ($v) => 'a price over GBP ' . number_format((float) $v),
+            'max_zone' => fn ($v) => 'zone ' . (int) $v . ' or closer',
+            'max_walk_to_station' => fn ($v) => 'a walk of ' . (int) $v . ' minutes or less',
+            'min_bedrooms' => fn ($v) => (int) $v . '+ bedrooms',
+            'max_bedrooms' => fn ($v) => (int) $v . ' bedrooms or fewer',
+            'max_house_size' => fn ($v) => 'a house of ' . (int) $v . ' rooms or fewer',
+            'ensuite_only' => fn () => 'an en-suite',
+            'room_type' => fn ($v) => 'a ' . $v . ' room',
+            'region' => fn ($v) => str_replace('_', ' ', $v) . ' London',
+            'bills_included' => fn () => 'bills included',
+            'couples' => fn () => 'couples',
+            'smokers' => fn () => 'smokers',
+            'garden' => fn () => 'a garden',
+            'parking' => fn () => 'parking',
+            'no_deposit' => fn () => 'no deposit',
+            'max_deposit' => fn ($v) => 'a deposit under GBP ' . number_format((float) $v),
+            'available_by' => fn ($v) => 'availability by ' . $v,
+            'max_commitment_months' => fn ($v) => 'a minimum term of ' . (int) $v . ' months or less',
+            'good_transport' => fn () => 'good transport links',
+            'lines' => fn ($v) => 'the ' . implode(' or ', (array) $v),
+            'commission_only' => fn () => 'a commission-paying agency',
+            'agencies' => fn ($v) => implode(' or ', (array) $v),
+        ];
+
+        foreach ($describe as $key => $format) {
+            $value = $spec[$key] ?? null;
+            if ($value === null || $value === false || $value === [] || $value === '') {
+                continue;
+            }
+            $labels[$key] = $format($value);
+        }
+
+        return $labels;
     }
 
     /**
