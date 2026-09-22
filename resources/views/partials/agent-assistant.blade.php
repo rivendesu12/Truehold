@@ -488,7 +488,7 @@
             + field('fee', 'Sourcing fee (£)',
                 '<input name="fee" type="number" min="1" step="1" required value="' + esc(a.fee == null ? '' : a.fee) + '">', '£220 cash · £250 transfer')
             + field('date', 'Date', '<input name="date" type="date" value="' + esc(a.date || '') + '">')
-            + field('sign_as', 'Signed by (the Sourcer)', '<input name="sign_as" maxlength="60" value="' + esc(a.sign_as || '') + '">')
+            + field('sign_as', 'Your name (signs as the Sourcer)', '<input name="sign_as" required maxlength="60" placeholder="e.g. Giacomo" value="' + esc(a.sign_as || '') + '">')
             + '<p class="th-ask__dealnote">Referral bonus £' + esc(a.referral) + ' per referred client, filled in for you. The client signs by hand.</p>'
             + '<div class="th-ask__dealbtns"><button type="submit" class="th-ask__dealbtn">Download PDF</button>'
             + '<button type="submit" class="th-ask__dealbtn th-ask__dealbtn--alt" formaction="' + esc(a.invoice_url || '/tools/invoice/pdf') + '">Invoice too</button>'

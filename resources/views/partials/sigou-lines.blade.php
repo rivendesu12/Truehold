@@ -192,6 +192,7 @@ window.SigouLines = (function () {
         if (m.includes('client_name') && m.includes('fee')) return 'Ela, full name as on the ID? And cash 220 or transfer 250?';
         if (m.includes('client_name')) return 'Full name as on the ID, malaka. Spell it right';
         if (m.includes('fee')) return 'Cash 220 or transfer 250?';
+        if (m.includes('sign_as')) return 'And who signs, you? Put your name bro';
         return pick(['Ready bro. Check the name with the ID and download', 'Agreement ready. Now get the signature before he change mind 😂']);
     };
 

@@ -41,7 +41,7 @@ it('fills in the agreement and returns a PDF signed by the agent', function () {
     $this->actingAs(User::factory()->create(['name' => 'giacomo chaparro']));
 
     $response = $this->post('/tools/sourcing-agreement/pdf', [
-        'client_name' => 'Maria Lopez', 'fee' => 250, 'date' => '2026-09-22',
+        'client_name' => 'Maria Lopez', 'fee' => 250, 'date' => '2026-09-22', 'sign_as' => 'Giacomo',
     ]);
 
     $response->assertOk()->assertHeader('Content-Type', 'application/pdf');
@@ -52,8 +52,10 @@ it('fills in the agreement and returns a PDF signed by the agent', function () {
 it('will not make an agreement without a name and a fee', function () {
     $this->actingAs(User::factory()->create());
 
-    $this->post('/tools/sourcing-agreement/pdf', ['fee' => 250])->assertSessionHasErrors('client_name');
-    $this->post('/tools/sourcing-agreement/pdf', ['client_name' => 'Maria Lopez'])->assertSessionHasErrors('fee');
+    $this->post('/tools/sourcing-agreement/pdf', ['fee' => 250, 'sign_as' => 'Giacomo'])->assertSessionHasErrors('client_name');
+    $this->post('/tools/sourcing-agreement/pdf', ['client_name' => 'Maria Lopez', 'sign_as' => 'Giacomo'])->assertSessionHasErrors('fee');
+    // Agents share a login, so the signer is never taken from it.
+    $this->post('/tools/sourcing-agreement/pdf', ['client_name' => 'Maria Lopez', 'fee' => 250])->assertSessionHasErrors('sign_as');
 });
 
 it('serves the blank template', function () {
@@ -69,18 +71,20 @@ it('asks for what is missing, then completes it from the answer', function () {
         'make me a sourcing agreement' => [],
         'Maria Lopez, transfer' => ['client_name' => 'Maria Lopez', 'fee' => 250],
     ]);
-    $this->actingAs(User::factory()->create(['name' => 'giacomo chaparro']));
+    // The shared office login: its name must never end up as the signature.
+    $this->actingAs(User::factory()->create(['name' => 'Agent']));
 
     $this->postJson('/agent-search', ['q' => 'make me a sourcing agreement'])
         ->assertOk()
         ->assertJsonPath('agreement.ready', false)
-        ->assertJsonPath('agreement.missing', ['client_name', 'fee'])
-        // Signed by whoever is logged in, by first name, as the office does.
-        ->assertJsonPath('agreement.sign_as', 'Giacomo');
+        ->assertJsonPath('agreement.missing', ['client_name', 'fee', 'sign_as'])
+        ->assertJsonPath('agreement.sign_as', null);
 
     $this->postJson('/agent-search', ['q' => 'Maria Lopez, transfer'])
         ->assertOk()
-        ->assertJsonPath('agreement.ready', true)
+        ->assertJsonPath('agreement.ready', false)
+        ->assertJsonPath('agreement.missing', ['sign_as'])
+        ->assertJsonPath('sigou', 'All good, just who signs? Put your name bro')
         ->assertJsonPath('agreement.client_name', 'Maria Lopez')
         ->assertJsonPath('agreement.fee', 250)
         ->assertJsonPath('agreement.referral', 50)
@@ -88,7 +92,19 @@ it('asks for what is missing, then completes it from the answer', function () {
 
     // The second message was sent with what the first one collected.
     expect($seen[0])->toBeNull();
-    expect($seen[1])->toMatchArray(['client_name' => null, 'fee' => null, 'sign_as' => 'Giacomo']);
+    expect($seen[1])->toMatchArray(['client_name' => null, 'fee' => null, 'sign_as' => null]);
+});
+
+it('remembers who signed on this device for the next agreement', function () {
+    $seen = [];
+    fakeAgreementAssistant($seen, ['agreement for Anna Nowak 250' => ['client_name' => 'Anna Nowak', 'fee' => 250]]);
+    $this->actingAs(User::factory()->create(['name' => 'Agent']));
+
+    $this->post('/tools/sourcing-agreement/pdf', ['client_name' => 'Maria Lopez', 'fee' => 250, 'sign_as' => 'Emanuela'])->assertOk();
+
+    $this->postJson('/agent-search', ['q' => 'agreement for Anna Nowak 250'])
+        ->assertJsonPath('agreement.sign_as', 'Emanuela')
+        ->assertJsonPath('agreement.ready', true);
 });
 
 it('signs as another agent when asked', function () {

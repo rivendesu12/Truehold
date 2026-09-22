@@ -381,16 +381,17 @@ Rules:
     "bank" means 250 when no number is given; else null.
   * `date` an ISO date only if they give one ("date it tomorrow", "for the
     1st"), else null (the agreement is dated today).
-  * `sign_as` the agent who signs when they name one ("sign as Alex",
-    "Emanuela's client"), else null (the agent asking signs).
+  * `sign_as` the agent who signs when they give a name ("sign as Alex",
+    "I'm Giacomo", "Emanuela's client"), else null. Never guess one.
   The message may start with PENDING AGREEMENT: details already collected
   for an agreement in progress. The agent is answering Sigou, so merge the
   new message into those details and keep `wanted` true, unless they clearly
   moved on to something else. With no agreement asked, `wanted` false and
   the rest null.
-  Sigou's `sigou` line: if the name or fee is missing, ask for exactly what
-  is missing in his voice ("full name as on the ID? and cash 220 or transfer
-  250?"); if everything is there, say it is ready.
+  Sigou's `sigou` line: if the client's name or the fee is missing, ask for
+  exactly that in his voice ("full name as on the ID? and cash 220 or
+  transfer 250?"); if everything is there, say it is ready. (The page asks
+  for the signing agent's name itself when it does not know it.)
 - `invoice` is for the office's sourcing-fee invoice (what the client gets
   for the fee), not a search. `invoice.wanted` true for "invoice for...",
   "make an invoice", "receipt for Maria". Then leave every search filter

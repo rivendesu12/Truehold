@@ -181,12 +181,23 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
             'client_name' => $given('client_name') ? trim((string) $given('client_name')) : null,
             'fee' => is_numeric($given('fee')) ? (float) $given('fee') : null,
             'date' => $date,
-            'sign_as' => $given('sign_as') ?: \Illuminate\Support\Str::of((string) $request->user()->name)->trim()->before(' ')->ucfirst()->toString(),
+            // Never the login: agents share one ("Agent"). Asked once, then
+            // remembered on that device from the last agreement they signed.
+            'sign_as' => $given('sign_as') ?: $request->session()->get('sigou.signer'),
         ];
-        $missing = array_keys(array_filter(['client_name' => ! $details['client_name'], 'fee' => $details['fee'] === null]));
+        $missing = array_keys(array_filter([
+            'client_name' => ! $details['client_name'],
+            'fee' => $details['fee'] === null,
+            'sign_as' => ! $details['sign_as'],
+        ]));
 
         if ($missing) {
             $request->session()->put('sigou.agreement', ['details' => $details, 'at' => now()->timestamp]);
+        }
+        // The model cannot know who is at the keyboard, so when that is all
+        // that is missing it must not say "ready".
+        if ($missing === ['sign_as']) {
+            $spec['sigou'] = 'All good, just who signs? Put your name bro';
         }
 
         return response()->json([
@@ -301,10 +312,11 @@ Route::middleware('auth')->post('/tools/sourcing-agreement/pdf', function (Reque
         'client_name' => ['required', 'string', 'max:120'],
         'fee' => ['required', 'numeric', 'min:1', 'max:10000'],
         'date' => ['nullable', 'date'],
-        'sign_as' => ['nullable', 'string', 'max:60'],
-    ]);
+        'sign_as' => ['required', 'string', 'max:60'],
+    ], ['sign_as.required' => 'Whose name goes on it? Fill in the agent signing as the Sourcer.']);
 
-    $sourcer = trim((string) ($data['sign_as'] ?? '')) ?: \Illuminate\Support\Str::of((string) $request->user()->name)->trim()->before(' ')->ucfirst()->toString();
+    $sourcer = trim($data['sign_as']);
+    $request->session()->put('sigou.signer', $sourcer);
     $agreement = app(\App\Services\SourcingAgreement::class);
 
     return response($agreement->make(
@@ -336,7 +348,7 @@ Route::middleware('auth')->post('/tools/invoice/pdf', function (Request $request
         $data['client_name'],
         (float) $data['amount'],
         \Carbon\Carbon::parse($data['date'] ?? now()),
-        \Illuminate\Support\Str::of((string) $request->user()->name)->trim()->before(' ')->ucfirst()->toString(),
+        $request->session()->get('sigou.signer'),
         ! in_array((string) ($data['paid'] ?? '1'), ['0', 'false'], true),
     );
 
