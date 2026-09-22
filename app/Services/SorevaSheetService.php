@@ -43,11 +43,51 @@ class SorevaSheetService
             return collect();
         }
 
-        return Cache::remember(
-            self::CACHE_KEY,
-            (int) config('suppliers.soreva.cache_timeout', 900),
-            fn () => $this->fetch()
-        );
+        $cached = Cache::get(self::CACHE_KEY);
+
+        if ($cached !== null) {
+            return collect($cached);
+        }
+
+        $rows = $this->fetch();
+
+        // An empty read is either a genuine empty sheet or a failure we have
+        // already logged; either way the last good copy beats a blank site.
+        if ($rows->isEmpty()) {
+            $previous = $this->lastGood();
+
+            if ($previous) {
+                Log::warning('Soreva sheet came back empty; serving the last good copy', [
+                    'rooms' => count($previous),
+                ]);
+
+                return collect($previous);
+            }
+        }
+
+        Cache::put(self::CACHE_KEY, $rows->all(), (int) config('suppliers.soreva.cache_timeout', 900));
+        $this->rememberLastGood($rows);
+
+        return $rows;
+    }
+
+
+    /**
+     * The last result this source returned successfully, kept well beyond the
+     * working cache so a bad afternoon cannot empty the site.
+     *
+     * @return array<int, array>
+     */
+    protected function lastGood(): array
+    {
+        return (array) Cache::get(self::CACHE_KEY . '_last_good', []);
+    }
+
+    protected function rememberLastGood(Collection $rows): void
+    {
+        if ($rows->isNotEmpty()) {
+            Cache::put(self::CACHE_KEY . '_last_good', $rows->all(), now()->addDays(14));
+        }
     }
 
     public function clearCache(): void

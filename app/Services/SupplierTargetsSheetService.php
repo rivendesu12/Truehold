@@ -64,6 +64,25 @@ class SupplierTargetsSheetService
             && ! empty(config('services.supplier_targets.credentials_path'));
     }
 
+
+    /**
+     * The last result this source returned successfully, kept well beyond the
+     * working cache so a bad afternoon cannot empty the site.
+     *
+     * @return array<int, array>
+     */
+    protected function lastGood(): array
+    {
+        return (array) Cache::get(self::CACHE_KEY . '_last_good', []);
+    }
+
+    protected function rememberLastGood(Collection $rows): void
+    {
+        if ($rows->isNotEmpty()) {
+            Cache::put(self::CACHE_KEY . '_last_good', $rows->all(), now()->addDays(14));
+        }
+    }
+
     public function clearCache(): void
     {
         Cache::forget(self::CACHE_KEY);
@@ -79,14 +98,28 @@ class SupplierTargetsSheetService
             return collect();
         }
 
-        return Cache::remember(self::CACHE_KEY, $this->cacheTimeout, function () {
-            try {
-                return $this->fetch();
-            } catch (\Throwable $e) {
-                Log::error('Supplier targets sheet read failed', ['error' => $e->getMessage()]);
-                return collect();
-            }
-        });
+        $cached = Cache::get(self::CACHE_KEY);
+
+        if ($cached !== null) {
+            return collect($cached);
+        }
+
+        try {
+            $rows = $this->fetch();
+        } catch (\Throwable $e) {
+            Log::error('Supplier targets sheet read failed', ['error' => $e->getMessage()]);
+
+            // Never cache a failure. Storing an empty result took every
+            // Banksia, AP and Javier room off the site and kept them off,
+            // because each retry failed the same way and re-cached the
+            // emptiness. The last good copy is far better than nothing.
+            return collect($this->lastGood());
+        }
+
+        Cache::put(self::CACHE_KEY, $rows->all(), $this->cacheTimeout);
+        $this->rememberLastGood($rows);
+
+        return $rows;
     }
 
     protected function fetch(): Collection

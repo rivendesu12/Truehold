@@ -82,7 +82,7 @@ class SupplierPhotoService
 
         // Re-affirm on a cache hit too: resolve() is what normally allow-lists
         // these ids, and it does not run when the ids come from the cache.
-        $this->rememberAllowed($ids);
+        $this->allowIds($ids);
 
         return $ids;
     }
