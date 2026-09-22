@@ -872,6 +872,11 @@ class PropertyController extends Controller
                 'first_photo_url' => $property->first_photo_url,
                 'high_quality_photos_array' => $property->high_quality_photos_array,
                 'photos' => $property->photos_array ?? null,
+                // Used on the card and in the info window instead of the
+                // postcode, which tells an agent very little at a glance.
+                'nearest_station' => $property->nearest_station ?? null,
+                'walk_minutes' => $property->walk_minutes ?? null,
+                'zone' => $property->zone ?? null,
                 'total_rooms' => $property->total_rooms ?? '',
                 'room_count' => $property->total_rooms ?? '',
             ];

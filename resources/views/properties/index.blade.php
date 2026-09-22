@@ -1849,7 +1849,10 @@ button {
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                                     </svg>
-                                    {{ $property->location ?: 'Location not specified' }}
+                                    {{-- The nearest station rather than the postcode: "London
+                                         SE27" says almost nothing at a glance, "West Norwood,
+                                         7 min walk · SE27" places the room straight away. --}}
+                                    {{ \App\Support\PropertyPlace::describe($property) }}
                                 </div>
                                     @if($property->description && $property->description !== 'N/A')
                                     <p class="property-description">{{ Str::limit($property->description, 100) }}</p>
