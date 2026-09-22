@@ -29,7 +29,19 @@ if ! swapon --show | grep -q /swapfile; then
 fi
 
 echo "==> [4/9] PHP $PHP (matches local dev exactly)"
-add-apt-repository -y ppa:ondrej/php >/dev/null 2>&1
+# Use packages.sury.org rather than ppa:ondrej/php. Same maintainer, but the PPA
+# route depends on Launchpad's API and PPA hosting, which returned 500/503 during
+# the first provision of this box. sury.org is self-hosted and has a noble build.
+# Drop any stale Launchpad PPA source; an unsigned repo makes apt-get update
+# hard-fail, which aborts this script under `set -e`.
+{ grep -rl "launchpadcontent" /etc/apt/sources.list.d/ 2>/dev/null || true; } | xargs -r rm -f
+mkdir -p /etc/apt/keyrings
+if [ ! -s /etc/apt/keyrings/sury-php.gpg ]; then
+  curl -fsSL --max-time 30 https://packages.sury.org/php/apt.gpg -o /etc/apt/keyrings/sury-php.gpg
+fi
+. /etc/os-release
+echo "deb [signed-by=/etc/apt/keyrings/sury-php.gpg] https://packages.sury.org/php/ ${VERSION_CODENAME} main" \
+  > /etc/apt/sources.list.d/sury-php.list
 apt-get update -qq
 apt-get install -y -qq \
   php$PHP-fpm php$PHP-cli php$PHP-mbstring php$PHP-xml php$PHP-curl \

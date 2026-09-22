@@ -27,6 +27,9 @@ class ScrapedListingsApiService
     protected ?string $apiKey;
     protected int $cacheTimeout;
     protected ?string $portalDomain;
+    protected array $availableStatuses;
+    protected bool $includeBlankStatus;
+    protected int $maxAgeDays;
 
     public function __construct()
     {
@@ -34,6 +37,47 @@ class ScrapedListingsApiService
         $this->apiKey = config('services.harborops.api_key');
         $this->cacheTimeout = (int) config('services.harborops.cache_timeout', 300);
         $this->portalDomain = config('services.harborops.portal_domain');
+
+        $this->availableStatuses = collect(explode(',', (string) config('services.harborops.available_statuses', 'available')))
+            ->map(fn ($v) => strtolower(trim($v)))
+            ->filter()
+            ->all();
+        $this->includeBlankStatus = (bool) config('services.harborops.include_blank_status', false);
+        $this->maxAgeDays = (int) config('services.harborops.max_age_days', 0);
+    }
+
+    /**
+     * Should this listing be shown?
+     *
+     * The feed has no status meaning "let", so availability is an allowlist of
+     * statuses plus an optional freshness cut-off.
+     */
+    protected function isAvailable(array $property): bool
+    {
+        $status = strtolower(trim((string) ($property['status'] ?? '')));
+
+        if ($status === '') {
+            if (! $this->includeBlankStatus) {
+                return false;
+            }
+        } elseif (! in_array($status, $this->availableStatuses, true)) {
+            return false;
+        }
+
+        if ($this->maxAgeDays > 0) {
+            $seen = $property['updated_at'] ?? $property['created_at'] ?? null;
+            if ($seen) {
+                try {
+                    if (\Carbon\Carbon::parse($seen)->diffInDays(now()) > $this->maxAgeDays) {
+                        return false;
+                    }
+                } catch (\Throwable $e) {
+                    // Unparseable date: keep the listing rather than hide it silently.
+                }
+            }
+        }
+
+        return true;
     }
 
     public static function isConfigured(): bool
@@ -111,7 +155,10 @@ class ScrapedListingsApiService
 
             foreach ($rows as $row) {
                 if (is_array($row)) {
-                    $properties->push($this->mapRowToProperty($row));
+                    $property = $this->mapRowToProperty($row);
+                    if ($this->isAvailable($property)) {
+                        $properties->push($property);
+                    }
                 }
             }
 
@@ -166,7 +213,9 @@ class ScrapedListingsApiService
             ? (int) $row['photo_count']
             : 0;
 
-        $property['status'] = $row['status'] ?? 'available';
+        $property['status'] = $row['status'] ?? null;
+        $property['updated_at'] = $row['updated_at'] ?? null;
+        $property['created_at'] = $row['created_at'] ?? null;
         $property['updatable'] = false;
 
         return $property;

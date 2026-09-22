@@ -59,6 +59,17 @@ return [
         'cache_timeout' => env('HARBOROPS_CACHE_TIMEOUT', 300), // 5 minutes
         // Portal domain used to build login-gated landlord deep links (/go/landlord/<id>)
         'portal_domain' => env('HARBOROPS_PORTAL_DOMAIN', 'harborops.co.uk'),
+
+        // Only listings whose status is in this list are shown. The upstream feed
+        // has no "let"/"taken" value, so this is an allowlist rather than a blocklist.
+        // Comma-separated, case-insensitive.
+        'available_statuses' => env('HARBOROPS_AVAILABLE_STATUSES', 'available'),
+        // Roughly half the feed has no status at all. Upstream treated blank as
+        // available; set this to true to keep that behaviour.
+        'include_blank_status' => env('HARBOROPS_INCLUDE_BLANK_STATUS', false),
+        // Hide listings the upstream scraper has not re-checked in this many days
+        // (0 disables). Staleness, not status, is what surfaces already-let rooms.
+        'max_age_days' => (int) env('HARBOROPS_MAX_AGE_DAYS', 0),
     ],
 
     'twilio' => [
