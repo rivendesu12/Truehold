@@ -1601,7 +1601,9 @@ button {
                 </div>
     </nav>
 
-    <!-- Hero Header -->
+    {{-- The banner is for visitors. Signed-in agents are here to search, so
+         they go straight to the filters and the rooms. --}}
+    @guest
     <header class="hero-header">
         <div class="hero-background">
             <img src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80"
@@ -1634,6 +1636,7 @@ button {
             </div>
         </div>
     </header>
+    @endguest
 
         <!-- Success Messages -->
         @if(session('success'))
