@@ -92,7 +92,7 @@ Mary while a search runs, rubs his hands on results. Agents only (`@auth`).
 - **The persona must not change the filters.** Check with
   `assistant:test --compare --sigou` (runs every brief with and without him,
   lists filter differences; `false` vs `null` on garden/parking/etc. is
-  harmless, both mean "not asked"). Last run: 34/34 both ways.
+  harmless, both mean "not asked"). Last run: 40/40 both ways.
 
 ## Client vs agent view
 
@@ -119,6 +119,11 @@ gating the Blade alone is not enough.
   silent listings; must-haves (couples, smokers, pets, bills, garden, parking)
   still need a stated yes. The panel no longer shows the "we hold no data"
   box (Giaco: confusing, not wanted); `unanswerable` is still in the JSON.
+- **A description is not a filter; a wish never removes rooms.** "She is a
+  student" once cut 124 listings. Tenant descriptions set nothing; only needs
+  a landlord can refuse on filter (couple, pet, smoker, move-by date). Wishes
+  go in `nice_to_have`, which ranks. No stated date = available now.
+  `assistant:test` has wording-trap cases with a `'none'` expectation.
 - Cards show nearest station + walk, not postcode. A district is shown only when
   the listing's own postcode or text confirms it.
 - Don't trust a district scraped from a shared page — SpareRoom pages include
