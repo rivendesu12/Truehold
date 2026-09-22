@@ -103,7 +103,14 @@ class ScrapedListingsApiService
             // to them — the sheet's own "Available From" gate does.
             $supplier = app(SupplierTargetsSheetService::class)->getAllProperties();
 
-            $all = $this->geocodeMissing($this->fillMissingPrices($feed->concat($supplier)));
+            // Suppliers we source ourselves rather than through Harbor Ops:
+            // Soreva Living's sheet, and landlords who only advertise on
+            // SpareRoom. Both already carry their own availability rules, so
+            // the feed's status allowlist does not apply to them.
+            $direct = app(SorevaSheetService::class)->getAllProperties()
+                ->concat(app(SpareRoomAdvertService::class)->getAllProperties());
+
+            $all = $this->geocodeMissing($this->fillMissingPrices($feed->concat($supplier)->concat($direct)));
 
             // Attach the nearest station, its fare zone and a walking estimate,
             // so "zone 3" and "near a tube" are facts rather than inferences

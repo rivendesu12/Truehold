@@ -15,6 +15,13 @@ class ClearPropertiesCache extends Command
     {
         $apiService->clearCache();
         $sheetsService->clearCache();
+
+        // The directly-sourced suppliers cache separately, so clearing only
+        // the feed would leave their stock an hour stale after a refresh.
+        app(\App\Services\SupplierTargetsSheetService::class)->clearCache();
+        app(\App\Services\SorevaSheetService::class)->clearCache();
+        app(\App\Services\SpareRoomAdvertService::class)->clearCache();
+
         $this->info('Properties cache cleared successfully!');
         return 0;
     }
