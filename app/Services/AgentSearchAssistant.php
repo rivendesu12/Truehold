@@ -297,7 +297,7 @@ SYS;
         $response = Http::withToken((string) config('services.openai.api_key'))
             ->timeout(30)
             ->acceptJson()
-            ->post('https://api.openai.com/v1/chat/completions', [
+            ->post(rtrim((string) config('services.openai.base_url', 'https://api.openai.com/v1'), '/') . '/chat/completions', [
                 'model' => $this->model(),
                 'messages' => [
                     ['role' => 'system', 'content' => $system],

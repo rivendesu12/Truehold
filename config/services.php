@@ -126,6 +126,11 @@ return [
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'model' => env('OPENAI_MODEL', 'gpt-5-nano'),
+        // Any provider exposing an OpenAI-compatible /chat/completions
+        // endpoint can be used by pointing this at their base URL. The
+        // assistant only needs strict JSON-schema output; nothing else here
+        // is OpenAI-specific.
+        'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
     ],
 
     'twilio' => [

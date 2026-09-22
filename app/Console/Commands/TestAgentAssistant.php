@@ -101,6 +101,14 @@ class TestAgentAssistant extends Command
             'expect' => ['max_commitment_months' => 3, 'property_types' => ['rooms'], 'region' => 'east'],
         ],
         [
+            'q' => 'rooms in E14 under 1000',
+            'expect' => ['place' => 'e14', 'max_price' => 1000, 'property_types' => ['rooms']],
+        ],
+        [
+            'q' => 'five minutes from Whitechapel station, ensuite',
+            'expect' => ['place' => 'whitechapel', 'ensuite_only' => true],
+        ],
+        [
             'q' => 'anything in south london under 800',
             'expect' => ['region' => 'south', 'max_price' => 800],
         ],
