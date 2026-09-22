@@ -185,6 +185,16 @@ window.SigouLines = (function () {
         'New one? Ela, tell me',
     ]);
 
-    return {greeting, fresh, poke: () => pick(pokes), nudge: () => pick(nudges), thinking, result, error, offline};
+    // Fallback when the model sent no line of its own for an agreement.
+    const agreement = (a) => {
+        if (a.template) return pick(['Here the blank one bro. Print and go', 'Empty template, ready. Dont lose it like the keys']);
+        const m = a.missing || [];
+        if (m.includes('client_name') && m.includes('fee')) return 'Ela, full name as on the ID? And cash 220 or transfer 250?';
+        if (m.includes('client_name')) return 'Full name as on the ID, malaka. Spell it right';
+        if (m.includes('fee')) return 'Cash 220 or transfer 250?';
+        return pick(['Ready bro. Check the name with the ID and download', 'Agreement ready. Now get the signature before he change mind 😂']);
+    };
+
+    return {greeting, fresh, agreement, poke: () => pick(pokes), nudge: () => pick(nudges), thinking, result, error, offline};
 })();
 </script>

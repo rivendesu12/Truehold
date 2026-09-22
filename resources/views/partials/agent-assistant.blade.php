@@ -88,6 +88,21 @@
 .th-ask__warn{background:#fff6e0;border:1px solid #f0d89a;color:#7a5c12;padding:8px 10px;border-radius:6px;font-size:13px;margin:0 0 10px}
 .th-ask__stn{display:block;color:#7b8598;font-size:12px}
 
+/* Sourcing agreement card */
+.th-ask__deal{border:1px solid #e3e8f0;border-radius:12px;padding:14px 16px;background:#fbfcfe;margin:4px 0 8px}
+.th-ask__deal h4{margin:0 0 10px;font-size:15px}
+.th-ask__dealrow{display:block;margin:0 0 10px}
+.th-ask__dealrow span{display:block;font-size:12px;font-weight:700;color:#42536b;margin-bottom:4px}
+.th-ask__dealrow input{width:100%;box-sizing:border-box;border:1px solid #d5dbe5;border-radius:8px;padding:9px 11px;font-size:14px;background:#fff}
+.th-ask__dealrow small{display:block;color:#7b8598;font-size:12px;margin-top:3px}
+.th-ask__dealrow.is-missing input{border-color:#e0a526;background:#fffaf0}
+.th-ask__dealrow.is-missing span::after{content:" — Sigou needs this";color:#b7791f;font-weight:600}
+.th-ask__dealnote{font-size:12px;color:#7b8598;margin:2px 0 12px}
+.th-ask__dealbtns{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.th-ask__dealbtn{display:inline-block;background:var(--navy,#152c4e);color:#fff;border:0;border-radius:8px;
+    padding:10px 16px;font-weight:700;font-size:14px;cursor:pointer;text-decoration:none}
+.th-ask__deallink{font-size:13px;color:#42536b}
+
 /* Sigou */
 .th-ask__fab{padding:6px 18px 6px 6px}
 .th-ask__avatar{flex:none;border-radius:50%;box-shadow:0 0 0 2px rgba(255,255,255,.85)}
@@ -390,6 +405,74 @@
         }, 22000);
     };
 
+    const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    const agreementCard = (a) => {
+        if (a.template) {
+            return '<div class="th-ask__deal"><h4>Sourcing agreement — blank template</h4>'
+                + '<a class="th-ask__dealbtn" href="' + esc(a.template_url) + '" download>Download blank template</a></div>';
+        }
+        const missing = a.missing || [];
+        const field = (name, label, control, hint) =>
+            '<label class="th-ask__dealrow' + (missing.includes(name) ? ' is-missing' : '') + '">'
+            + '<span>' + label + '</span>' + control + (hint ? '<small>' + hint + '</small>' : '') + '</label>';
+        return '<form class="th-ask__deal" method="POST" action="' + esc(a.pdf_url) + '">'
+            + '<h4>Sourcing agreement</h4>'
+            + '<input type="hidden" name="_token" value="' + esc(csrf()) + '">'
+            + field('client_name', 'Client\'s full name',
+                '<input name="client_name" required maxlength="120" placeholder="As written on their ID" value="' + esc(a.client_name || '') + '">')
+            + field('fee', 'Sourcing fee (£)',
+                '<input name="fee" type="number" min="1" step="1" required value="' + esc(a.fee == null ? '' : a.fee) + '">', '£220 cash · £250 transfer')
+            + field('date', 'Date', '<input name="date" type="date" value="' + esc(a.date || '') + '">')
+            + field('sign_as', 'Signed by (the Sourcer)', '<input name="sign_as" maxlength="60" value="' + esc(a.sign_as || '') + '">')
+            + '<p class="th-ask__dealnote">Referral bonus £' + esc(a.referral) + ' per referred client, filled in for you. The client signs by hand.</p>'
+            + '<div class="th-ask__dealbtns"><button type="submit" class="th-ask__dealbtn">Download PDF</button>'
+            + '<a class="th-ask__deallink" href="' + esc(a.template_url) + '" download>Blank template</a></div>'
+            + '<p class="th-ask__err" data-deal-error hidden></p>'
+            + '</form>';
+    };
+
+    // Fetch the PDF and save it, rather than posting the form into a new tab:
+    // in-app browsers (WhatsApp, this one) turn that into a GET and lose it.
+    body.addEventListener('submit', async (e) => {
+        const deal = e.target.closest('.th-ask__deal');
+        if (!deal) return;
+        e.preventDefault();
+        const btn = deal.querySelector('button[type=submit]');
+        const err = deal.querySelector('[data-deal-error]');
+        err.hidden = true;
+        btn.disabled = true;
+        btn.textContent = 'Making it…';
+        try {
+            const res = await fetch(deal.action, {
+                method: 'POST',
+                headers: {'X-CSRF-TOKEN': csrf(), 'Accept': 'application/json'},
+                body: new FormData(deal),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(Object.values(data.errors || {}).flat()[0] || 'Could not make the agreement.');
+            }
+            const blob = await res.blob();
+            const name = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/);
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = name ? name[1] : 'Sourcing Agreement.pdf';
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(() => { URL.revokeObjectURL(link.href); link.remove(); }, 4000);
+            Sigou.set('happy', 2600);
+            say(pick(['Done bro, check your downloads. Now get the signature', 'Ready. Print it before he change mind 😂', 'There. Check the name with the ID malaka']));
+        } catch (ex) {
+            err.textContent = ex.message;
+            err.hidden = false;
+            Sigou.set('sad', 3000);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Download PDF';
+        }
+    });
+
     const money = n => n ? '£' + Number(n).toLocaleString('en-GB', {maximumFractionDigits: 0}) : '—';
     const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
         ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -427,6 +510,20 @@
                 body.innerHTML = '<p class="th-ask__err">' + esc(data.error || 'Something went wrong.') + '</p>';
                 Sigou.set('sad', 4000);
                 say(SigouLines.error());
+                return;
+            }
+
+            // A sourcing agreement: a card with what he has, the gaps marked,
+            // and the download. The agent can fill a gap here or tell him.
+            if (data.agreement) {
+                body.innerHTML = agreementCard(data.agreement);
+                const firstGap = body.querySelector('.is-missing input');
+                const a = data.agreement;
+                Sigou.set(a.template || a.ready ? 'happy' : 'typing', 2400);
+                say((data.sigou || '').trim() || SigouLines.agreement(a));
+                lastQ = q;
+                input.value = '';
+                if (firstGap && !phone.matches) firstGap.focus();
                 return;
             }
 

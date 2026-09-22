@@ -47,6 +47,26 @@ class TestAgentAssistant extends Command
             'refines' => false, 'expect' => ['max_price' => 'none', 'min_bedrooms' => 2, 'place' => 'wapping'], 'expect_none' => true],
     ];
 
+    /**
+     * Sourcing agreements: asked for in plain words, details pulled out, the
+     * gaps left empty for Sigou to ask about. `pending` is what an earlier
+     * message already collected.
+     */
+    private const AGREEMENT_CASES = [
+        ['q' => 'malaka make me a sourcing agreement for Maria Lopez, 250',
+            'expect' => ['client_name' => 'Maria Lopez', 'fee' => 250, 'template_only' => false]],
+        ['q' => 'contract for john smith, he pays cash',
+            'expect' => ['client_name' => 'john smith', 'fee' => 220]],
+        ['q' => 'sourcing agreement for Anna Kowalska, bank transfer, sign as Alex',
+            'expect' => ['client_name' => 'Anna Kowalska', 'fee' => 250, 'sign_as' => 'Alex']],
+        ['q' => 'make me a sourcing agreement for this client',
+            'expect' => ['client_name' => null, 'fee' => null]],
+        ['q' => 'send me the blank sourcing agreement template',
+            'expect' => ['template_only' => true]],
+        ['q' => 'Anna Nowak, cash', 'pending' => ['client_name' => null, 'fee' => null, 'sign_as' => 'Giacomo'],
+            'expect' => ['client_name' => 'Anna Nowak', 'fee' => 220]],
+    ];
+
     /** Fields that are Sigou talking, not search filters. */
     private const PERSONA_FIELDS = AgentSearchAssistant::NOT_FILTERS;
 
@@ -270,9 +290,12 @@ class TestAgentAssistant extends Command
 
             $misses = $this->misses($case, $spec, $assistant, $properties);
 
-            // A brief read as small talk would run no search at all.
+            // A brief read as small talk, or as an agreement, runs no search.
             if (! empty($spec['chit_chat'])) {
                 $misses[] = 'taken for chit-chat, no search';
+            }
+            if (! empty($spec['agreement']['wanted'])) {
+                $misses[] = 'taken for a sourcing agreement, no search';
             }
 
             if ($this->option('compare')) {
@@ -333,6 +356,31 @@ class TestAgentAssistant extends Command
         $this->newLine();
         $this->table(['follow-up', 'result', 'what it got wrong'], $followRows);
 
+        // Sourcing agreements.
+        $dealOk = 0;
+        $dealRows = [];
+        foreach (self::AGREEMENT_CASES as $case) {
+            $spec = $assistant->parse($case['q'], $locations, null, $case['pending'] ?? null);
+            $a = (array) ($spec['agreement'] ?? []);
+            $misses = [];
+            if (empty($a['wanted'])) {
+                $misses[] = 'not recognised as an agreement';
+            }
+            foreach ($case['expect'] as $key => $want) {
+                $got = $a[$key] ?? null;
+                $same = is_string($want) ? strcasecmp(trim((string) $got), $want) === 0
+                    : (is_numeric($want) ? is_numeric($got) && (float) $got == $want : $got === $want);
+                if (! $same) {
+                    $misses[] = "{$key}=" . json_encode($got);
+                }
+            }
+            $ok = $spec && empty($misses);
+            $dealOk += $ok ? 1 : 0;
+            $dealRows[] = [substr($case['q'], 0, 60), $ok ? 'pass' : 'MISS', implode('; ', $misses), $spec['sigou'] ?? ''];
+        }
+        $this->newLine();
+        $this->table(['sourcing agreement', 'result', 'what it got wrong', 'Sigou says'], $dealRows);
+
         // Small talk: answered in character, nothing searched.
         $chatOk = 0;
         $chatRows = [];
@@ -352,7 +400,8 @@ class TestAgentAssistant extends Command
 
         $total = count(self::CASES);
         $this->newLine();
-        $this->info("Passed {$passed}/{$total} on {$assistant->provider()}/{$assistant->model()}, follow-ups {$followOk}/" . count(self::FOLLOWUP_CASES) . ", small talk {$chatOk}/" . count(self::CHAT_CASES));
+        $this->info("Passed {$passed}/{$total} on {$assistant->provider()}/{$assistant->model()}, follow-ups {$followOk}/" . count(self::FOLLOWUP_CASES)
+            . ", agreements {$dealOk}/" . count(self::AGREEMENT_CASES) . ", small talk {$chatOk}/" . count(self::CHAT_CASES));
 
         if ($this->option('compare')) {
             $this->info("Without the Sigou persona: {$plainPassed}/{$total}");
@@ -371,6 +420,7 @@ class TestAgentAssistant extends Command
         }
 
         return $passed === $total && $chatOk === count(self::CHAT_CASES) && $followOk === count(self::FOLLOWUP_CASES)
+            && $dealOk === count(self::AGREEMENT_CASES)
             ? self::SUCCESS : self::FAILURE;
     }
 

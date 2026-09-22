@@ -234,7 +234,7 @@ SYS;
     }
 
     /** Keys that describe the reply rather than the search. */
-    public const NOT_FILTERS = ['explanation', 'chit_chat', 'sigou', 'sigou_found', 'sigou_none', 'refines_previous'];
+    public const NOT_FILTERS = ['explanation', 'chit_chat', 'sigou', 'sigou_found', 'sigou_none', 'refines_previous', 'agreement'];
 
     /**
      * The filters worth carrying into a follow-up: everything the agent
@@ -248,7 +248,7 @@ SYS;
         );
     }
 
-    public function parse(string $question, array $knownLocations = [], ?array $previous = null): ?array
+    public function parse(string $question, array $knownLocations = [], ?array $previous = null, ?array $pendingAgreement = null): ?array
     {
         if (! $this->isConfigured()) {
             return null;
@@ -370,6 +370,27 @@ Rules:
 - `explanation` is one short sentence telling the agent how you read their
   request, so they can spot a misreading. Plain and neutral, not in character.
   When refining, describe the whole search as it now stands.
+- `agreement` is for the office's sourcing agreement (the contract a
+  client signs), not a search. Set `agreement.wanted` true when the agent
+  asks for one: "make me a sourcing agreement for...", "contract for this
+  client", "agreement for Maria". Then leave every search filter null or
+  empty.
+  * `template_only` true when they only want the blank / empty template.
+  * `client_name` the client's full name exactly as written, else null.
+  * `fee` in GBP: the number if given; "cash" means 220 and "transfer" or
+    "bank" means 250 when no number is given; else null.
+  * `date` an ISO date only if they give one ("date it tomorrow", "for the
+    1st"), else null (the agreement is dated today).
+  * `sign_as` the agent who signs when they name one ("sign as Alex",
+    "Emanuela's client"), else null (the agent asking signs).
+  The message may start with PENDING AGREEMENT: details already collected
+  for an agreement in progress. The agent is answering Sigou, so merge the
+  new message into those details and keep `wanted` true, unless they clearly
+  moved on to something else. With no agreement asked, `wanted` false and
+  the rest null.
+  Sigou's `sigou` line: if the name or fee is missing, ask for exactly what
+  is missing in his voice ("full name as on the ID? and cash 220 or transfer
+  250?"); if everything is there, say it is ready.
 - Follow-ups. The message may start with PREVIOUS SEARCH, the filters of the
   agent's last search. Agents refine: "max 650", "what about zone 4", "with
   ensuite", "cheaper", "drop the zone", "and couples ok". Then return the
@@ -431,6 +452,19 @@ SYS;
                 'sort' => ['type' => ['string', 'null'], 'enum' => ['cheapest', null]],
                 'commission_only' => ['type' => 'boolean'],
                 'refines_previous' => ['type' => 'boolean'],
+                'agreement' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'wanted' => ['type' => 'boolean'],
+                        'template_only' => ['type' => 'boolean'],
+                        'client_name' => ['type' => ['string', 'null']],
+                        'fee' => ['type' => ['number', 'null']],
+                        'date' => ['type' => ['string', 'null']],
+                        'sign_as' => ['type' => ['string', 'null']],
+                    ],
+                    'required' => ['wanted', 'template_only', 'client_name', 'fee', 'date', 'sign_as'],
+                    'additionalProperties' => false,
+                ],
                 'nice_to_have' => ['type' => 'array', 'items' => ['type' => 'string',
                     'enum' => ['garden', 'parking', 'bills_included', 'ensuite', 'near_station', 'no_deposit']]],
                 'explanation' => ['type' => 'string'],
@@ -444,7 +478,7 @@ SYS;
                 'smokers', 'pets', 'region', 'garden', 'parking', 'furnished', 'no_deposit',
                 'max_deposit', 'available_by', 'max_commitment_months',
                 'good_transport', 'agencies', 'sort',
-                'commission_only', 'nice_to_have', 'explanation', 'refines_previous',
+                'commission_only', 'nice_to_have', 'explanation', 'refines_previous', 'agreement',
             ],
             'additionalProperties' => false,
         ];
@@ -460,11 +494,19 @@ SYS;
         // per-call jokes go last, so the provider's prompt cache covers the
         // rules, the persona and the area list: cached input is billed at a
         // fraction of the price.
-        $prompt = $system . $locationHint . ($this->persona ? $this->jokesForThisOne() : '');
+        // Today's date changes daily, so it sits with the other per-call tail.
+        $prompt = $system . $locationHint
+            . "\n\nToday is " . now()->format('l j F Y') . ' (' . now()->toDateString() . ').'
+            . ($this->persona ? $this->jokesForThisOne() : '');
 
-        $message = $previous
-            ? "PREVIOUS SEARCH:\n" . json_encode($previous, JSON_UNESCAPED_SLASHES) . "\n\nNEW MESSAGE:\n" . $question
-            : $question;
+        $context = '';
+        if ($pendingAgreement) {
+            $context .= "PENDING AGREEMENT:\n" . json_encode($pendingAgreement, JSON_UNESCAPED_SLASHES) . "\n\n";
+        }
+        if ($previous) {
+            $context .= "PREVIOUS SEARCH:\n" . json_encode($previous, JSON_UNESCAPED_SLASHES) . "\n\n";
+        }
+        $message = $context !== '' ? $context . "NEW MESSAGE:\n" . $question : $question;
 
         try {
             $json = $this->provider() === 'anthropic'

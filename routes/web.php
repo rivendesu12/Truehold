@@ -81,9 +81,68 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         }
     }
 
-    $spec = $assistant->parse($question, $locations, $previous ?: null);
+    // An agreement Sigou is still collecting details for ("full name as on
+    // the ID?"), so the agent's answer completes it.
+    $pending = null;
+    $lastAgreement = $request->session()->get('sigou.agreement');
+    if (! $request->boolean('fresh') && is_array($lastAgreement) && ($lastAgreement['at'] ?? 0) > now()->subMinutes(15)->timestamp) {
+        $pending = $lastAgreement['details'] ?? null;
+    }
+
+    $spec = $assistant->parse($question, $locations, $previous ?: null, $pending ?: null);
     if (! $spec) {
         return response()->json(['error' => 'Could not understand that — try rephrasing.'], 502);
+    }
+
+    // A sourcing agreement, not a search.
+    $wants = (array) ($spec['agreement'] ?? []);
+    if (! empty($wants['wanted'])) {
+        $request->session()->forget('sigou.agreement');
+
+        if (! empty($wants['template_only'])) {
+            return response()->json([
+                'agreement' => ['template' => true, 'template_url' => route('agreement.template')],
+                'sigou' => (string) ($spec['sigou'] ?? ''),
+                'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
+            ]);
+        }
+
+        $given = fn (string $key) => ($wants[$key] ?? null) !== null && $wants[$key] !== '' ? $wants[$key] : ($pending[$key] ?? null);
+        $date = $given('date');
+        try {
+            $date = $date ? \Carbon\Carbon::parse($date)->toDateString() : now()->toDateString();
+        } catch (\Throwable $e) {
+            $date = now()->toDateString();
+        }
+
+        $details = [
+            'client_name' => $given('client_name') ? trim((string) $given('client_name')) : null,
+            'fee' => is_numeric($given('fee')) ? (float) $given('fee') : null,
+            'date' => $date,
+            'sign_as' => $given('sign_as') ?: \Illuminate\Support\Str::of((string) $request->user()->name)->trim()->before(' ')->ucfirst()->toString(),
+        ];
+        $missing = array_keys(array_filter(['client_name' => ! $details['client_name'], 'fee' => $details['fee'] === null]));
+
+        if ($missing) {
+            $request->session()->put('sigou.agreement', ['details' => $details, 'at' => now()->timestamp]);
+        }
+
+        return response()->json([
+            'agreement' => $details + [
+                'referral' => \App\Services\SourcingAgreement::REFERRAL_BONUS,
+                'missing' => $missing,
+                'ready' => ! $missing,
+                'pdf_url' => route('agreement.pdf'),
+                'template_url' => route('agreement.template'),
+            ],
+            'sigou' => (string) ($spec['sigou'] ?? ''),
+            'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
+        ]);
+    }
+
+    // Moved on to something else: the half-made agreement is dropped.
+    if ($pending) {
+        $request->session()->forget('sigou.agreement');
     }
 
     // Just talking to Sigou, not searching: he answers and nothing is filtered,
@@ -168,6 +227,38 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         ],
     ]);
 })->name('agent.search');
+
+// The office's sourcing agreement, filled in and signed by the agent. POST so
+// the client's name never sits in a URL, a log or the browser history.
+Route::middleware('auth')->post('/tools/sourcing-agreement/pdf', function (Request $request) {
+    $data = $request->validate([
+        'client_name' => ['required', 'string', 'max:120'],
+        'fee' => ['required', 'numeric', 'min:1', 'max:10000'],
+        'date' => ['nullable', 'date'],
+        'sign_as' => ['nullable', 'string', 'max:60'],
+    ]);
+
+    $sourcer = trim((string) ($data['sign_as'] ?? '')) ?: \Illuminate\Support\Str::of((string) $request->user()->name)->trim()->before(' ')->ucfirst()->toString();
+    $agreement = app(\App\Services\SourcingAgreement::class);
+
+    return response($agreement->make(
+        $data['client_name'],
+        (float) $data['fee'],
+        \Carbon\Carbon::parse($data['date'] ?? now()),
+        $sourcer,
+    ), 200, [
+        'Content-Type' => 'application/pdf',
+        'Content-Disposition' => 'inline; filename="' . \App\Services\SourcingAgreement::filename($data['client_name']) . '"',
+        'Cache-Control' => 'private, no-store',
+    ]);
+})->name('agreement.pdf');
+
+Route::middleware('auth')->get('/tools/sourcing-agreement/template', function () {
+    return response(app(\App\Services\SourcingAgreement::class)->blank(), 200, [
+        'Content-Type' => 'application/pdf',
+        'Content-Disposition' => 'inline; filename="' . \App\Services\SourcingAgreement::filename() . '"',
+    ]);
+})->name('agreement.template');
 
 // Supplier room photos live in private Drive folders, so they are streamed
 // through here with the service account rather than linked directly. Only ids
