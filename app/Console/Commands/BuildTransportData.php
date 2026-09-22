@@ -23,7 +23,8 @@ use Illuminate\Support\Facades\Http;
  */
 class BuildTransportData extends Command
 {
-    protected $signature = 'transport:build-stations';
+    protected $signature = 'transport:build-stations
+        {--force : Save even if some lines could not be fetched}';
 
     protected $description = 'Fetch London station names, coordinates, fare zones and lines from TfL';
 
@@ -43,11 +44,13 @@ class BuildTransportData extends Command
         $this->info(count($lines) . ' lines to walk.');
 
         $stations = [];
+        $failed = [];
 
         foreach ($lines as $line) {
             $stops = $this->fetchLineStops($line['id']);
             if ($stops === null) {
                 $this->warn("  {$line['name']}: failed");
+                $failed[] = $line['name'];
                 continue;
             }
 
@@ -86,6 +89,18 @@ class BuildTransportData extends Command
             }
 
             $this->line(sprintf('  %-18s %3d stops (%d new)', $line['name'], count($stops), $added));
+        }
+
+        // A line that failed takes its stations with it, and the result still
+        // looks plausible — a rebuild that lost the Victoria line left 778
+        // stations and no Brixton. Overwriting a good index with a quietly
+        // incomplete one is worse than not rebuilding at all.
+        if ($failed && ! $this->option('force')) {
+            $this->newLine();
+            $this->error(count($failed) . ' line(s) could not be fetched: ' . implode(', ', $failed));
+            $this->line('Nothing was saved. Re-run when TfL responds, or --force to accept the gap.');
+
+            return self::FAILURE;
         }
 
         $before = count($stations);
@@ -153,12 +168,12 @@ class BuildTransportData extends Command
 
     protected function fetchLineStops(string $lineId): ?array
     {
-        for ($attempt = 1; $attempt <= 3; $attempt++) {
+        for ($attempt = 1; $attempt <= 5; $attempt++) {
             try {
-                $response = Http::timeout(60)->acceptJson()
+                $response = Http::timeout(90)->acceptJson()
                     ->get("https://api.tfl.gov.uk/Line/{$lineId}/StopPoints");
             } catch (\Throwable $e) {
-                usleep(500_000);
+                sleep($attempt);
                 continue;
             }
 
@@ -166,7 +181,9 @@ class BuildTransportData extends Command
                 return $response->json() ?? [];
             }
 
-            usleep(500_000 * $attempt);
+            // Keyless TfL allows about 50 requests a minute across everything,
+            // so a concurrent journey build is enough to throttle this one.
+            sleep($response->status() === 429 ? 25 : $attempt * 2);
         }
 
         return null;
