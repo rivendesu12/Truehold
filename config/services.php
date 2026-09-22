@@ -72,6 +72,20 @@ return [
         'max_age_days' => (int) env('HARBOROPS_MAX_AGE_DAYS', 0),
     ],
 
+    // Supplier rooms from the "Room targets" spreadsheet, Targets tab. This is the
+    // only source that includes every agency (Banksia, Javier, AP/Horizon, Soreva)
+    // in one normalised shape.
+    'supplier_targets' => [
+        'spreadsheet_id' => env('SUPPLIER_TARGETS_SHEET_ID'),
+        'tab' => env('SUPPLIER_TARGETS_TAB', 'Targets'),
+        'credentials_path' => env('SUPPLIER_TARGETS_CREDENTIALS'),
+        'cache_timeout' => env('SUPPLIER_TARGETS_CACHE_TIMEOUT', 900),
+        // Availability horizon, matching the AP portfolio sync's 62 days.
+        'window_days' => env('SUPPLIER_TARGETS_WINDOW_DAYS', 62),
+        // Empty = all suppliers. Comma-separated to restrict.
+        'suppliers' => env('SUPPLIER_TARGETS_SUPPLIERS', ''),
+    ],
+
     'twilio' => [
         'account_sid' => env('TWILIO_ACCOUNT_SID'),
         'auth_token' => env('TWILIO_AUTH_TOKEN'),

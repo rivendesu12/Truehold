@@ -94,10 +94,16 @@ class ScrapedListingsApiService
         return Cache::remember(self::CACHE_KEY, $this->cacheTimeout, function () {
             $notAccepting = $this->notAcceptingListingIds();
 
-            return $this->fetchAllListings()
+            $feed = $this->fetchAllListings()
                 ->reject(fn ($p) => isset($notAccepting[(string) ($p['id'] ?? '')]))
-                ->filter(fn ($p) => $this->isAvailable($p))
-                ->values();
+                ->filter(fn ($p) => $this->isAvailable($p));
+
+            // Supplier rooms come from the Room targets sheet, not this API. They
+            // carry no source advert, so the availability rules above do not apply
+            // to them — the sheet's own "Available From" gate does.
+            $supplier = app(SupplierTargetsSheetService::class)->getAllProperties();
+
+            return $feed->concat($supplier)->values();
         });
     }
 
