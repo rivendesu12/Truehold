@@ -91,7 +91,7 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
             'title' => $p['title'] ?? 'Untitled',
             'location' => $p['location'] ?? null,
             'price' => $p['price'] ?? null,
-            'type' => \App\Services\Concerns\FiltersPropertyCollection::propertyTypeBucket($p),
+            'type' => \App\Support\PropertyClassifier::bucket($p),
             'photo' => $p['first_photo_url'] ?? null,
             'agent' => $p['agent_name'] ?? null,
             'commission' => $assistant->paysCommission($p),
