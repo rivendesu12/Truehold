@@ -384,6 +384,14 @@ SYS;
 
         if ($hub && ! empty($spec['direct_only'])) {
             $spec['_hub'] = $hub;
+
+            // "Direct to Canary Wharf, no changes" is a question about the
+            // network, not about distance. Imposing a radius on top of it
+            // rules out exactly the places a direct line is useful from.
+            if (empty($spec['minutes_from_landmark']) && empty($spec['radius_miles'])) {
+                $center = null;
+                $radius = null;
+            }
         }
 
         // The brief named a place we could neither map to a destination we hold
