@@ -6,8 +6,9 @@
  *
  * The feed's `paying` column says whether an agency pays at all; it does not
  * say how much. Until the real figures are entered below, a paying agency is
- * valued at `default_percent` and the estimate is labelled as an estimate
- * wherever it is shown — a guessed number must never be presented as a fact.
+ * flagged as paying and no amount is shown — a guessed number must never be
+ * presented as a fact, and an agent reading a made-up fee is worse off than
+ * one reading none.
  *
  * Rates are keyed by a normalised agency name: lowercased, with Ltd/Limited
  * and punctuation removed and spaces collapsed, so "Cloudrooms Ltd", "Cloud
@@ -20,8 +21,10 @@
  */
 return [
 
-    // Applied to an agency that pays but has no rate entered yet.
-    'default_percent' => 50,
+    // No invented figures. With no default, an agency that pays is shown as
+    // paying and nothing more — which is all the feed actually tells us.
+    // Enter real rates below and the pound values appear on their own.
+    'default_percent' => 0,
 
     // Real figures go here. Delete a line to fall back to the default.
     // Example:

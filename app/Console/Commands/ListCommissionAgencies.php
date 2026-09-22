@@ -51,7 +51,7 @@ class ListCommissionAgencies extends Command
                 implode(' / ', array_keys($g['names'])),
                 $g['count'],
                 $g['pays'] ? 'yes' : 'no',
-                $g['configured'] ? 'set' : ($g['pays'] ? 'DEFAULT' : '—'),
+                $g['configured'] ? 'set' : ($g['pays'] ? 'not set' : '—'),
                 isset($g['total']) ? 'GBP ' . number_format($g['total']) : '—',
             ], $groups)
         );
@@ -60,9 +60,14 @@ class ListCommissionAgencies extends Command
 
         if ($unset) {
             $this->newLine();
-            $this->warn(count($unset) . ' paying agencies have no rate set. Add them to config/commission.php:');
+            $this->warn(count($unset) . ' paying agencies pay, but we do not know how much.');
+            $this->line('They are flagged as commission-paying with no figure attached, which');
+            $this->line('is all the feed tells us. To rank by what you actually earn, paste the');
+            $this->line('real terms into config/commission.php — percent of the first month,');
+            $this->line('or a flat fee per let:');
+            $this->newLine();
             foreach ($unset as $g) {
-                $this->line("    '{$g['key']}' => ['type' => 'percent', 'value' => 50],");
+                $this->line("    '{$g['key']}' => ['type' => 'percent', 'value' => ??],");
             }
         }
 
