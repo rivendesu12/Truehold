@@ -18,7 +18,27 @@ class TestAgentAssistant extends Command
     protected $signature = 'assistant:test
         {--show-spec : print the full parsed spec for each case}
         {--sigou : print what Sigou says for each case}
-        {--compare : also read every brief without the Sigou persona and report any filter that changed}';
+        {--compare : also read every brief without the Sigou persona and report any filter that changed}
+        {--only= : run only these sections, comma-separated: searches,followups,agreements,invoices,wifi,chat}
+        {--quick : searches: only the first 10 briefs (the wording traps and a few classics)}';
+
+    /**
+     * Each case is a paid model call, so test what changed, not everything:
+     *   --only=invoices          after touching invoices (5 calls)
+     *   --only=searches --quick  a smoke test of the search (10 calls)
+     *   (no options)             everything once (~64 calls, about $0.06)
+     *   --compare                everything with and without Sigou (~$0.10);
+     *                            only after changing the search rules.
+     */
+    private function section(string $name, array $cases): array
+    {
+        $only = array_filter(array_map('trim', explode(',', (string) $this->option('only'))));
+        if ($only && ! in_array($name, $only, true)) {
+            return [];
+        }
+
+        return $name === 'searches' && $this->option('quick') ? array_slice($cases, 0, 10) : $cases;
+    }
 
     /** Not searches: Sigou should answer these and run nothing. */
     private const CHAT_CASES = [
@@ -297,7 +317,7 @@ class TestAgentAssistant extends Command
         $changed = [];
         $sigouRows = [];
 
-        foreach (self::CASES as $case) {
+        foreach ($this->section('searches', self::CASES) as $case) {
             $spec = $assistant->parse($case['q'], $locations);
 
             if (! $spec) {
@@ -357,7 +377,7 @@ class TestAgentAssistant extends Command
         // Follow-ups: does "max 650" keep the rest of the last search?
         $followOk = 0;
         $followRows = [];
-        foreach (self::FOLLOWUP_CASES as $case) {
+        foreach ($this->section('followups', self::FOLLOWUP_CASES) as $case) {
             $first = $assistant->parse($case['first'], $locations);
             $previous = $first ? AgentSearchAssistant::carriedFilters($first) : null;
             $spec = $previous ? $assistant->parse($case['then'], $locations, $previous) : null;
@@ -382,7 +402,7 @@ class TestAgentAssistant extends Command
         // Sourcing agreements.
         $dealOk = 0;
         $dealRows = [];
-        foreach (self::AGREEMENT_CASES as $case) {
+        foreach ($this->section('agreements', self::AGREEMENT_CASES) as $case) {
             $spec = $assistant->parse($case['q'], $locations, null, $case['pending'] ?? null);
             $a = (array) ($spec['agreement'] ?? []);
             $misses = [];
@@ -406,7 +426,7 @@ class TestAgentAssistant extends Command
 
         // Invoices.
         $billOk = 0;
-        foreach (self::INVOICE_CASES as $case) {
+        foreach ($this->section('invoices', self::INVOICE_CASES) as $case) {
             $spec = $assistant->parse($case['q'], $locations, null, null, $case['pending'] ?? null);
             $b = (array) ($spec['invoice'] ?? []);
             $misses = empty($b['wanted']) ? ['not recognised as an invoice'] : [];
@@ -426,7 +446,7 @@ class TestAgentAssistant extends Command
 
         // The office WiFi.
         $wifiOk = 0;
-        foreach (self::WIFI_CASES as $q) {
+        foreach ($this->section('wifi', self::WIFI_CASES) as $q) {
             $spec = $assistant->parse($q, $locations);
             $ok = $spec && ! empty($spec['wifi']) && empty($spec['agreement']['wanted']);
             $wifiOk += $ok ? 1 : 0;
@@ -438,7 +458,7 @@ class TestAgentAssistant extends Command
         // Small talk: answered in character, nothing searched.
         $chatOk = 0;
         $chatRows = [];
-        foreach (self::CHAT_CASES as $q) {
+        foreach ($this->section('chat', self::CHAT_CASES) as $q) {
             $spec = $assistant->parse($q, $locations);
             $ok = $spec && ! empty($spec['chit_chat']) && trim((string) ($spec['sigou'] ?? '')) !== '';
             $chatOk += $ok ? 1 : 0;
@@ -452,12 +472,12 @@ class TestAgentAssistant extends Command
             $this->table(['brief', 'first reaction', 'if found', 'if nothing'], $sigouRows);
         }
 
-        $total = count(self::CASES);
+        $total = count($this->section('searches', self::CASES));
         $this->newLine();
-        $this->info("Passed {$passed}/{$total} on {$assistant->provider()}/{$assistant->model()}, follow-ups {$followOk}/" . count(self::FOLLOWUP_CASES)
-            . ", agreements {$dealOk}/" . count(self::AGREEMENT_CASES) . ", invoices {$billOk}/" . count(self::INVOICE_CASES)
-            . ", wifi {$wifiOk}/" . count(self::WIFI_CASES)
-            . ", small talk {$chatOk}/" . count(self::CHAT_CASES));
+        $this->info("Passed {$passed}/{$total} on {$assistant->provider()}/{$assistant->model()}, follow-ups {$followOk}/" . count($this->section('followups', self::FOLLOWUP_CASES))
+            . ", agreements {$dealOk}/" . count($this->section('agreements', self::AGREEMENT_CASES)) . ", invoices {$billOk}/" . count($this->section('invoices', self::INVOICE_CASES))
+            . ", wifi {$wifiOk}/" . count($this->section('wifi', self::WIFI_CASES))
+            . ", small talk {$chatOk}/" . count($this->section('chat', self::CHAT_CASES)));
 
         if ($this->option('compare')) {
             $this->info("Without the Sigou persona: {$plainPassed}/{$total}");
@@ -475,9 +495,9 @@ class TestAgentAssistant extends Command
             $this->line('  ASSISTANT_PROVIDER=anthropic php artisan assistant:test');
         }
 
-        return $passed === $total && $chatOk === count(self::CHAT_CASES) && $followOk === count(self::FOLLOWUP_CASES)
-            && $dealOk === count(self::AGREEMENT_CASES) && $wifiOk === count(self::WIFI_CASES)
-            && $billOk === count(self::INVOICE_CASES)
+        return $passed === $total && $chatOk === count($this->section('chat', self::CHAT_CASES)) && $followOk === count($this->section('followups', self::FOLLOWUP_CASES))
+            && $dealOk === count($this->section('agreements', self::AGREEMENT_CASES)) && $wifiOk === count($this->section('wifi', self::WIFI_CASES))
+            && $billOk === count($this->section('invoices', self::INVOICE_CASES))
             ? self::SUCCESS : self::FAILURE;
     }
 
