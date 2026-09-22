@@ -117,7 +117,7 @@
                  + (data.widened ? ' <em>(nothing exactly there — showing nearby)</em>' : '')
                  + ((data.relaxed || []).includes('bedrooms') ? ' <em>(we don\'t hold bedroom counts for these)</em>' : '')
                  + (data.commission_only ? ', commission-paying only' : '')
-                 + (data.matched > 12 ? ' — showing the first 24' : '') + '</p>';
+                 + (data.matched > 24 ? ' — showing the first 24' : '') + '</p>';
 
             if (!data.results.length) {
                 html += '<p class="th-ask__hint">Nothing matched. Try widening the area or the budget.</p>';
@@ -126,7 +126,7 @@
                     html += '<a class="th-ask__res" href="' + esc(r.url) + '" target="_blank" rel="noopener">'
                         + (r.photo ? '<img src="' + esc(r.photo) + '" alt="" loading="lazy">' : '<img alt="">')
                         + '<span><b>' + esc(r.title)
-                        + (r.commission ? '<span class="th-ask__tag">COMMISSION</span>' : '')
+                        + (r.commission ? ' <span class="th-ask__tag">COMMISSION</span>' : '')
                         + '</b><small>' + esc(r.location || '') + ' · ' + money(r.price)
                         + (r.agent ? ' · ' + esc(r.agent) : '') + '</small></span></a>';
                 }
