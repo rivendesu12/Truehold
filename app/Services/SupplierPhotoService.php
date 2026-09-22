@@ -71,7 +71,7 @@ class SupplierPhotoService
         // A week, not twelve hours. Folder contents barely change, and every
         // expiry used to land the next page request with a hundred Drive calls
         // to make while someone waited for the listings to load.
-        return Cache::remember($cacheKey, now()->addDays(7), function () use ($folderId, $roomCode) {
+        $ids = Cache::remember($cacheKey, now()->addDays(7), function () use ($folderId, $roomCode) {
             try {
                 return $this->resolve($folderId, $roomCode);
             } catch (\Throwable $e) {
@@ -79,6 +79,12 @@ class SupplierPhotoService
                 return [];
             }
         });
+
+        // Re-affirm on a cache hit too: resolve() is what normally allow-lists
+        // these ids, and it does not run when the ids come from the cache.
+        $this->rememberAllowed($ids);
+
+        return $ids;
     }
 
     /**
@@ -243,12 +249,37 @@ class SupplierPhotoService
         foreach ($ids as $id) {
             $allowed[$id] = true;
         }
-        Cache::put(self::ALLOWED_KEY, $allowed, now()->addDays(2));
+        // Longer than the photo-id cache (7 days), or the allowlist expires
+        // first and every image starts 404ing while the ids are still cached.
+        Cache::put(self::ALLOWED_KEY, $allowed, now()->addDays(30));
     }
 
     public function isAllowed(string $fileId): bool
     {
         return isset(Cache::get(self::ALLOWED_KEY, [])[$fileId]);
+    }
+
+    /**
+     * Where an already-downloaded photo sits on disk, so nginx can serve it
+     * rather than a PHP worker reading it into memory and echoing it back.
+     *
+     * @return array{path: string, relative: string, mime: string}|null
+     */
+    public function cachedFile(string $fileId): ?array
+    {
+        $path = storage_path('app/supplier-photos/' . $fileId);
+
+        if (! is_file($path) || filemtime($path) <= time() - 2592000) {
+            return null;
+        }
+
+        $metaPath = $path . '.mime';
+
+        return [
+            'path' => $path,
+            'relative' => $fileId,
+            'mime' => is_file($metaPath) ? trim((string) file_get_contents($metaPath)) : 'image/jpeg',
+        ];
     }
 
     /**
@@ -263,7 +294,10 @@ class SupplierPhotoService
         $path = $dir . '/' . $fileId;
         $metaPath = $path . '.mime';
 
-        if (is_file($path) && filemtime($path) > time() - 43200) {
+        // A month, not twelve hours: the file is addressed by its Drive id, so
+        // the bytes cannot change under us, and each expiry used to mean a
+        // fresh download and resize holding a PHP worker while someone waited.
+        if (is_file($path) && filemtime($path) > time() - 2592000) {
             return [
                 'body' => (string) file_get_contents($path),
                 'mime' => is_file($metaPath) ? trim((string) file_get_contents($metaPath)) : 'image/jpeg',

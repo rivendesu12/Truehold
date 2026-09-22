@@ -145,6 +145,18 @@ Route::get('/supplier-photo/{fileId}', function (string $fileId) {
         abort(404);
     }
 
+    // Already on disk: hand it to nginx and let this worker go. Reading a
+    // couple of hundred KB into PHP and echoing it back held one of only a
+    // handful of workers for the whole transfer, so a page full of photos
+    // queued behind itself.
+    if ($cached = $photos->cachedFile($fileId)) {
+        return response('', 200, [
+            'Content-Type' => $cached['mime'],
+            'Cache-Control' => 'public, max-age=2592000, immutable',
+            'X-Accel-Redirect' => '/internal-supplier-photos/' . $cached['relative'],
+        ]);
+    }
+
     $file = $photos->download($fileId);
     if (! $file) {
         abort(404);
@@ -152,7 +164,7 @@ Route::get('/supplier-photo/{fileId}', function (string $fileId) {
 
     return response($file['body'], 200, [
         'Content-Type' => $file['mime'],
-        'Cache-Control' => 'public, max-age=86400',
+        'Cache-Control' => 'public, max-age=2592000, immutable',
     ]);
 })->where('fileId', '[A-Za-z0-9_-]+')->name('supplier.photo');
 
