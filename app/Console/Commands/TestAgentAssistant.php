@@ -73,7 +73,73 @@ class TestAgentAssistant extends Command
         ],
         [
             'q' => 'student at UCL, half an hour max, cheapest you have',
-            'expect' => ['place' => 'euston|ucl|kings', 'minutes_from_landmark' => 30],
+            'expect' => ['place' => 'euston|ucl|kings', 'minutes_from_landmark' => 30, 'sort' => 'cheapest'],
+        ],
+        [
+            // The house size, not the size of a flat being rented.
+            'q' => 'max 3 rooms total within 30 min of bond street',
+            'expect' => ['max_house_size' => 3, 'place' => 'bond', 'minutes_from_landmark' => 30],
+        ],
+        [
+            'q' => 'budget 900 up to zone 4',
+            'expect' => ['max_price' => 900, 'max_zone' => 4],
+        ],
+        [
+            'q' => 'something with good transport to central london around 750',
+            'expect' => ['good_transport' => true],
+        ],
+        [
+            'q' => 'all bills included, no deposit, under 800',
+            'expect' => ['bills_included' => true, 'no_deposit' => true, 'max_price' => 800],
+        ],
+        [
+            'q' => 'needs to move in this week, anything under 700',
+            'expect' => ['available_by' => '~', 'max_price' => 700],
+        ],
+        [
+            'q' => 'short let, 3 months max, room in east london',
+            'expect' => ['max_commitment_months' => 3, 'property_types' => ['rooms']],
+        ],
+        [
+            'q' => 'only Banksia properties please',
+            'expect' => ['agencies' => 'banksia'],
+        ],
+        [
+            'q' => 'couple looking for a double room, bills in, max 1100',
+            'expect' => ['couples' => true, 'room_type' => 'double', 'bills_included' => true, 'max_price' => 1100],
+        ],
+        [
+            'q' => 'professional house, no students, garden would be nice',
+            'expect' => ['students' => false, 'garden' => true],
+        ],
+        [
+            'q' => 'anything at all, just show me the cheapest rooms you have',
+            'expect' => ['sort' => 'cheapest', 'property_types' => ['rooms']],
+        ],
+        [
+            'q' => 'they smoke, so somewhere that allows it, under 850',
+            'expect' => ['smokers' => true, 'max_price' => 850],
+        ],
+        [
+            'q' => 'two bed flat with parking in zone 3 or 4, up to 2000',
+            'expect' => ['property_types' => ['full_property'], 'parking' => true, 'max_zone' => 4, 'max_price' => 2000],
+        ],
+        [
+            // We hold nothing on pets: this must be reported, not answered.
+            'q' => 'has a dog, needs somewhere pet friendly under 900',
+            'expect' => ['pets' => true, 'max_price' => 900],
+        ],
+        [
+            'q' => 'ensuite, 10 minutes walk of a tube max, zone 2',
+            'expect' => ['ensuite_only' => true, 'max_walk_to_station' => 10, 'max_zone' => 2],
+        ],
+        [
+            'q' => 'room near Ealing Broadway, 700ish',
+            'expect' => ['place' => 'ealing', 'max_price' => '~'],
+        ],
+        [
+            'q' => 'between 600 and 800, furnished, somewhere in south london',
+            'expect' => ['min_price' => 600, 'max_price' => 800, 'furnished' => true],
         ],
     ];
 
