@@ -260,6 +260,10 @@ class SupplierPhotoService
             $body = (string) $response->getBody();
             $mime = $meta->getMimeType() ?: 'image/jpeg';
 
+            // Originals straight off a phone are routinely 4-6MB; a listing card
+            // does not need that. Downscale to fit 1920x1080 and re-encode.
+            [$body, $mime] = $this->downscale($body, $mime);
+
             if (! is_dir($dir)) {
                 @mkdir($dir, 0775, true);
             }
@@ -270,6 +274,55 @@ class SupplierPhotoService
         } catch (\Throwable $e) {
             Log::warning('Drive photo download failed', ['file' => $fileId, 'error' => $e->getMessage()]);
             return null;
+        }
+    }
+
+    /**
+     * Fit within 1920x1080 and re-encode as JPEG. Returns the input untouched
+     * if GD is unavailable or the image cannot be decoded.
+     *
+     * @return array{0: string, 1: string}
+     */
+    protected function downscale(string $body, string $mime, int $maxW = 1920, int $maxH = 1080): array
+    {
+        if (! function_exists('imagecreatefromstring')) {
+            return [$body, $mime];
+        }
+
+        try {
+            $image = @imagecreatefromstring($body);
+            if ($image === false) {
+                return [$body, $mime];
+            }
+
+            $w = imagesx($image);
+            $h = imagesy($image);
+            $scale = min($maxW / max($w, 1), $maxH / max($h, 1), 1);
+
+            if ($scale >= 1) {
+                // Already small enough; still re-encode a non-JPEG to keep the
+                // proxy's output type predictable.
+                if ($mime === 'image/jpeg') {
+                    imagedestroy($image);
+                    return [$body, $mime];
+                }
+                $out = $image;
+            } else {
+                $out = imagescale($image, (int) round($w * $scale), (int) round($h * $scale));
+                imagedestroy($image);
+                if ($out === false) {
+                    return [$body, $mime];
+                }
+            }
+
+            ob_start();
+            imagejpeg($out, null, 85);
+            $encoded = (string) ob_get_clean();
+            imagedestroy($out);
+
+            return $encoded !== '' ? [$encoded, 'image/jpeg'] : [$body, $mime];
+        } catch (\Throwable $e) {
+            return [$body, $mime];
         }
     }
 }
