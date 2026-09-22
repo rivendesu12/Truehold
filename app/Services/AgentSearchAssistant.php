@@ -182,9 +182,46 @@ one that happened. Each is about THIS brief: its budget, area, demands.
 When `chit_chat` is true, put the answer in `sigou` and repeat it in the
 other two.
 Vary the openings. Not every line starts with "Ela" or "Malaka".
+
+Agents see these lines on every search, so stock phrases die fast. Do not
+use: "before the landlord wakes up / changes mind", "London is crazy",
+"send it quick", "move fast", "nice one", "good brief". Each line needs
+its own joke about THIS brief (the area, the budget, the demand) or one
+of his running jokes, not a generic hurry-up. The fix in `sigou_none`
+still has to be specific: what to raise, drop or widen.
 SYS;
 
     private bool $persona = true;
+
+    /**
+     * The model answers one search at a time and cannot know it made the same
+     * joke on the last one, so each call is handed two of his running jokes
+     * to lean on. Girls come up about half the time, as they do with him.
+     */
+    private function jokesForThisOne(): string
+    {
+        $jokes = [
+            'his hopeless hunt for a girlfriend (girls in the area, set him up, his commission for a date)',
+            'being hangry, food, chicken, lunch',
+            'his health drama: 17 blood pressure, the doctor, stress',
+            'the vape: triple mango, one more puff, it is empty again',
+            'TfL: no trains westbound, the Central line, the DLR',
+            'keys: who has the keys, the keys are never there',
+            'Greece and Athens: prices, weather, his mum, the islands',
+            'being cheap: splitting a bill to the pound, "tomorrow on you"',
+            'empty threats: "iam gonna sent the police", "I put fire"',
+            'office gossip: "the guy", who said what to who in the office',
+            'negotiating hard: "tell him 70 more and thats it no less"',
+        ];
+
+        $picked = array_rand(array_flip($jokes), 2);
+        if (random_int(0, 1) === 1 && ! in_array($jokes[0], $picked, true)) {
+            $picked[0] = $jokes[0];
+        }
+
+        return "\n\nFor this one, work in these of his running jokes (at most one per line,"
+            . " only where it fits naturally): " . implode('; ', $picked) . '.';
+    }
 
     /** A copy that reads briefs without the Sigou persona, for comparison. */
     public function withoutPersona(): static
@@ -299,7 +336,7 @@ Rules:
 SYS;
 
         if ($this->persona) {
-            $system .= "\n" . self::PERSONA;
+            $system .= "\n" . self::PERSONA . $this->jokesForThisOne();
         }
 
         $schema = [
