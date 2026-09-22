@@ -29,6 +29,15 @@ it('hands an agent the office wifi from config', function () {
         ->assertJsonPath('wifi.qr_url', 'https://example.test/qr');
 });
 
+it('gives a QR code to scan, not just a password to type', function () {
+    config(['services.office_wifi' => ['ssid' => 'Office', 'password' => 'secret-pass', 'qr_url' => null]]);
+    $this->actingAs(User::factory()->create());
+
+    $qr = $this->postJson('/agent-search', ['q' => 'wifi pls'])->assertOk()->json('wifi.qr');
+
+    expect($qr)->toContain('<svg');
+});
+
 it('says so when nobody has set the wifi', function () {
     config(['services.office_wifi' => ['ssid' => null, 'password' => null, 'qr_url' => null]]);
     $this->actingAs(User::factory()->create());

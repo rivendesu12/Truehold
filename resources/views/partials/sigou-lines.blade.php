@@ -196,11 +196,19 @@ window.SigouLines = (function () {
     };
 
     const wifi = () => pick([
-        'Here the WiFi bro. Dont give it to the whole building',
-        'WiFi for the client. Fast one, 10 gig, better than my love life 😂',
-        'Copy and send. And tell the client no Netflix in the office',
+        'Here bro. Client points the camera and is in',
+        'Scan and go. 10 gig, faster than my love life 😂',
+        'Camera on the code, done. And no Netflix in the office',
     ]);
 
-    return {greeting, fresh, agreement, wifi, poke: () => pick(pokes), nudge: () => pick(nudges), thinking, result, error, offline};
+    const invoice = (a) => {
+        const m = a.missing || [];
+        if (m.includes('client_name') && m.includes('amount')) return 'Invoice for who? And how much, cash 220 or transfer 250?';
+        if (m.includes('client_name')) return 'Invoice for who, malaka? Full name';
+        if (m.includes('amount')) return 'How much? Cash 220 or transfer 250?';
+        return pick(['Invoice ready bro. Number ' + a.next_number + ', dont lose it', 'Ready. Money first, then invoice, you know the rules 😂']);
+    };
+
+    return {greeting, fresh, agreement, wifi, invoice, poke: () => pick(pokes), nudge: () => pick(nudges), thinking, result, error, offline};
 })();
 </script>

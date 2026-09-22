@@ -234,7 +234,7 @@ SYS;
     }
 
     /** Keys that describe the reply rather than the search. */
-    public const NOT_FILTERS = ['explanation', 'chit_chat', 'sigou', 'sigou_found', 'sigou_none', 'refines_previous', 'agreement', 'wifi'];
+    public const NOT_FILTERS = ['explanation', 'chit_chat', 'sigou', 'sigou_found', 'sigou_none', 'refines_previous', 'agreement', 'wifi', 'invoice'];
 
     /**
      * The filters worth carrying into a follow-up: everything the agent
@@ -248,7 +248,7 @@ SYS;
         );
     }
 
-    public function parse(string $question, array $knownLocations = [], ?array $previous = null, ?array $pendingAgreement = null): ?array
+    public function parse(string $question, array $knownLocations = [], ?array $previous = null, ?array $pendingAgreement = null, ?array $pendingInvoice = null): ?array
     {
         if (! $this->isConfigured()) {
             return null;
@@ -391,6 +391,20 @@ Rules:
   Sigou's `sigou` line: if the name or fee is missing, ask for exactly what
   is missing in his voice ("full name as on the ID? and cash 220 or transfer
   250?"); if everything is there, say it is ready.
+- `invoice` is for the office's sourcing-fee invoice (what the client gets
+  for the fee), not a search. `invoice.wanted` true for "invoice for...",
+  "make an invoice", "receipt for Maria". Then leave every search filter
+  null or empty.
+  * `client_name` exactly as written, else null.
+  * `amount` in GBP: the number if given; "cash" means 220 and "transfer" or
+    "bank" means 250 when no number is given; else null.
+  * `date` an ISO date only if they give one, else null (dated today).
+  * `paid` false only when they say it is not paid yet ("unpaid", "hasn't
+    paid", "to pay later"); otherwise true.
+  The message may start with PENDING INVOICE: an invoice in progress. Merge
+  the answer into it and keep `wanted` true, as for an agreement. An
+  agreement AND an invoice in one message sets both.
+  Sigou's `sigou` line: ask for exactly what is missing, or say it is ready.
 - `wifi` true when the agent asks for the office WiFi: "wifi", "wifi
   password", "internet for the client", "what's the network". Then leave
   every search filter null. You do not know the password and must not make
@@ -457,6 +471,18 @@ SYS;
                 'commission_only' => ['type' => 'boolean'],
                 'refines_previous' => ['type' => 'boolean'],
                 'wifi' => ['type' => 'boolean'],
+                'invoice' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'wanted' => ['type' => 'boolean'],
+                        'client_name' => ['type' => ['string', 'null']],
+                        'amount' => ['type' => ['number', 'null']],
+                        'date' => ['type' => ['string', 'null']],
+                        'paid' => ['type' => 'boolean'],
+                    ],
+                    'required' => ['wanted', 'client_name', 'amount', 'date', 'paid'],
+                    'additionalProperties' => false,
+                ],
                 'agreement' => [
                     'type' => 'object',
                     'properties' => [
@@ -483,7 +509,7 @@ SYS;
                 'smokers', 'pets', 'region', 'garden', 'parking', 'furnished', 'no_deposit',
                 'max_deposit', 'available_by', 'max_commitment_months',
                 'good_transport', 'agencies', 'sort',
-                'commission_only', 'nice_to_have', 'explanation', 'refines_previous', 'agreement', 'wifi',
+                'commission_only', 'nice_to_have', 'explanation', 'refines_previous', 'agreement', 'wifi', 'invoice',
             ],
             'additionalProperties' => false,
         ];
@@ -507,6 +533,9 @@ SYS;
         $context = '';
         if ($pendingAgreement) {
             $context .= "PENDING AGREEMENT:\n" . json_encode($pendingAgreement, JSON_UNESCAPED_SLASHES) . "\n\n";
+        }
+        if ($pendingInvoice) {
+            $context .= "PENDING INVOICE:\n" . json_encode($pendingInvoice, JSON_UNESCAPED_SLASHES) . "\n\n";
         }
         if ($previous) {
             $context .= "PREVIOUS SEARCH:\n" . json_encode($previous, JSON_UNESCAPED_SLASHES) . "\n\n";

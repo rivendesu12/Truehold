@@ -89,7 +89,13 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         $pending = $lastAgreement['details'] ?? null;
     }
 
-    $spec = $assistant->parse($question, $locations, $previous ?: null, $pending ?: null);
+    $pendingInvoice = null;
+    $lastInvoice = $request->session()->get('sigou.invoice');
+    if (! $request->boolean('fresh') && is_array($lastInvoice) && ($lastInvoice['at'] ?? 0) > now()->subMinutes(15)->timestamp) {
+        $pendingInvoice = $lastInvoice['details'] ?? null;
+    }
+
+    $spec = $assistant->parse($question, $locations, $previous ?: null, $pending ?: null, $pendingInvoice ?: null);
     if (! $spec) {
         return response()->json(['error' => 'Could not understand that — try rephrasing.'], 502);
     }
@@ -104,8 +110,48 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
                 'ssid' => $wifi['ssid'],
                 'password' => $wifi['password'],
                 'qr_url' => $wifi['qr_url'],
+                // The client scans the agent's screen and is on: no typing.
+                'qr' => (new \BaconQrCode\Writer(new \BaconQrCode\Renderer\ImageRenderer(
+                    new \BaconQrCode\Renderer\RendererStyle\RendererStyle(260, 1),
+                    new \BaconQrCode\Renderer\Image\SvgImageBackEnd(),
+                )))->writeString('WIFI:T:WPA;S:' . addcslashes($wifi['ssid'], '\\;,:"')
+                    . ';P:' . addcslashes((string) $wifi['password'], '\\;,:"') . ';;'),
             ] : null,
             'sigou' => ! empty($wifi['ssid']) ? (string) ($spec['sigou'] ?? '') : 'Nobody told me the WiFi yet, ask Giaco',
+            'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
+        ]);
+    }
+
+    // A sourcing-fee invoice. When an agreement is asked for in the same
+    // breath, the agreement card offers the invoice too.
+    $bill = (array) ($spec['invoice'] ?? []);
+    if (! empty($bill['wanted']) && empty($spec['agreement']['wanted'])) {
+        $request->session()->forget('sigou.invoice');
+        $given = fn (string $key) => ($bill[$key] ?? null) !== null && $bill[$key] !== '' ? $bill[$key] : ($pendingInvoice[$key] ?? null);
+        try {
+            $date = $given('date') ? \Carbon\Carbon::parse($given('date'))->toDateString() : now()->toDateString();
+        } catch (\Throwable $e) {
+            $date = now()->toDateString();
+        }
+        $details = [
+            'client_name' => $given('client_name') ? trim((string) $given('client_name')) : null,
+            'amount' => is_numeric($given('amount')) ? (float) $given('amount') : null,
+            'date' => $date,
+            'paid' => (bool) ($bill['paid'] ?? true),
+        ];
+        $missing = array_keys(array_filter(['client_name' => ! $details['client_name'], 'amount' => $details['amount'] === null]));
+        if ($missing) {
+            $request->session()->put('sigou.invoice', ['details' => $details, 'at' => now()->timestamp]);
+        }
+
+        return response()->json([
+            'invoice' => $details + [
+                'missing' => $missing,
+                'ready' => ! $missing,
+                'pdf_url' => route('invoice.pdf'),
+                'next_number' => app(\App\Services\SourcingInvoice::class)->nextNumber(),
+            ],
+            'sigou' => (string) ($spec['sigou'] ?? ''),
             'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
         ]);
     }
@@ -149,6 +195,7 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
                 'missing' => $missing,
                 'ready' => ! $missing,
                 'pdf_url' => route('agreement.pdf'),
+                'invoice_url' => route('invoice.pdf'),
                 'template_url' => route('agreement.template'),
             ],
             'sigou' => (string) ($spec['sigou'] ?? ''),
@@ -156,9 +203,12 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         ]);
     }
 
-    // Moved on to something else: the half-made agreement is dropped.
+    // Moved on to something else: half-made documents are dropped.
     if ($pending) {
         $request->session()->forget('sigou.agreement');
+    }
+    if ($pendingInvoice) {
+        $request->session()->forget('sigou.invoice');
     }
 
     // Just talking to Sigou, not searching: he answers and nothing is filtered,
@@ -268,6 +318,34 @@ Route::middleware('auth')->post('/tools/sourcing-agreement/pdf', function (Reque
         'Cache-Control' => 'private, no-store',
     ]);
 })->name('agreement.pdf');
+
+// The sourcing-fee invoice: numbered, kept in the admin's invoices table,
+// returned as the PDF. Takes `amount`, or `fee` when it comes from the
+// agreement card's "Invoice too".
+Route::middleware('auth')->post('/tools/invoice/pdf', function (Request $request) {
+    $request->merge(['amount' => $request->input('amount', $request->input('fee'))]);
+    $data = $request->validate([
+        'client_name' => ['required', 'string', 'max:120'],
+        'amount' => ['required', 'numeric', 'min:1', 'max:10000'],
+        'date' => ['nullable', 'date'],
+        'paid' => ['nullable', 'in:0,1,true,false,on'],
+    ]);
+
+    $invoices = app(\App\Services\SourcingInvoice::class);
+    $invoice = $invoices->create(
+        $data['client_name'],
+        (float) $data['amount'],
+        \Carbon\Carbon::parse($data['date'] ?? now()),
+        \Illuminate\Support\Str::of((string) $request->user()->name)->trim()->before(' ')->ucfirst()->toString(),
+        ! in_array((string) ($data['paid'] ?? '1'), ['0', 'false'], true),
+    );
+
+    return response($invoices->pdf($invoice), 200, [
+        'Content-Type' => 'application/pdf',
+        'Content-Disposition' => 'inline; filename="' . \App\Services\SourcingInvoice::filename($invoice) . '"',
+        'Cache-Control' => 'private, no-store',
+    ]);
+})->name('invoice.pdf');
 
 Route::middleware('auth')->get('/tools/sourcing-agreement/template', function () {
     return response(app(\App\Services\SourcingAgreement::class)->blank(), 200, [

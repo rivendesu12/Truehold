@@ -103,7 +103,20 @@
     padding:10px 16px;font-weight:700;font-size:14px;cursor:pointer;text-decoration:none}
 .th-ask__deallink{font-size:13px;color:#42536b}
 
-/* Office WiFi card */
+/* Office WiFi card: the QR is the point */
+.th-ask__wifi{text-align:center}
+.th-ask__qr{background:#fff;border:1px solid #e3e8f0;border-radius:14px;padding:12px;width:240px;margin:0 auto}
+.th-ask__qr svg{display:block;width:100%;height:auto}
+.th-ask__qrhint{font-size:12.5px;color:#5b6472;margin:8px 0 2px}
+.th-ask__wifiname{font-family:ui-monospace,Menlo,monospace;font-size:13px;color:#42536b;margin:0 0 8px}
+.th-ask__pw{text-align:left;margin:0 0 8px}
+.th-ask__pw summary{cursor:pointer;font-size:13px;color:#42536b;text-align:center}
+.th-ask__pw .th-ask__wifirow{margin-top:8px}
+.th-ask__invno{font-weight:400;color:#7b8598;font-size:13px}
+.th-ask__check{display:flex;align-items:center;gap:8px;font-size:13px;color:#42536b;margin:2px 0 12px}
+.th-ask__dealbtn--alt{background:#fff;color:#152c4e;border:1px solid #c9d2e0}
+
+/* (older WiFi rows, still used for the password) */
 .th-ask__wifirow{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e3e8f0;border-radius:10px;padding:9px 12px;margin:0 0 8px}
 .th-ask__wifirow div{flex:1;min-width:0}
 .th-ask__wifirow span{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7b8598}
@@ -415,13 +428,35 @@
 
     const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-    const wifiCard = (w) => {
-        const row = (label, value) => '<div class="th-ask__wifirow"><div><span>' + label + '</span><b>' + esc(value) + '</b></div>'
-            + '<button type="button" class="th-ask__copy" data-copy="' + esc(value) + '">Copy</button></div>';
-        return '<div class="th-ask__deal"><h4>Office WiFi</h4>'
-            + row('Network', w.ssid) + row('Password', w.password)
-            + (w.qr_url ? '<a class="th-ask__dealbtn" href="' + esc(w.qr_url) + '" target="_blank" rel="noopener">Show the QR code for the client</a>' : '')
-            + '</div>';
+    // The QR is the point: the client scans the agent's screen and is on.
+    // The password stays one tap away for a laptop that cannot scan.
+    const wifiCard = (w) =>
+        '<div class="th-ask__deal th-ask__wifi"><h4>Office WiFi</h4>'
+        + (w.qr ? '<div class="th-ask__qr">' + w.qr + '</div><p class="th-ask__qrhint">Client: open the camera and point it here</p>' : '')
+        + '<p class="th-ask__wifiname">' + esc(w.ssid) + '</p>'
+        + '<details class="th-ask__pw"><summary>Show password</summary><div class="th-ask__wifirow"><div><b>' + esc(w.password) + '</b></div>'
+        + '<button type="button" class="th-ask__copy" data-copy="' + esc(w.password) + '">Copy</button></div></details>'
+        + (w.qr_url ? '<a class="th-ask__deallink" href="' + esc(w.qr_url) + '" target="_blank" rel="noopener">Open full screen</a>' : '')
+        + '</div>';
+
+    const invoiceCard = (a) => {
+        const missing = a.missing || [];
+        const field = (name, label, control, hint) =>
+            '<label class="th-ask__dealrow' + (missing.includes(name) ? ' is-missing' : '') + '">'
+            + '<span>' + label + '</span>' + control + (hint ? '<small>' + hint + '</small>' : '') + '</label>';
+        return '<form class="th-ask__deal" method="POST" action="' + esc(a.pdf_url) + '">'
+            + '<h4>Invoice <small class="th-ask__invno">#' + esc(a.next_number) + '</small></h4>'
+            + '<input type="hidden" name="_token" value="' + esc(csrf()) + '">'
+            + field('client_name', 'Bill to (client\'s full name)',
+                '<input name="client_name" required maxlength="120" placeholder="As written on their ID" value="' + esc(a.client_name || '') + '">')
+            + field('amount', 'Amount (£)',
+                '<input name="amount" type="number" min="1" step="1" required value="' + esc(a.amount == null ? '' : a.amount) + '">', 'Sourcing agreement · £220 cash · £250 transfer')
+            + field('date', 'Date', '<input name="date" type="date" value="' + esc(a.date || '') + '">')
+            + '<input type="hidden" name="paid" value="0">'
+            + '<label class="th-ask__check"><input type="checkbox" name="paid" value="1"' + (a.paid === false ? '' : ' checked') + '> Paid already (balance due £0)</label>'
+            + '<div class="th-ask__dealbtns"><button type="submit" class="th-ask__dealbtn">Download invoice</button></div>'
+            + '<p class="th-ask__err" data-deal-error hidden></p>'
+            + '</form>';
     };
 
     body.addEventListener('click', async (e) => {
@@ -456,6 +491,7 @@
             + field('sign_as', 'Signed by (the Sourcer)', '<input name="sign_as" maxlength="60" value="' + esc(a.sign_as || '') + '">')
             + '<p class="th-ask__dealnote">Referral bonus £' + esc(a.referral) + ' per referred client, filled in for you. The client signs by hand.</p>'
             + '<div class="th-ask__dealbtns"><button type="submit" class="th-ask__dealbtn">Download PDF</button>'
+            + '<button type="submit" class="th-ask__dealbtn th-ask__dealbtn--alt" formaction="' + esc(a.invoice_url || '/tools/invoice/pdf') + '">Invoice too</button>'
             + '<a class="th-ask__deallink" href="' + esc(a.template_url) + '" download>Blank template</a></div>'
             + '<p class="th-ask__err" data-deal-error hidden></p>'
             + '</form>';
@@ -467,13 +503,14 @@
         const deal = e.target.closest('.th-ask__deal');
         if (!deal) return;
         e.preventDefault();
-        const btn = deal.querySelector('button[type=submit]');
+        const btn = e.submitter || deal.querySelector('button[type=submit]');
+        const label = btn.textContent;
         const err = deal.querySelector('[data-deal-error]');
         err.hidden = true;
         btn.disabled = true;
         btn.textContent = 'Making it…';
         try {
-            const res = await fetch(deal.action, {
+            const res = await fetch(btn.getAttribute('formaction') || deal.action, {
                 method: 'POST',
                 headers: {'X-CSRF-TOKEN': csrf(), 'Accept': 'application/json'},
                 body: new FormData(deal),
@@ -491,14 +528,16 @@
             link.click();
             setTimeout(() => { URL.revokeObjectURL(link.href); link.remove(); }, 4000);
             Sigou.set('happy', 2600);
-            say(pick(['Done bro, check your downloads. Now get the signature', 'Ready. Print it before he change mind 😂', 'There. Check the name with the ID malaka']));
+            say(link.download.startsWith('Invoice')
+                ? pick(['Invoice done bro. ' + link.download.split(' - ')[0] + ', check the downloads', 'There, invoiced. Now make sure he actually paid 😂'])
+                : pick(['Done bro, check your downloads. Now get the signature', 'Ready. Print it before he change mind 😂', 'There. Check the name with the ID malaka']));
         } catch (ex) {
             err.textContent = ex.message;
             err.hidden = false;
             Sigou.set('sad', 3000);
         } finally {
             btn.disabled = false;
-            btn.textContent = 'Download PDF';
+            btn.textContent = label;
         }
     });
 
@@ -542,7 +581,19 @@
                 return;
             }
 
-            // The office WiFi: network and password to copy, and the QR page.
+            // A sourcing-fee invoice: same idea as the agreement card.
+            if (data.invoice) {
+                body.innerHTML = invoiceCard(data.invoice);
+                const gap = body.querySelector('.is-missing input');
+                Sigou.set(data.invoice.ready ? 'happy' : 'typing', 2400);
+                say((data.sigou || '').trim() || SigouLines.invoice(data.invoice));
+                lastQ = q;
+                input.value = '';
+                if (gap && !phone.matches) gap.focus();
+                return;
+            }
+
+            // The office WiFi: a QR for the client to scan.
             if ('wifi' in data) {
                 body.innerHTML = data.wifi ? wifiCard(data.wifi) : '';
                 Sigou.set('happy', 2000);

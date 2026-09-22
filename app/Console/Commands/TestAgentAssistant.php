@@ -67,6 +67,16 @@ class TestAgentAssistant extends Command
             'expect' => ['client_name' => 'Anna Nowak', 'fee' => 220]],
     ];
 
+    /** Sourcing-fee invoices. */
+    private const INVOICE_CASES = [
+        ['q' => 'malaka invoice for Alexander Marcano 250', 'expect' => ['client_name' => 'Alexander Marcano', 'amount' => 250, 'paid' => true]],
+        ['q' => 'make an invoice for maria lopez, she paid cash', 'expect' => ['client_name' => 'maria lopez', 'amount' => 220]],
+        ['q' => 'invoice for John Smith 250, he hasnt paid yet', 'expect' => ['client_name' => 'John Smith', 'amount' => 250, 'paid' => false]],
+        ['q' => 'make me an invoice', 'expect' => ['client_name' => null, 'amount' => null]],
+        ['q' => 'Anna Nowak, transfer', 'pending' => ['client_name' => null, 'amount' => null, 'paid' => true],
+            'expect' => ['client_name' => 'Anna Nowak', 'amount' => 250]],
+    ];
+
     /** Asking for the office WiFi, in the ways agents actually do. */
     private const WIFI_CASES = [
         'whats the office wifi',
@@ -307,6 +317,9 @@ class TestAgentAssistant extends Command
             if (! empty($spec['wifi'])) {
                 $misses[] = 'taken for a wifi request, no search';
             }
+            if (! empty($spec['invoice']['wanted'])) {
+                $misses[] = 'taken for an invoice, no search';
+            }
 
             if ($this->option('compare')) {
                 $plain = $plainAssistant->parse($case['q'], $locations);
@@ -391,6 +404,26 @@ class TestAgentAssistant extends Command
         $this->newLine();
         $this->table(['sourcing agreement', 'result', 'what it got wrong', 'Sigou says'], $dealRows);
 
+        // Invoices.
+        $billOk = 0;
+        foreach (self::INVOICE_CASES as $case) {
+            $spec = $assistant->parse($case['q'], $locations, null, null, $case['pending'] ?? null);
+            $b = (array) ($spec['invoice'] ?? []);
+            $misses = empty($b['wanted']) ? ['not recognised as an invoice'] : [];
+            foreach ($case['expect'] as $key => $want) {
+                $got = $b[$key] ?? null;
+                $same = is_string($want) ? strcasecmp(trim((string) $got), $want) === 0
+                    : (is_numeric($want) ? is_numeric($got) && (float) $got == $want : $got === $want);
+                if (! $same) {
+                    $misses[] = "{$key}=" . json_encode($got);
+                }
+            }
+            $billOk += $spec && ! $misses ? 1 : 0;
+            if ($misses) {
+                $this->warn("invoice MISS: {$case['q']}: " . implode('; ', $misses));
+            }
+        }
+
         // The office WiFi.
         $wifiOk = 0;
         foreach (self::WIFI_CASES as $q) {
@@ -422,7 +455,8 @@ class TestAgentAssistant extends Command
         $total = count(self::CASES);
         $this->newLine();
         $this->info("Passed {$passed}/{$total} on {$assistant->provider()}/{$assistant->model()}, follow-ups {$followOk}/" . count(self::FOLLOWUP_CASES)
-            . ", agreements {$dealOk}/" . count(self::AGREEMENT_CASES) . ", wifi {$wifiOk}/" . count(self::WIFI_CASES)
+            . ", agreements {$dealOk}/" . count(self::AGREEMENT_CASES) . ", invoices {$billOk}/" . count(self::INVOICE_CASES)
+            . ", wifi {$wifiOk}/" . count(self::WIFI_CASES)
             . ", small talk {$chatOk}/" . count(self::CHAT_CASES));
 
         if ($this->option('compare')) {
@@ -443,6 +477,7 @@ class TestAgentAssistant extends Command
 
         return $passed === $total && $chatOk === count(self::CHAT_CASES) && $followOk === count(self::FOLLOWUP_CASES)
             && $dealOk === count(self::AGREEMENT_CASES) && $wifiOk === count(self::WIFI_CASES)
+            && $billOk === count(self::INVOICE_CASES)
             ? self::SUCCESS : self::FAILURE;
     }
 
