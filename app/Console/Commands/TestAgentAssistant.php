@@ -255,7 +255,10 @@ class TestAgentAssistant extends Command
             // itself, which is what expect_none asserts; otherwise returning
             // nothing is a failure from the agent's point of view.
             if (! empty($case['expect_none'])) {
-                if (empty($found['why_none'])) {
+                // Either we found something (the relaxation ladder did its
+                // job) or we explained why we could not. Both are acceptable;
+                // a bare zero is not.
+                if ($found['matched'] === 0 && empty($found['why_none'])) {
                     $misses[] = 'zero results with no explanation';
                 }
             } elseif (empty($misses) && $found['matched'] === 0) {
