@@ -357,7 +357,7 @@ Rules:
 SYS;
 
         if ($this->persona) {
-            $system .= "\n" . self::PERSONA . $this->jokesForThisOne();
+            $system .= "\n" . self::PERSONA;
         }
 
         $schema = [
@@ -431,10 +431,16 @@ SYS;
             }
         }
 
+        // Everything that is the same on every call goes first and the
+        // per-call jokes go last, so the provider's prompt cache covers the
+        // rules, the persona and the area list: cached input is billed at a
+        // fraction of the price.
+        $prompt = $system . $locationHint . ($this->persona ? $this->jokesForThisOne() : '');
+
         try {
             $json = $this->provider() === 'anthropic'
-                ? $this->askAnthropic($system . $locationHint, $question, $schema)
-                : $this->askOpenAi($system . $locationHint, $question, $schema);
+                ? $this->askAnthropic($prompt, $question, $schema)
+                : $this->askOpenAi($prompt, $question, $schema);
 
             if ($json === null) {
                 return null;
