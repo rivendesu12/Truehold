@@ -34,14 +34,40 @@ final class PropertyPlace
                 $line .= ', ' . (int) $walk . ' min walk';
             }
 
-            // The district still earns its place: two Whitechapels are a mile
-            // apart, and an agent reads the postcode to tell them apart.
-            $district = self::district($area) ?: self::district((string) $get('postcode'));
+            // The district earns its place only when it is this listing's own:
+            // two rooms can share a station and sit a mile apart. A district
+            // scraped from elsewhere on a page is worse than none, so it is
+            // only shown when the listing carries a real postcode for it.
+            $district = self::district((string) $get('postcode'));
+
+            if ($district === '' && self::looksTrustworthy($property, $area)) {
+                $district = self::district($area);
+            }
 
             return $district !== '' ? $line . ' · ' . $district : $line;
         }
 
         return $area !== '' ? $area : 'Location not specified';
+    }
+
+    /**
+     * A district is trusted when the listing's own title or description says
+     * it too. One advert's district scraped off a shared page was being
+     * stamped onto rooms four miles away.
+     */
+    protected static function looksTrustworthy($property, string $area): bool
+    {
+        $district = self::district($area);
+
+        if ($district === '') {
+            return false;
+        }
+
+        $get = fn (string $k) => is_array($property) ? ($property[$k] ?? null) : ($property->{$k} ?? null);
+
+        $text = strtoupper((string) $get('title') . ' ' . (string) $get('description'));
+
+        return str_contains($text, $district);
     }
 
     /** "London SE27" -> "SE27"; a full postcode -> its outward code. */

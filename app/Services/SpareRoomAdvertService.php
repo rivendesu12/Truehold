@@ -442,15 +442,16 @@ class SpareRoomAdvertService
             return 'London ' . $outcode;
         }
 
-        // Last resort: a postcode district written in the title.
-        foreach ($lines as $line) {
-            if (preg_match('/\b([A-Z]{1,2}\d{1,2}[A-Z]?)\b/', $line, $m)
-                && in_array(strtoupper(preg_replace('/\d.*/', '', $m[1])), [
-                    'E', 'EC', 'N', 'NW', 'SE', 'SW', 'W', 'WC', 'BR', 'CR', 'DA',
-                    'EN', 'HA', 'IG', 'KT', 'RM', 'SM', 'TW', 'UB', 'WD',
-                ], true)) {
-                return 'London ' . strtoupper($m[1]);
-            }
+        // A district in this advert's own title is trustworthy; one found
+        // anywhere else on the page is not, and guessing produced rooms
+        // labelled with a district four miles from where they are.
+        $title = $lines[0] ?? '';
+        if (preg_match('/\b([A-Z]{1,2}\d{1,2}[A-Z]?)\b/', (string) $title, $m)
+            && in_array(strtoupper(preg_replace('/\d.*/', '', $m[1])), [
+                'E', 'EC', 'N', 'NW', 'SE', 'SW', 'W', 'WC', 'BR', 'CR', 'DA',
+                'EN', 'HA', 'IG', 'KT', 'RM', 'SM', 'TW', 'UB', 'WD',
+            ], true)) {
+            return 'London ' . strtoupper($m[1]);
         }
 
         return null;
@@ -458,13 +459,15 @@ class SpareRoomAdvertService
 
     protected function outcode(string $html): ?string
     {
+        // Only the keywords meta tag, which names this advert's own district.
+        // The looser fallback that used to sit here matched the first
+        // district-shaped string anywhere on the page — including the
+        // "more from this advertiser" panel — so one advert's SE27 was
+        // stamped onto rooms in Greenwich, Clapham and Royal Victoria. A
+        // wrong postcode is worse than none: the card falls back to the
+        // station, which is accurate and is what an agent reads anyway.
         if (preg_match('/flatshare London ([A-Z]{1,2}\d{1,2}[A-Z]?)\b/', $html, $m)) {
             return $m[1];
-        }
-
-        // Not every advert carries the keywords meta tag the line above reads.
-        if (preg_match('/(?:flatshare|房|room)[^<]{0,40}?\b([A-Z]{1,2}\d{1,2}[A-Z]?)\b/', $html, $m2)) {
-            return $m2[1];
         }
 
         return null;
