@@ -100,9 +100,13 @@ Rules:
 - For "N minutes from X" or "near X", set `near_landmark` to X and
   `minutes_from_landmark` to N. If they say a distance in miles instead, set
   `radius_miles`. If they name one of our own areas, set `location`.
-- Tube zones: zone 1 is central. Treat "up to zone 2" as within about 5 miles
-  of central London, zone 3 as about 8 miles: set near_landmark to
-  "central london" and radius_miles accordingly.
+- Tube zones are real data we hold per listing, taken from the fare zone of
+  its nearest station. For "up to zone 3", "zone 2 or 3", "no further than
+  zone 4", set `max_zone` to the highest acceptable number. Do NOT convert a
+  zone into a distance or a landmark.
+- For "near a tube", "close to the station", "good transport links", set
+  `max_walk_to_station` to the acceptable walk in minutes (default 10 if they
+  just say near a tube; 15 for "reasonable transport").
 - `commission_only` true if they ask for only agencies that pay commission.
 - `explanation` is one short sentence telling the agent how you read their
   request, so they can spot a misreading.
@@ -125,13 +129,16 @@ SYS;
                 'min_bedrooms' => ['type' => ['number', 'null']],
                 'max_bedrooms' => ['type' => ['number', 'null']],
                 'couples' => ['type' => ['boolean', 'null']],
+                'max_zone' => ['type' => ['number', 'null']],
+                'max_walk_to_station' => ['type' => ['number', 'null']],
                 'commission_only' => ['type' => 'boolean'],
                 'explanation' => ['type' => 'string'],
             ],
             'required' => [
                 'location', 'near_landmark', 'minutes_from_landmark', 'radius_miles',
                 'min_price', 'max_price', 'property_types', 'ensuite_only',
-                'min_bedrooms', 'max_bedrooms', 'couples', 'commission_only', 'explanation',
+                'min_bedrooms', 'max_bedrooms', 'couples', 'max_zone',
+                'max_walk_to_station', 'commission_only', 'explanation',
             ],
             'additionalProperties' => false,
         ];
@@ -431,6 +438,18 @@ SYS;
         if (! empty($spec['min_bedrooms'])) {
             $results = $results->filter(fn ($p) =>
                 ! empty($p['total_rooms']) && (int) $p['total_rooms'] >= (int) $spec['min_bedrooms']);
+        }
+
+        // Real fare zone from the nearest station, not a radius.
+        if (! empty($spec['max_zone'])) {
+            $results = $results->filter(fn ($p) =>
+                is_numeric($p['zone'] ?? null) && (int) $p['zone'] <= (int) $spec['max_zone']);
+        }
+
+        if (! empty($spec['max_walk_to_station'])) {
+            $results = $results->filter(fn ($p) =>
+                is_numeric($p['walk_minutes'] ?? null)
+                && (int) $p['walk_minutes'] <= (int) $spec['max_walk_to_station']);
         }
 
         if (! empty($spec['commission_only'])) {

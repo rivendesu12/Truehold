@@ -87,6 +87,9 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         'photo' => $p['first_photo_url'] ?? null,
         'agent' => $p['agent_name'] ?? null,
         'commission' => $assistant->paysCommission($p),
+        'zone' => $p['zone'] ?? null,
+        'station' => $p['nearest_station'] ?? null,
+        'walk' => $p['walk_minutes'] ?? null,
         'why' => $p['why'] ?? null,
         'url' => ! empty($p['id']) ? url('/properties/' . $p['id']) : null,
     ];

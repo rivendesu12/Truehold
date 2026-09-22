@@ -65,6 +65,7 @@
     font-size:11px;letter-spacing:0}
 .th-ask__secnote{margin:0 0 6px;font-size:12px;color:#7b8598}
 .th-ask__why{display:block;color:#8a6d1f;font-size:12px;margin-top:2px}
+.th-ask__stn{display:block;color:#7b8598;font-size:12px}
 </style>
 
 <script>
@@ -122,7 +123,10 @@
                 + '<span><b>' + esc(r.title)
                 + (r.commission ? ' <span class="th-ask__tag">COMMISSION</span>' : '')
                 + '</b><small>' + esc(r.location || '') + ' \u00b7 ' + money(r.price)
+                + (r.zone ? ' \u00b7 zone ' + r.zone : '')
                 + (r.agent ? ' \u00b7 ' + esc(r.agent) : '') + '</small>'
+                + (r.station ? '<small class="th-ask__stn">' + esc(r.station)
+                    + (r.walk ? ', ' + r.walk + ' min walk' : '') + '</small>' : '')
                 + (r.why ? '<small class="th-ask__why">' + esc(r.why) + '</small>' : '')
                 + '</span></a>';
 

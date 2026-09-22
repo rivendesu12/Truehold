@@ -105,6 +105,14 @@ class ScrapedListingsApiService
 
             $all = $this->geocodeMissing($this->fillMissingPrices($feed->concat($supplier)));
 
+            // Attach the nearest station, its fare zone and a walking estimate,
+            // so "zone 3" and "near a tube" are facts rather than inferences
+            // from distance to the centre. Needs coordinates, so it runs last.
+            $transport = app(TransportIndex::class);
+            if ($transport->isAvailable()) {
+                $all = $all->map(fn ($p) => $transport->annotate($p));
+            }
+
             if (config('services.harborops.require_title_and_price', true)) {
                 $all = $all->filter(
                     fn ($p) => trim((string) ($p['title'] ?? '')) !== '' && ! empty($p['price'])
