@@ -103,7 +103,15 @@ class ScrapedListingsApiService
             // to them — the sheet's own "Available From" gate does.
             $supplier = app(SupplierTargetsSheetService::class)->getAllProperties();
 
-            return $this->geocodeMissing($this->fillMissingPrices($feed->concat($supplier)))->values();
+            $all = $this->geocodeMissing($this->fillMissingPrices($feed->concat($supplier)));
+
+            if (config('services.harborops.require_title_and_price', true)) {
+                $all = $all->filter(
+                    fn ($p) => trim((string) ($p['title'] ?? '')) !== '' && ! empty($p['price'])
+                );
+            }
+
+            return $all->values();
         });
     }
 

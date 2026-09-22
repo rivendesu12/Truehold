@@ -70,6 +70,9 @@ return [
         // Hide listings the upstream scraper has not re-checked in this many days
         // (0 disables). Staleness, not status, is what surfaces already-let rooms.
         'max_age_days' => (int) env('HARBOROPS_MAX_AGE_DAYS', 0),
+        // Some feed rows are empty stubs: no title, no price, no advert. A card
+        // with no title and "N/A" is worse than no card, so require both.
+        'require_title_and_price' => env('HARBOROPS_REQUIRE_TITLE_AND_PRICE', true),
     ],
 
     // Supplier rooms from the "Room targets" spreadsheet, Targets tab. This is the
