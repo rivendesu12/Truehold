@@ -34,6 +34,9 @@ return [
         'arrive_by' => '0830',
         // Modes a tenant would actually use to commute.
         'modes' => 'tube,dlr,overground,elizabeth-line,tram,national-rail,walking',
+        // What "good transport links" means when nobody gives a number:
+        // a short walk to a station, and this long into the centre.
+        'good_transport_minutes' => 45,
         // Recomputed rarely: tube times only move when the network does.
         'rebuild_after_days' => 90,
     ],

@@ -175,8 +175,22 @@
                         ? ' within <strong>' + data.max_journey + ' minutes</strong> of ' + esc(data.hub)
                         : (data.radius ? ' within <strong>' + data.radius + ' miles</strong> straight-line' : ''))
                  + (data.widened ? ' <em>(nothing exactly there — showing nearby)</em>' : '')
-                 + ((data.relaxed || []).includes('bedrooms') ? ' <em>(bedroom count dropped \u2014 too few listings state one)</em>' : '')
                  + '</p>';
+
+            const dropped = (data.relaxed || []).filter(function (r) { return r !== 'bedrooms'; });
+            if (dropped.length) {
+                html += '<p class="th-ask__warn">Nothing matched everything, so these were set aside: <strong>'
+                     + esc(dropped.map(function (d) { return d.replace(/_/g, ' '); }).join(', '))
+                     + '</strong>. Check each listing before you send it.</p>';
+            }
+            if ((data.relaxed || []).includes('bedrooms')) {
+                html += '<p class="th-ask__warn">Bedroom count set aside \u2014 too few listings state one.</p>';
+            }
+            if ((data.unanswerable || []).length) {
+                html += '<p class="th-ask__warn">We hold no data on <strong>'
+                     + esc(data.unanswerable.join(', '))
+                     + '</strong>, so that part of the brief was ignored. You will need to ask the landlord.</p>';
+            }
 
             if (data.unplaced) {
                 html += '<p class="th-ask__warn">We could not place <strong>'

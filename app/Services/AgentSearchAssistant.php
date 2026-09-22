@@ -6,6 +6,7 @@ use Anthropic\Client as AnthropicClient;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Support\FieldValue;
 use App\Support\PropertyClassifier;
 
 /**
@@ -74,6 +75,17 @@ class AgentSearchAssistant
      *
      * @return array{filters: array, explanation: string, commission_only: bool, sort_commission_first: bool}|null
      */
+    /**
+     * Conditions worth dropping before giving up. Price, area, property type,
+     * zone, journey time, en-suite and commission are never dropped: those are
+     * what the agent actually asked for.
+     */
+    private const SOFT_KEYS = [
+        'garden', 'parking', 'bills_included', 'furnished', 'smokers',
+        'students', 'no_deposit', 'max_deposit', 'available_by',
+        'max_commitment_months', 'room_type', 'good_transport', 'max_house_size',
+    ];
+
     public function parse(string $question, array $knownLocations = []): ?array
     {
         if (! $this->isConfigured()) {
@@ -134,6 +146,31 @@ Rules:
 - For "near a tube", "close to the station", "good transport links", set
   `max_walk_to_station` to the acceptable walk in minutes (default 10 if they
   just say near a tube; 15 for "reasonable transport").
+- `max_house_size` for the size of the shared house: "max 3 rooms total",
+  "small houseshare", "not living with loads of people". This is different
+  from `max_bedrooms`, which is the size of a whole flat being rented.
+- `room_type` one of double, single, ensuite, twin, studio — only when they
+  name it.
+- `bills_included` true for "bills included", "all in", "no extra bills".
+- `couples` true for a couple or two people sharing a room.
+- `students` true when the tenant is a student; false when they specifically
+  want a professional house.
+- `smokers` true only if they need smoking allowed.
+- `pets` true if they need pets allowed.
+- `garden`, `parking` true only if asked for.
+- `furnished` true or false when they say; null when they do not care.
+- `no_deposit` true for "no deposit", "zero deposit". `max_deposit` for a
+  stated figure.
+- `available_by` an ISO date when they need to move by then. "ASAP", "now",
+  "immediately" means today's date. "from October" means the 1st of October.
+- `max_commitment_months` when they want a short let: "3 months max",
+  "short term", "not tied in for a year".
+- `good_transport` true for vague transport asks — "good transport links",
+  "well connected", "easy to get into town" — with no number given. Do not
+  set it when they gave a specific station, line, zone or journey time.
+- `agencies` when they name a landlord or agency to restrict to.
+- `sort` "cheapest" when they ask for the cheapest or best value; otherwise
+  leave it null.
 - `commission_only` true if they ask for only agencies that pay commission.
 - `explanation` is one short sentence telling the agent how you read their
   request, so they can spot a misreading.
@@ -160,6 +197,25 @@ SYS;
                 'max_walk_to_station' => ['type' => ['number', 'null']],
                 'direct_only' => ['type' => 'boolean'],
                 'lines' => ['type' => 'array', 'items' => ['type' => 'string']],
+                'max_house_size' => ['type' => ['number', 'null']],
+                'room_type' => [
+                    'type' => ['string', 'null'],
+                    'enum' => ['double', 'single', 'ensuite', 'twin', 'studio', null],
+                ],
+                'bills_included' => ['type' => ['boolean', 'null']],
+                'students' => ['type' => ['boolean', 'null']],
+                'smokers' => ['type' => ['boolean', 'null']],
+                'pets' => ['type' => ['boolean', 'null']],
+                'garden' => ['type' => ['boolean', 'null']],
+                'parking' => ['type' => ['boolean', 'null']],
+                'furnished' => ['type' => ['boolean', 'null']],
+                'no_deposit' => ['type' => ['boolean', 'null']],
+                'max_deposit' => ['type' => ['number', 'null']],
+                'available_by' => ['type' => ['string', 'null']],
+                'max_commitment_months' => ['type' => ['number', 'null']],
+                'good_transport' => ['type' => ['boolean', 'null']],
+                'agencies' => ['type' => 'array', 'items' => ['type' => 'string']],
+                'sort' => ['type' => ['string', 'null'], 'enum' => ['cheapest', null]],
                 'commission_only' => ['type' => 'boolean'],
                 'explanation' => ['type' => 'string'],
             ],
@@ -168,6 +224,10 @@ SYS;
                 'min_price', 'max_price', 'property_types', 'ensuite_only',
                 'min_bedrooms', 'max_bedrooms', 'couples', 'max_zone',
                 'max_walk_to_station', 'direct_only', 'lines',
+                'max_house_size', 'room_type', 'bills_included', 'students',
+                'smokers', 'pets', 'garden', 'parking', 'furnished', 'no_deposit',
+                'max_deposit', 'available_by', 'max_commitment_months',
+                'good_transport', 'agencies', 'sort',
                 'commission_only', 'explanation',
             ],
             'additionalProperties' => false,
@@ -392,6 +452,30 @@ SYS;
             }
         }
 
+        // Last resort: drop the preferences that are nice-to-have rather than
+        // the point of the search. A brief with six conditions on partly-filled
+        // columns returns nothing far more often than it should, and "nothing"
+        // is the least useful answer we can give.
+        $soft = [];
+        foreach (self::SOFT_KEYS as $key) {
+            if (! empty($spec[$key])) {
+                $soft[] = $key;
+            }
+        }
+
+        if ($soft) {
+            $relaxedSpec = $spec;
+            foreach ($soft as $key) {
+                unset($relaxedSpec[$key]);
+            }
+
+            $plan[] = ['spec' => $relaxedSpec, 'center' => $center, 'radius' => $radius, 'widened' => false, 'relaxed' => $soft];
+
+            foreach ($ladder as $step) {
+                $plan[] = ['spec' => $relaxedSpec, 'center' => $wideCenter, 'radius' => $step, 'widened' => true, 'relaxed' => $soft];
+            }
+        }
+
         $results = collect();
         $widened = false;
         $relaxed = [];
@@ -421,6 +505,7 @@ SYS;
                 ->sortByDesc(fn ($p) => $p['commission_value'] ?? 0)->values(),
             'standard' => $onBrief->reject(fn ($p) => $this->paysCommission($p))->values(),
             'unplaced' => $unplaced,
+            'unanswerable' => $this->unanswerable($spec, $properties),
             'hub' => $spec['_hub'] ?? null,
             'hub_label' => ! empty($spec['_hub']) ? $transport->hubLabel($spec['_hub']) : null,
             'max_journey' => $spec['_max_journey'] ?? null,
@@ -624,7 +709,209 @@ SYS;
             $results = $results->filter(fn ($p) => $this->paysCommission($p));
         }
 
+        $results = $this->applyTenantPreferences($results, $spec);
+
+        if (($spec['sort'] ?? null) === 'cheapest') {
+            $results = $results->sortBy(fn ($p) => (float) ($p['price'] ?? PHP_INT_MAX));
+        }
+
         return $results;
+    }
+
+    /**
+     * The rest of what a tenant actually asks about: bills, terms, deposits,
+     * when they can move, who else is in the house.
+     *
+     * Every one of these columns is partly filled — the feed scrapes adverts
+     * written by hundreds of different people — so a listing that does not
+     * state the field is treated as not matching a hard requirement. That can
+     * hide good stock, which is why the search ladder relaxes and why
+     * unanswerable asks are reported rather than silently returning nothing.
+     */
+    protected function applyTenantPreferences(Collection $results, array $spec): Collection
+    {
+        $yes = fn (string $field) => fn ($p) => FieldValue::tribool($p[$field] ?? null) === true;
+
+        // House size: "max 3 rooms total", which is not the same question as
+        // how many bedrooms a whole flat has.
+        if (! empty($spec['max_house_size'])) {
+            $limit = (int) $spec['max_house_size'];
+            $results = $results->filter(function ($p) use ($limit) {
+                $size = $p['house_size'] ?? $p['total_rooms'] ?? null;
+                return is_numeric($size) && (int) $size <= $limit;
+            });
+        }
+
+        if (! empty($spec['room_type'])) {
+            $wanted = strtolower((string) $spec['room_type']);
+            $results = $results->filter(function ($p) use ($wanted) {
+                if (strtolower((string) ($p['room_type'] ?? '')) === $wanted) {
+                    return true;
+                }
+                // The type is often only in the advert text.
+                $hay = strtolower(($p['title'] ?? '') . ' ' . ($p['description'] ?? ''));
+                return str_contains($hay, $wanted);
+            });
+        }
+
+        if (($spec['bills_included'] ?? null) === true) {
+            $results = $results->filter($yes('bills_included'));
+        }
+
+        if (($spec['couples'] ?? null) === true) {
+            $results = $results->filter($yes('couples_ok'));
+        }
+
+        if (($spec['smokers'] ?? null) === true) {
+            $results = $results->filter($yes('smoking_ok'));
+        }
+
+        if (($spec['garden'] ?? null) === true) {
+            $results = $results->filter($yes('garden'));
+        }
+
+        if (($spec['parking'] ?? null) === true) {
+            $results = $results->filter($yes('parking'));
+        }
+
+        if (isset($spec['furnished']) && $spec['furnished'] !== null) {
+            $wantFurnished = (bool) $spec['furnished'];
+            $results = $results->filter(function ($p) use ($wantFurnished) {
+                $value = strtolower(trim((string) ($p['furnishings'] ?? '')));
+                if ($value === '') {
+                    return false;
+                }
+                return $wantFurnished
+                    ? str_contains($value, 'furnished') && ! str_contains($value, 'unfurnished')
+                    : str_contains($value, 'unfurnished');
+            });
+        }
+
+        // "Students only" and "Not suitable for students" are both stated; the
+        // common value is "Available to all", which suits either tenant.
+        if (isset($spec['students']) && $spec['students'] !== null) {
+            $student = (bool) $spec['students'];
+            $results = $results->filter(function ($p) use ($student) {
+                $value = strtolower((string) ($p['pref_occupation'] ?? $p['occupation'] ?? ''));
+                if ($value === '') {
+                    return false;
+                }
+                return $student
+                    ? ! str_contains($value, 'not suitable for student')
+                    : ! str_contains($value, 'students only');
+            });
+        }
+
+        if (($spec['no_deposit'] ?? null) === true) {
+            $results = $results->filter(fn ($p) => FieldValue::number($p['deposit'] ?? null) === 0);
+        }
+
+        if (! empty($spec['max_deposit'])) {
+            $limit = (int) $spec['max_deposit'];
+            $results = $results->filter(function ($p) use ($limit) {
+                $deposit = FieldValue::number($p['deposit'] ?? null);
+                return $deposit !== null && $deposit <= $limit;
+            });
+        }
+
+        // "Available by" is a deadline, so anything already available counts.
+        if (! empty($spec['available_by'])) {
+            $by = FieldValue::date($spec['available_by']);
+            if ($by) {
+                $results = $results->filter(function ($p) use ($by) {
+                    $date = FieldValue::date($p['available_date'] ?? null);
+                    return $date !== null && $date->lessThanOrEqualTo($by);
+                });
+            }
+        }
+
+        // A short let: the listing's minimum term must fit inside it.
+        if (! empty($spec['max_commitment_months'])) {
+            $limit = (int) $spec['max_commitment_months'];
+            $results = $results->filter(function ($p) use ($limit) {
+                $min = FieldValue::months($p['min_term'] ?? null);
+                return $min !== null && $min <= $limit;
+            });
+        }
+
+        if (! empty($spec['agencies'])) {
+            $rates = app(CommissionRates::class);
+            $wanted = array_map(fn ($a) => $rates->normalise((string) $a), (array) $spec['agencies']);
+            $results = $results->filter(function ($p) use ($rates, $wanted) {
+                $key = $rates->normalise($p['agent_name'] ?? $p['landlord_name'] ?? null);
+                foreach ($wanted as $want) {
+                    if ($want !== '' && (str_contains($key, $want) || str_contains($want, $key))) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+
+        // "Good transport links" with no number attached. Defined once, in
+        // config, so it means the same thing every time it is asked.
+        if (($spec['good_transport'] ?? null) === true) {
+            $walk = (int) config('transport.walking.near_station_minutes', 10);
+            $centre = (int) config('transport.journeys.good_transport_minutes', 45);
+
+            $results = $results->filter(function ($p) use ($walk, $centre) {
+                if (! is_numeric($p['walk_minutes'] ?? null) || (int) $p['walk_minutes'] > $walk) {
+                    return false;
+                }
+
+                $toCentre = $p['journey_minutes']['oxford-circus']['minutes']
+                    ?? $p['journey_minutes']['bank']['minutes']
+                    ?? null;
+
+                // Before journey times are built, a short walk to a zone 1-3
+                // station is the best available reading of "well connected".
+                if ($toCentre === null) {
+                    return is_numeric($p['zone'] ?? null) && (int) $p['zone'] <= 3;
+                }
+
+                return (int) $toCentre <= $centre;
+            });
+        }
+
+        return $results;
+    }
+
+    /**
+     * Asks the feed cannot answer at all, so the agent is told rather than
+     * shown a confidently empty list.
+     *
+     * @return array<int, string>
+     */
+    protected function unanswerable(array $spec, Collection $properties): array
+    {
+        $out = [];
+
+        // Two columns exist in the feed and are empty in every single row.
+        if (! empty($spec['pets'])) {
+            $out[] = 'whether pets are allowed';
+        }
+
+        foreach ([
+            'bills_included' => 'bills_included',
+            'garden' => 'garden',
+            'parking' => 'parking',
+            'no_deposit' => 'deposit',
+            'max_deposit' => 'deposit',
+            'available_by' => 'available_date',
+            'max_commitment_months' => 'min_term',
+        ] as $ask => $field) {
+            if (empty($spec[$ask])) {
+                continue;
+            }
+
+            $known = $properties->filter(fn ($p) => ($p[$field] ?? null) !== null && ($p[$field] ?? '') !== '')->count();
+
+            if ($properties->count() > 0 && $known / $properties->count() < 0.25) {
+                $out[] = str_replace('_', ' ', $field);
+            }
+        }
+
+        return $out;
     }
 
     protected function textMatcher(string $term): callable
