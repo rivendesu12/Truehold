@@ -19,6 +19,15 @@ return [
         'max_walk_miles' => 1.5,
     ],
 
+    'index' => [
+        // National Rail in TfL's data is the whole country: Avanti reaches
+        // Glasgow, CrossCountry Aberdeen. Only the commuter belt can ever be
+        // a London listing's nearest station, and an index of 2,000 stations
+        // makes every nearest-station search slower for no gain.
+        'centre' => [51.5074, -0.1278], // Charing Cross
+        'max_miles_from_centre' => 30,
+    ],
+
     'journeys' => [
         // Journey times are built for a weekday morning commute arrival, which
         // is the worst realistic case and the one tenants care about.

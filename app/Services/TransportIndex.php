@@ -139,13 +139,20 @@ class TransportIndex
             return null;
         }
 
+        // Past a sensible walking distance, saying "121 min walk" is worse than
+        // saying nothing: it is not a walk anyone would make, and it made
+        // door-to-door times nonsense. Keep the station and the distance, drop
+        // the claim.
+        $walkable = $bestMiles <= $this->maxWalkMiles;
+
         return [
             'name' => $best['name'],
             'naptan' => $best['naptan'] ?? null,
             'zone' => is_numeric($best['zone'] ?? null) ? (int) $best['zone'] : null,
             'lines' => array_values($best['lines'] ?? []),
             'miles' => round($bestMiles, 2),
-            'walk_minutes' => (int) max(1, round($bestMiles * $this->minutesPerMile)),
+            'walkable' => $walkable,
+            'walk_minutes' => $walkable ? (int) max(1, round($bestMiles * $this->minutesPerMile)) : null,
         ];
     }
 
@@ -185,6 +192,7 @@ class TransportIndex
                 'nearest_station' => $station['name'] ?? null,
                 'station_naptan' => $station['naptan'] ?? null,
                 'station_lines' => $station['lines'] ?? [],
+                'station_walkable' => (bool) ($station['walkable'] ?? false),
                 'walk_minutes' => $station['walk_minutes'] ?? null,
                 'station_miles' => $station['miles'] ?? null,
                 'zone' => $zoned['zone'] ?? null,
@@ -194,9 +202,10 @@ class TransportIndex
 
         $property = array_merge($property, $facts);
 
-        // Door-to-hub minutes: the walk to the station plus the ride. Cheap to
-        // attach here and it is what every "X minutes from Y" question needs.
-        if (! empty($facts['station_naptan'])) {
+        // Door-to-hub minutes: the walk to the station plus the ride. Only
+        // where the station is actually walkable — otherwise the total would
+        // quietly omit however the tenant is meant to cover those six miles.
+        if (! empty($facts['station_naptan']) && ! empty($facts['station_walkable'])) {
             $property['journey_minutes'] = $this->journeysFrom(
                 $facts['station_naptan'],
                 (int) ($facts['walk_minutes'] ?? 0)

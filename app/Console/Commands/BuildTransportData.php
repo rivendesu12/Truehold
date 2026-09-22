@@ -27,7 +27,10 @@ class BuildTransportData extends Command
 
     protected $description = 'Fetch London station names, coordinates, fare zones and lines from TfL';
 
-    private const MODES = 'tube,dlr,overground,elizabeth-line,tram';
+    // National Rail matters as much as the tube outside zone 3: without it the
+    // nearest station to a Grays listing came back as Upminster, six miles and
+    // a claimed two-hour walk away.
+    private const MODES = 'tube,dlr,overground,elizabeth-line,tram,national-rail';
 
     public function handle(): int
     {
@@ -85,6 +88,16 @@ class BuildTransportData extends Command
             $this->line(sprintf('  %-18s %3d stops (%d new)', $line['name'], count($stops), $added));
         }
 
+        $before = count($stations);
+        $stations = $this->withinCommuterBelt($stations);
+        $this->newLine();
+        $this->line(sprintf(
+            '  %d of %d stations are within %d miles of central London.',
+            count($stations),
+            $before,
+            (int) config('transport.index.max_miles_from_centre', 30)
+        ));
+
         $stations = array_map(function (array $s) {
             $s['lines'] = array_values(array_keys($s['lines']));
             $s['modes'] = array_values(array_keys($s['modes']));
@@ -99,6 +112,22 @@ class BuildTransportData extends Command
         $this->save($stations);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Drop anything that could never be a London listing's nearest station.
+     */
+    protected function withinCommuterBelt(array $stations): array
+    {
+        [$lat, $lng] = (array) config('transport.index.centre', [51.5074, -0.1278]);
+        $limit = (float) config('transport.index.max_miles_from_centre', 30);
+
+        return array_filter($stations, fn ($s) => \App\Support\PropertyClassifier::milesBetween(
+            (float) $lat,
+            (float) $lng,
+            (float) $s['lat'],
+            (float) $s['lng']
+        ) <= $limit);
     }
 
     protected function fetchLines(): array
