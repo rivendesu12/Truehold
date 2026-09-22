@@ -228,10 +228,24 @@ Route::middleware('guest')->group(function () {
     })->name('login');
     
     Route::post('/login', function (Request $request) {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
+        $input = $request->validate([
+            'email' => ['required', 'string'],
             'password' => ['required'],
         ]);
+
+        // Agents sign in with a short username (e.g. "agent") rather than a full
+        // address, so resolve a bare identifier to the matching account's email.
+        $identifier = trim($input['email']);
+        if (! str_contains($identifier, '@')) {
+            $resolved = \App\Models\User::where('email', 'like', $identifier . '@%')
+                ->orderBy('id')
+                ->value('email');
+            if ($resolved) {
+                $identifier = $resolved;
+            }
+        }
+
+        $credentials = ['email' => $identifier, 'password' => $input['password']];
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
