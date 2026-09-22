@@ -94,6 +94,17 @@ final class PropertyPayload
             }
         }
 
+        // The occupation columns are the one place a mis-aligned scrape puts a
+        // real person's name into a field that looks legitimate, so the value
+        // is checked as well as the key.
+        foreach (['occupation', 'pref_occupation'] as $field) {
+            $value = trim((string) ($property[$field] ?? ''));
+
+            if ($value !== '' && ! preg_match('/available to all|student|professional|working|employed|any\b|no preference/i', $value)) {
+                $property[$field] = null;
+            }
+        }
+
         return $property;
     }
 }

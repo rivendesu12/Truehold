@@ -126,6 +126,11 @@ class ScrapedListingsApiService
                 $all = $all->map(fn ($p) => $transport->annotate($p));
             }
 
+            // The occupation columns sometimes hold a person's name where a
+            // tenant-type should be, so they are normalised before anything
+            // filters on them or renders them.
+            $all = $all->map(fn ($p) => $this->normaliseOccupation($p));
+
             // Name the agency behind each spreadsheet row, and pick up the
             // photo folder, both of which the feed hides in its raw data.
             $all = $all->map(fn ($p) => $this->attributeSheetRow($p));
@@ -242,6 +247,37 @@ class ScrapedListingsApiService
         }
 
         return null;
+    }
+
+    /**
+     * Keep only recognisable tenant-type values in the occupation columns.
+     *
+     * Upstream column alignment slips, and when it does a real tenant's name
+     * lands in pref_occupation — "Sol Lip Jang / Daewoong Kim" was being
+     * served on a public page, and the students filter was matching against
+     * people's names. The field has three real values; anything else is a
+     * mis-mapping and is dropped rather than shown.
+     */
+    protected function normaliseOccupation(array $property): array
+    {
+        foreach (['occupation', 'pref_occupation'] as $field) {
+            $value = trim((string) ($property[$field] ?? ''));
+
+            if ($value === '') {
+                continue;
+            }
+
+            $recognised = preg_match(
+                '/available to all|student|professional|working|employed|any\b|no preference/i',
+                $value
+            );
+
+            if (! $recognised) {
+                $property[$field] = null;
+            }
+        }
+
+        return $property;
     }
 
     /**
