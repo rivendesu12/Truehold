@@ -233,71 +233,68 @@ SYS;
         }
 
         // "near Canary Wharf" with no distance given still has to mean near it.
-        // Without this the landmark was resolved and then ignored, quietly
-        // returning the whole feed.
         if ($center && ! $radius) {
             $radius = self::WIDEN_MILES;
         }
 
         $term = strtolower(trim((string) ($spec['location'] ?? '')));
 
-        // Pass one: the geography as asked for.
-        if ($center && $radius) {
-            $scoped = $this->withinRadius($properties, $center, $radius);
-        } elseif ($term !== '') {
-            $scoped = $properties->filter($this->textMatcher($term));
-        } else {
-            $scoped = $properties;
+        // Attempt order, stopping at the first that returns anything:
+        //   1. the brief exactly as given
+        //   2. the same brief with the area stepped out 2 / 4 / 7 miles
+        //   3. the same again without the bedroom filter, which the data often
+        //      cannot answer at all (no whole property carries a bedroom count)
+        $attempt = function (array $useSpec, ?array $useCenter, ?float $useRadius) use ($properties, $term) {
+            if ($useCenter && $useRadius) {
+                $scoped = $this->withinRadius($properties, $useCenter, $useRadius);
+            } elseif ($term !== '') {
+                $scoped = $properties->filter($this->textMatcher($term));
+            } else {
+                $scoped = $properties;
+            }
+            return $this->applyPreferences($scoped, $useSpec);
+        };
+
+        $withoutBeds = $spec;
+        unset($withoutBeds['min_bedrooms'], $withoutBeds['max_bedrooms']);
+        $hasBedFilter = ! empty($spec['min_bedrooms']) || ! empty($spec['max_bedrooms']);
+
+        $wideCenter = $center ?: ($term !== '' ? $this->centroidFor($properties, $term) : null);
+        $ladder = [];
+
+        foreach (self::WIDEN_STEPS as $step) {
+            if (! $wideCenter || ($radius && $step <= (float) $radius)) {
+                continue;
+            }
+            $ladder[] = $step;
         }
 
-        $results = $this->applyPreferences($scoped, $spec);
-        $widened = false;
+        $plan = [['spec' => $spec, 'center' => $center, 'radius' => $radius, 'widened' => false, 'relaxed' => []]];
 
-        // Pass two: nothing matched, but a place was named — step the radius out
-        // until something does. An agent would rather be told "nothing in Canary
-        // Wharf, here are three a mile away" than be shown an empty list.
-        if ($results->isEmpty() && ($term !== '' || $center)) {
-            $wideCenter = $center ?: $this->centroidFor($properties, $term);
+        foreach ($ladder as $step) {
+            $plan[] = ['spec' => $spec, 'center' => $wideCenter, 'radius' => $step, 'widened' => true, 'relaxed' => []];
+        }
 
-            if ($wideCenter) {
-                foreach (self::WIDEN_STEPS as $step) {
-                    if ($radius && $step <= (float) $radius) {
-                        continue; // already covered by the original search
-                    }
-
-                    $candidate = $this->applyPreferences(
-                        $this->withinRadius($properties, $wideCenter, $step),
-                        $spec
-                    );
-
-                    if ($candidate->isNotEmpty()) {
-                        $results = $candidate;
-                        $center = $wideCenter;
-                        $radius = $step;
-                        $widened = true;
-                        break;
-                    }
-                }
+        if ($hasBedFilter) {
+            $plan[] = ['spec' => $withoutBeds, 'center' => $center, 'radius' => $radius, 'widened' => false, 'relaxed' => ['bedrooms']];
+            foreach ($ladder as $step) {
+                $plan[] = ['spec' => $withoutBeds, 'center' => $wideCenter, 'radius' => $step, 'widened' => true, 'relaxed' => ['bedrooms']];
             }
         }
 
-        // Pass three: a bedroom filter can empty the set purely because we do not
-        // hold the figure — none of the 10 whole properties carries a bedroom
-        // count. Silently returning nothing implies we have no such stock, which
-        // is a different and wrong message, so drop the filter and say so.
+        $results = collect();
+        $widened = false;
         $relaxed = [];
-        if ($results->isEmpty() && (! empty($spec['min_bedrooms']) || ! empty($spec['max_bedrooms']))) {
-            $without = $spec;
-            unset($without['min_bedrooms'], $without['max_bedrooms']);
 
-            $base = ($center && $radius)
-                ? $this->withinRadius($properties, $center, $radius)
-                : ($term !== '' ? $properties->filter($this->textMatcher($term)) : $properties);
-
-            $candidate = $this->applyPreferences($base, $without);
+        foreach ($plan as $try) {
+            $candidate = $attempt($try['spec'], $try['center'], $try['radius']);
             if ($candidate->isNotEmpty()) {
                 $results = $candidate;
-                $relaxed[] = 'bedrooms';
+                $center = $try['center'];
+                $radius = $try['radius'];
+                $widened = $try['widened'];
+                $relaxed = $try['relaxed'];
+                break;
             }
         }
 
