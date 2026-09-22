@@ -718,6 +718,14 @@ class PropertyController extends Controller
                     return $propertyData;
                 })->take(400)->values()->all();
 
+                // Strip what a browser must not receive: the tenant contact
+                // details the scrapers carry in raw_row, and the agent-side
+                // fields when whoever is looking is not signed in.
+                $propertiesForJson = \App\Support\PropertyPayload::forBrowser(
+                    $propertiesForJson,
+                    auth()->check()
+                );
+
                 // Get filter values for dropdowns
                 $filterValues = $feedService->getFilterValues();
                 $locations = $filterValues['locations'];
@@ -746,7 +754,7 @@ class PropertyController extends Controller
 
                 return view('properties.map', [
                     'properties' => $propertyObjects,
-                    'propertiesForJson' => $propertiesForJson,
+                    'propertiesForJson' => \App\Support\PropertyPayload::forBrowser($propertiesForJson, auth()->check()),
                     'locations' => $locations,
                     'propertyTypes' => $propertyTypes,
                     'availableDates' => $availableDates,
@@ -878,7 +886,7 @@ class PropertyController extends Controller
 
         return view('properties.map', [
             'properties' => $properties,
-            'propertiesForJson' => $propertiesForJson,
+            'propertiesForJson' => \App\Support\PropertyPayload::forBrowser($propertiesForJson, auth()->check()),
             'locations' => $locations,
             'propertyTypes' => $propertyTypes,
             'availableDates' => $availableDates,

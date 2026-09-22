@@ -1702,7 +1702,11 @@ select.filter-input option {
     </div>
 
     <!-- Properties Data (hidden) -->
-    <div id="properties-data" style="display: none;">{!! json_encode($propertiesForJson ?? $properties->map(fn($p) => $p->toArray())) !!}</div>
+    {{-- Markers need this in the page, so it cannot be wrapped in @auth. It is
+     sanitised in the controller instead: tenant contact details are removed
+     for everyone, and the agent-side fields for anyone not signed in. The old
+     fallback serialised whole models, which bypassed that entirely. --}}
+<div id="properties-data" style="display: none;">{!! json_encode(\App\Support\PropertyPayload::forBrowser($propertiesForJson ?? [], auth()->check())) !!}</div>
 
     <!-- Google Maps API -->
     @if(config('services.google.maps_api_key') && config('services.google.maps_api_key') !== 'YOUR_GOOGLE_MAPS_API_KEY')
