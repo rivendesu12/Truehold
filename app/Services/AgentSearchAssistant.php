@@ -384,7 +384,7 @@ Rules:
     1st"), else null (the agreement is dated today).
   * `sign_as` the agent who signs when they give a name ("sign as Alex",
     "I'm Giacomo", "Emanuela's client"), else null. Never guess one.
-  The message may start with PENDING AGREEMENT: details already collected
+  The message may include PENDING AGREEMENT: details already collected
   for an agreement in progress. The agent is answering Sigou, so merge the
   new message into those details and keep `wanted` true, unless they clearly
   moved on to something else. With no agreement asked, `wanted` false and
@@ -403,7 +403,7 @@ Rules:
   * `date` an ISO date only if they give one, else null (dated today).
   * `paid` false only when they say it is not paid yet ("unpaid", "hasn't
     paid", "to pay later"); otherwise true.
-  The message may start with PENDING INVOICE: an invoice in progress. Merge
+  The message may include PENDING INVOICE: an invoice in progress. Merge
   the answer into it and keep `wanted` true, as for an agreement. An
   agreement AND an invoice in one message sets both.
   Sigou's `sigou` line: ask for exactly what is missing, or say it is ready.
@@ -411,7 +411,7 @@ Rules:
   password", "internet for the client", "what's the network". Then leave
   every search filter null. You do not know the password and must not make
   one up; the page shows it. Sigou just hands it over in his voice.
-- Follow-ups. The message may start with PREVIOUS SEARCH, the filters of the
+- Follow-ups. The message may include PREVIOUS SEARCH, the filters of the
   agent's last search. Agents refine: "max 650", "what about zone 4", "with
   ensuite", "cheaper", "drop the zone", "and couples ok". Then return the
   previous filters with only that change applied, and set `refines_previous`
@@ -527,12 +527,15 @@ SYS;
         // per-call jokes go last, so the provider's prompt cache covers the
         // rules, the persona and the area list: cached input is billed at a
         // fraction of the price.
-        // Today's date changes daily, so it sits with the other per-call tail.
-        $prompt = $system . $locationHint
-            . "\n\nToday is " . now()->format('l j F Y') . ' (' . now()->toDateString() . ').'
-            . ($this->persona ? $this->jokesForThisOne() : '');
+        // The provider caches a message only when it is identical to a recent
+        // one, so the instructions carry nothing that changes per call. The
+        // date and Sigou's jokes ride in the user message instead: measured,
+        // that turns ~5,400 full-price input tokens a search into cached ones
+        // at a tenth of the price.
+        $prompt = $system . $locationHint;
 
-        $context = '';
+        $context = 'Today is ' . now()->format('l j F Y') . ' (' . now()->toDateString() . ').'
+            . ($this->persona ? $this->jokesForThisOne() : '') . "\n\n";
         if ($pendingAgreement) {
             $context .= "PENDING AGREEMENT:\n" . json_encode($pendingAgreement, JSON_UNESCAPED_SLASHES) . "\n\n";
         }
@@ -542,7 +545,7 @@ SYS;
         if ($previous) {
             $context .= "PREVIOUS SEARCH:\n" . json_encode($previous, JSON_UNESCAPED_SLASHES) . "\n\n";
         }
-        $message = $context !== '' ? $context . "NEW MESSAGE:\n" . $question : $question;
+        $message = $context . "NEW MESSAGE:\n" . $question;
 
         try {
             $json = $this->provider() === 'anthropic'
