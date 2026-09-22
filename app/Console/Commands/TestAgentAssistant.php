@@ -15,7 +15,21 @@ use Illuminate\Console\Command;
  */
 class TestAgentAssistant extends Command
 {
-    protected $signature = 'assistant:test {--show-spec : print the full parsed spec for each case}';
+    protected $signature = 'assistant:test
+        {--show-spec : print the full parsed spec for each case}
+        {--sigou : print what Sigou says for each case}
+        {--compare : also read every brief without the Sigou persona and report any filter that changed}';
+
+    /** Not searches: Sigou should answer these and run nothing. */
+    private const CHAT_CASES = [
+        'hey sigou how are you',
+        'are you vaping again?',
+        'who is the best agent in the office',
+        'thanks bro',
+    ];
+
+    /** Fields that are Sigou talking, not search filters. */
+    private const PERSONA_FIELDS = ['explanation', 'chit_chat', 'sigou', 'sigou_found', 'sigou_none'];
 
     protected $description = 'Run real agent briefs through the assistant and check the parsed filters';
 
@@ -195,6 +209,11 @@ class TestAgentAssistant extends Command
         $passed = 0;
         $rows = [];
 
+        $plainAssistant = $assistant->withoutPersona();
+        $plainPassed = 0;
+        $changed = [];
+        $sigouRows = [];
+
         foreach (self::CASES as $case) {
             $spec = $assistant->parse($case['q'], $locations);
 
@@ -203,6 +222,109 @@ class TestAgentAssistant extends Command
                 continue;
             }
 
+            $misses = $this->misses($case, $spec, $assistant, $properties);
+
+            // A brief read as small talk would run no search at all.
+            if (! empty($spec['chit_chat'])) {
+                $misses[] = 'taken for chit-chat, no search';
+            }
+
+            if ($this->option('compare')) {
+                $plain = $plainAssistant->parse($case['q'], $locations);
+                if ($plain) {
+                    $plainPassed += empty($this->misses($case, $plain, $plainAssistant, $properties)) ? 1 : 0;
+                    $diff = $this->filterDiff($plain, $spec);
+                    if ($diff) {
+                        $changed[] = [substr($case['q'], 0, 46), implode('; ', array_slice($diff, 0, 3))];
+                    }
+                }
+            }
+
+            if ($this->option('sigou')) {
+                $sigouRows[] = [substr($case['q'], 0, 40), $spec['sigou'] ?? '', $spec['sigou_found'] ?? '', $spec['sigou_none'] ?? ''];
+            }
+
+            $found = $assistant->search($spec, $properties);
+            $ok = empty($misses);
+            $passed += $ok ? 1 : 0;
+
+            $rows[] = [
+                substr($case['q'], 0, 46),
+                $ok ? 'pass' : 'MISS',
+                $ok ? '' : implode('; ', array_slice($misses, 0, 2)),
+                $found['matched'] . ' results',
+            ];
+
+            if ($this->option('show-spec')) {
+                $this->line('  ' . json_encode($spec, JSON_UNESCAPED_SLASHES));
+            }
+        }
+
+        $this->table(['brief', 'result', 'what it got wrong', 'matches'], $rows);
+
+        // Small talk: answered in character, nothing searched.
+        $chatOk = 0;
+        $chatRows = [];
+        foreach (self::CHAT_CASES as $q) {
+            $spec = $assistant->parse($q, $locations);
+            $ok = $spec && ! empty($spec['chit_chat']) && trim((string) ($spec['sigou'] ?? '')) !== '';
+            $chatOk += $ok ? 1 : 0;
+            $chatRows[] = [$q, $ok ? 'pass' : 'MISS', $spec['sigou'] ?? '(no reply)'];
+        }
+        $this->newLine();
+        $this->table(['small talk', 'result', 'Sigou says'], $chatRows);
+
+        if ($sigouRows) {
+            $this->newLine();
+            $this->table(['brief', 'first reaction', 'if found', 'if nothing'], $sigouRows);
+        }
+
+        $total = count(self::CASES);
+        $this->newLine();
+        $this->info("Passed {$passed}/{$total} on {$assistant->provider()}/{$assistant->model()}, small talk {$chatOk}/" . count(self::CHAT_CASES));
+
+        if ($this->option('compare')) {
+            $this->info("Without the Sigou persona: {$plainPassed}/{$total}");
+            if ($changed) {
+                $this->warn(count($changed) . ' briefs read differently with Sigou on:');
+                $this->table(['brief', 'filters that changed (without -> with)'], $changed);
+            } else {
+                $this->info('Every brief produced the same filters with and without Sigou.');
+            }
+        }
+
+        if ($passed < $total) {
+            $this->warn('Not all briefs parsed correctly. Try a stronger model:');
+            $this->line('  ASSISTANT_PROVIDER=openai OPENAI_MODEL=gpt-5.6-luna php artisan assistant:test');
+            $this->line('  ASSISTANT_PROVIDER=anthropic php artisan assistant:test');
+        }
+
+        return $passed === $total && $chatOk === count(self::CHAT_CASES) ? self::SUCCESS : self::FAILURE;
+    }
+
+    /** Filters that differ between two readings, ignoring Sigou's lines. */
+    private function filterDiff(array $a, array $b): array
+    {
+        $diff = [];
+        foreach (array_unique(array_merge(array_keys($a), array_keys($b))) as $key) {
+            if (in_array($key, self::PERSONA_FIELDS, true)) {
+                continue;
+            }
+            $x = $a[$key] ?? null;
+            $y = $b[$key] ?? null;
+            if (is_array($x)) { sort($x); }
+            if (is_array($y)) { sort($y); }
+            if (json_encode($x) !== json_encode($y)) {
+                $diff[] = $key . ': ' . json_encode($x) . ' -> ' . json_encode($y);
+            }
+        }
+
+        return $diff;
+    }
+
+    /** What a parsed spec gets wrong against a case's expectations. */
+    private function misses(array $case, array $spec, AgentSearchAssistant $assistant, $properties): array
+    {
             $misses = [];
             foreach ($case['expect'] as $key => $want) {
                 $got = $spec[$key] ?? null;
@@ -281,33 +403,6 @@ class TestAgentAssistant extends Command
                 $misses[] = 'parsed fine but zero results';
             }
 
-            $ok = empty($misses);
-            $passed += $ok ? 1 : 0;
-
-            $rows[] = [
-                substr($case['q'], 0, 46),
-                $ok ? 'pass' : 'MISS',
-                $ok ? '' : implode('; ', array_slice($misses, 0, 2)),
-                $found['matched'] . ' results',
-            ];
-
-            if ($this->option('show-spec')) {
-                $this->line('  ' . json_encode($spec, JSON_UNESCAPED_SLASHES));
-            }
-        }
-
-        $this->table(['brief', 'result', 'what it got wrong', 'matches'], $rows);
-
-        $total = count(self::CASES);
-        $this->newLine();
-        $this->info("Passed {$passed}/{$total} on {$assistant->provider()}/{$assistant->model()}");
-
-        if ($passed < $total) {
-            $this->warn('Not all briefs parsed correctly. Try a stronger model:');
-            $this->line('  ASSISTANT_PROVIDER=openai OPENAI_MODEL=gpt-5.6-luna php artisan assistant:test');
-            $this->line('  ASSISTANT_PROVIDER=anthropic php artisan assistant:test');
-        }
-
-        return $passed === $total ? self::SUCCESS : self::FAILURE;
+            return $misses;
     }
 }

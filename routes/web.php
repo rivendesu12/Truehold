@@ -136,6 +136,8 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         'relaxed' => $found['relaxed'] ?? [],
         'commission_only' => (bool) ($spec['commission_only'] ?? false),
         'sigou' => (string) ($spec['sigou'] ?? ''),
+        'sigou_found' => (string) ($spec['sigou_found'] ?? ''),
+        'sigou_none' => (string) ($spec['sigou_none'] ?? ''),
         // What the brief was understood as, so Sigou can comment on it.
         'brief' => array_intersect_key($spec, array_flip([
             'location', 'near_landmark', 'minutes_from_landmark', 'max_price', 'min_price',

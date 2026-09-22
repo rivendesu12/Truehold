@@ -18,6 +18,13 @@ window.SigouLines = (function () {
     const greeting = () => {
         const h = new Date().getHours();
         const day = new Date().getDay();
+        // Late: they are at home by now, and so is he, still on it.
+        if (h >= 21 || h < 5) return pick([
+            'Still working at this time? Respect bro. Ok tell me',
+            'Iam in bed vaping and you send me clients. Ok go 😂',
+            'Is late malaka, the client cant wait till tomorrow? Ok ok tell me',
+            'Night shift. Quick one and we sleep',
+        ]);
         if (h < 11) return pick([
             'Kalimera malaka. What the client want?',
             'Ela, morning. Let m finish my vape and tell me',
@@ -27,10 +34,10 @@ window.SigouLines = (function () {
             'Iam hangry bro, be quick',
             'Lunch time malaka. One search then chicken',
         ]);
-        if (h >= 19) return pick([
-            'Why are y still working? Go home man. Ok tell me',
-            'Late one. What do we need?',
-            'Iam in the office till 8 for Joe anyways. Go',
+        if (h >= 18) return pick([
+            'Evening man. One more client and I switch off. Go',
+            'Iam on the sofa already but ok, tell me',
+            'After 6 is overtime bro 😂 what we need?',
         ]);
         if (day === 5) return pick([
             'Is Friday re. One more deal and we go out',
@@ -139,10 +146,23 @@ window.SigouLines = (function () {
         return extra.length ? pick(extra) : '';
     };
 
+    // The model wrote one line for each outcome, about this exact brief; show
+    // the one that happened. The canned lines only fill in when it did not.
     const result = (data, q) => {
         if (data.chat) return data.sigou || pick(pokes);
+        const g = data.groups || {commission: [], standard: [], alternatives: []};
+        const paying = g.commission.length;
+        const onBrief = paying + g.standard.length;
+        const said = s => (s || '').trim();
+
+        if (onBrief && said(data.sigou_found)) {
+            return said(data.sigou_found) + (paying ? ' · ' + paying + ' with commission 🤑' : '');
+        }
+        if (!onBrief && !data.unplaced && said(data.sigou_none)) {
+            return said(data.sigou_none) + (g.alternatives.length ? ' · These are close tho, have a look' : '');
+        }
         const lead = found(data);
-        const quip = (data.sigou || '').trim() || aboutBrief(data, q);
+        const quip = said(data.sigou) || aboutBrief(data, q);
         return quip ? lead + '. ' + quip : lead;
     };
 
