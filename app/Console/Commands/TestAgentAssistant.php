@@ -101,6 +101,12 @@ class TestAgentAssistant extends Command
             'expect' => ['max_commitment_months' => 3, 'property_types' => ['rooms'], 'region' => 'east'],
         ],
         [
+            // "to central London" is a destination, not where they want to
+            // live: this used to set region=central and return nothing.
+            'q' => 'cheapest ensuite you have with good transport to central london',
+            'expect' => ['good_transport' => true, 'ensuite_only' => true, 'sort' => 'cheapest'],
+        ],
+        [
             'q' => 'rooms in E14 under 1000',
             'expect' => ['place' => 'e14', 'max_price' => 1000, 'property_types' => ['rooms']],
         ],

@@ -162,6 +162,11 @@ Rules:
   north_west, south_east, south_west. Use it whenever they name a side of
   London rather than a specific place — never leave the area out because it
   is not in the list of known areas.
+  `region` is where the tenant wants to LIVE. A place named after "to",
+  "into", "commute to", "get to", "works in" is a destination, not a region:
+  "good transport to central London" sets `good_transport`, not `region`;
+  "half an hour into the City" sets `near_landmark` and
+  `minutes_from_landmark`, not `region`.
 - `pets` true if they need pets allowed.
 - `garden`, `parking` true only if asked for.
 - `furnished` true or false when they say; null when they do not care.
