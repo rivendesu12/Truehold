@@ -27,7 +27,7 @@ class TestAgentAssistant extends Command
     private const CASES = [
         [
             'q' => 'ensuite within 20 minutes of Bond Street',
-            'expect' => ['ensuite_only' => true, 'near_landmark' => 'bond', 'minutes_from_landmark' => 20],
+            'expect' => ['ensuite_only' => true, 'place' => 'bond', 'minutes_from_landmark' => 20],
         ],
         [
             'q' => 'something up to zone 3 up to 700 a month',
@@ -35,7 +35,7 @@ class TestAgentAssistant extends Command
         ],
         [
             'q' => 'studio in Canary Wharf under 1500',
-            'expect' => ['property_types' => ['studio'], 'max_price' => 1500, 'near_landmark' => 'canary'],
+            'expect' => ['property_types' => ['studio'], 'max_price' => 1500, 'place' => 'canary'],
         ],
         [
             // The hard one: the constraint is implied, never stated as a number.
@@ -48,11 +48,11 @@ class TestAgentAssistant extends Command
         ],
         [
             'q' => 'whole flat in Wapping, two bedrooms minimum',
-            'expect' => ['property_types' => ['full_property'], 'location' => 'wapping', 'min_bedrooms' => 2],
+            'expect' => ['property_types' => ['full_property'], 'place' => 'wapping', 'min_bedrooms' => 2],
         ],
         [
             'q' => 'anything cheap for a couple near Stratford',
-            'expect' => ['couples' => true, 'near_landmark' => 'stratford'],
+            'expect' => ['couples' => true, 'place' => 'stratford'],
         ],
         [
             'q' => 'double room zone 1 or 2 max 900, must have own bathroom',
@@ -88,6 +88,16 @@ class TestAgentAssistant extends Command
             foreach ($case['expect'] as $key => $want) {
                 $got = $spec[$key] ?? null;
 
+                // The area may land in either field — both are valid readings
+                // and the search handles them equivalently, so accept either.
+                if ($key === 'place') {
+                    $hay = strtolower(trim(($spec['near_landmark'] ?? '') . ' ' . ($spec['location'] ?? '')));
+                    if (! str_contains($hay, strtolower((string) $want))) {
+                        $misses[] = "place not recognised (got '" . $hay . "')";
+                    }
+                    continue;
+                }
+
                 if ($want === '~') {
                     // Only needs to be present and non-empty.
                     if (empty($got)) {
@@ -116,6 +126,13 @@ class TestAgentAssistant extends Command
             }
 
             $found = $assistant->search($spec, $properties);
+
+            // Parsing correctly but returning nothing is still a failure from
+            // the agent's point of view, unless we genuinely hold no such stock.
+            if (empty($misses) && $found['matched'] === 0) {
+                $misses[] = 'parsed fine but zero results';
+            }
+
             $ok = empty($misses);
             $passed += $ok ? 1 : 0;
 
