@@ -306,17 +306,99 @@ SYS;
             }
         }
 
-        // Commission-paying agencies first, always.
-        $results = $results->sortByDesc(fn ($p) => $this->paysCommission($p) ? 1 : 0)->values();
+        // Three groups, in the order an agent works through them: paying
+        // agencies that meet the brief, then non-paying ones that meet it, then
+        // near-misses worth mentioning with the reason they missed.
+        $onBrief = $results->values();
+        $alternatives = $this->alternativesFor($spec, $properties, $onBrief, $center, $radius);
 
         return [
-            'results' => $results,
-            'matched' => $results->count(),
+            'results' => $onBrief,
+            'matched' => $onBrief->count(),
+            'commission' => $onBrief->filter(fn ($p) => $this->paysCommission($p))->values(),
+            'standard' => $onBrief->reject(fn ($p) => $this->paysCommission($p))->values(),
+            'alternatives' => $alternatives,
             'center' => $center,
             'radius' => $radius,
             'widened' => $widened,
             'relaxed' => $relaxed,
         ];
+    }
+
+    /**
+     * Near-misses worth offering anyway: one constraint stretched at a time, so
+     * every suggestion carries a plain reason ("GBP 120 over budget", "1.4 mi
+     * further out") rather than appearing without explanation.
+     *
+     * Only ever stretches outwards, never swaps a requirement the client was
+     * explicit about — an en-suite ask stays an en-suite ask.
+     */
+    protected function alternativesFor(
+        array $spec,
+        Collection $properties,
+        Collection $onBrief,
+        ?array $center,
+        ?float $radius
+    ): Collection {
+        $seen = $onBrief->pluck('id')->filter()->flip();
+        $out = collect();
+
+        // A bit further out than asked.
+        if ($center && $radius) {
+            $wider = (float) $radius * 1.6;
+            foreach ($this->applyPreferences($this->withinRadius($properties, $center, $wider), $spec) as $p) {
+                if (isset($seen[$p['id'] ?? ''])) {
+                    continue;
+                }
+                $d = \App\Support\PropertyClassifier::milesBetween(
+                    (float) $p['latitude'], (float) $p['longitude'], $center[0], $center[1]
+                );
+                $p['why'] = sprintf('%.1f mi out, past the %s mi you asked for', $d, $radius);
+                $out->push($p);
+            }
+        }
+
+        // A bit over budget, but in the area they actually want.
+        if (! empty($spec['max_price'])) {
+            $stretched = $spec;
+            $stretched['max_price'] = (float) $spec['max_price'] * 1.25;
+            $scope = ($center && $radius)
+                ? $this->withinRadius($properties, $center, $radius)
+                : $properties;
+
+            foreach ($this->applyPreferences($scope, $stretched) as $p) {
+                if (isset($seen[$p['id'] ?? '']) || $out->contains(fn ($x) => ($x['id'] ?? null) === ($p['id'] ?? null))) {
+                    continue;
+                }
+                $over = (float) $p['price'] - (float) $spec['max_price'];
+                if ($over <= 0) {
+                    continue;
+                }
+                $p['why'] = sprintf('GBP %s over budget, but in the area', number_format($over));
+                $out->push($p);
+            }
+        }
+
+        // A different property type, when they named one and stock is thin.
+        if (! empty($spec['property_types']) && $onBrief->count() < 5) {
+            $anyType = $spec;
+            unset($anyType['property_types']);
+            $scope = ($center && $radius)
+                ? $this->withinRadius($properties, $center, $radius)
+                : $properties;
+
+            foreach ($this->applyPreferences($scope, $anyType) as $p) {
+                if (isset($seen[$p['id'] ?? '']) || $out->contains(fn ($x) => ($x['id'] ?? null) === ($p['id'] ?? null))) {
+                    continue;
+                }
+                $p['why'] = 'a ' . str_replace('_', ' ', \App\Support\PropertyClassifier::bucket($p))
+                    . ' rather than what you asked for';
+                $out->push($p);
+            }
+        }
+
+        // Commission-paying first here too, and keep it short enough to scan.
+        return $out->sortByDesc(fn ($p) => $this->paysCommission($p) ? 1 : 0)->take(10)->values();
     }
 
     /** Everything that is not geography. */

@@ -58,6 +58,13 @@
 .th-ask__note{background:#f2f5fa;border-left:3px solid var(--gold,#c9a227);padding:8px 10px;
     border-radius:0 6px 6px 0;font-size:13px;margin:0 0 10px}
 .th-ask__err{color:#b42318;font-size:13px}
+.th-ask__sec{margin:16px 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+    color:#42536b;display:flex;align-items:center;gap:7px}
+.th-ask__sec:first-child{margin-top:4px}
+.th-ask__sec span{background:#eef1f7;color:#42536b;border-radius:10px;padding:1px 7px;
+    font-size:11px;letter-spacing:0}
+.th-ask__secnote{margin:0 0 6px;font-size:12px;color:#7b8598}
+.th-ask__why{display:block;color:#8a6d1f;font-size:12px;margin-top:2px}
 </style>
 
 <script>
@@ -110,28 +117,45 @@
                 return;
             }
 
+            const row = (r) => '<a class="th-ask__res" href="' + esc(r.url) + '" target="_blank" rel="noopener">'
+                + (r.photo ? '<img src="' + esc(r.photo) + '" alt="" loading="lazy">' : '<img alt="">')
+                + '<span><b>' + esc(r.title)
+                + (r.commission ? ' <span class="th-ask__tag">COMMISSION</span>' : '')
+                + '</b><small>' + esc(r.location || '') + ' \u00b7 ' + money(r.price)
+                + (r.agent ? ' \u00b7 ' + esc(r.agent) : '') + '</small>'
+                + (r.why ? '<small class="th-ask__why">' + esc(r.why) + '</small>' : '')
+                + '</span></a>';
+
+            const section = (title, items, note) => {
+                if (!items || !items.length) return '';
+                return '<h4 class="th-ask__sec">' + esc(title)
+                    + ' <span>' + items.length + '</span></h4>'
+                    + (note ? '<p class="th-ask__secnote">' + esc(note) + '</p>' : '')
+                    + items.map(row).join('');
+            };
+
+            const g = data.groups || {commission: [], standard: [], alternatives: []};
+            const onBrief = g.commission.length + g.standard.length;
+
             let html = '';
             if (data.explanation) html += '<p class="th-ask__note">' + esc(data.explanation) + '</p>';
-            html += '<p class="th-ask__hint"><strong>' + data.matched + '</strong> match'
-                 + (data.matched === 1 ? '' : 'es')
+
+            html += '<p class="th-ask__hint"><strong>' + onBrief + '</strong> match'
+                 + (onBrief === 1 ? '' : 'es')
                  + (data.radius ? ' within <strong>' + data.radius + ' miles</strong> straight-line' : '')
                  + (data.widened ? ' <em>(nothing exactly there — showing nearby)</em>' : '')
                  + ((data.relaxed || []).includes('bedrooms') ? ' <em>(we don\'t hold bedroom counts for these)</em>' : '')
-                 + (data.commission_only ? ', commission-paying only' : '')
-                 + (data.matched > 24 ? ' — showing the first 24' : '') + '</p>';
+                 + '</p>';
 
-            if (!data.results.length) {
-                html += '<p class="th-ask__hint">Nothing matched. Try widening the area or the budget.</p>';
-            } else {
-                for (const r of data.results) {
-                    html += '<a class="th-ask__res" href="' + esc(r.url) + '" target="_blank" rel="noopener">'
-                        + (r.photo ? '<img src="' + esc(r.photo) + '" alt="" loading="lazy">' : '<img alt="">')
-                        + '<span><b>' + esc(r.title)
-                        + (r.commission ? ' <span class="th-ask__tag">COMMISSION</span>' : '')
-                        + '</b><small>' + esc(r.location || '') + ' · ' + money(r.price)
-                        + (r.agent ? ' · ' + esc(r.agent) : '') + '</small></span></a>';
-                }
+            html += section('Commission — meets the brief', g.commission);
+            html += section('No commission — meets the brief', g.standard);
+            html += section('Other options worth offering', g.alternatives,
+                            'Each of these misses the brief in one way, noted underneath.');
+
+            if (!onBrief && !g.alternatives.length) {
+                html += '<p class="th-ask__hint">Nothing matched, even stretched. Try widening the area or the budget.</p>';
             }
+
             body.innerHTML = html;
         } catch (err) {
             body.innerHTML = '<p class="th-ask__err">Network error — try again.</p>';

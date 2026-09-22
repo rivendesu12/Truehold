@@ -78,6 +78,19 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
 
     $found = $assistant->search($spec, $feed);
 
+    $shape = fn ($p) => [
+        'id' => $p['id'] ?? null,
+        'title' => $p['title'] ?? 'Untitled',
+        'location' => $p['location'] ?? null,
+        'price' => $p['price'] ?? null,
+        'type' => \App\Support\PropertyClassifier::bucket($p),
+        'photo' => $p['first_photo_url'] ?? null,
+        'agent' => $p['agent_name'] ?? null,
+        'commission' => $assistant->paysCommission($p),
+        'why' => $p['why'] ?? null,
+        'url' => ! empty($p['id']) ? url('/properties/' . $p['id']) : null,
+    ];
+
     return response()->json([
         'model' => $assistant->provider() . '/' . $assistant->model(),
         'explanation' => $spec['explanation'] ?? '',
@@ -86,17 +99,11 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         'widened' => (bool) ($found['widened'] ?? false),
         'relaxed' => $found['relaxed'] ?? [],
         'commission_only' => (bool) ($spec['commission_only'] ?? false),
-        'results' => $found['results']->take(24)->map(fn ($p) => [
-            'id' => $p['id'] ?? null,
-            'title' => $p['title'] ?? 'Untitled',
-            'location' => $p['location'] ?? null,
-            'price' => $p['price'] ?? null,
-            'type' => \App\Support\PropertyClassifier::bucket($p),
-            'photo' => $p['first_photo_url'] ?? null,
-            'agent' => $p['agent_name'] ?? null,
-            'commission' => $assistant->paysCommission($p),
-            'url' => $p['id'] ? url('/properties/' . $p['id']) : null,
-        ])->values(),
+        'groups' => [
+            'commission' => $found['commission']->take(24)->map($shape)->values(),
+            'standard' => $found['standard']->take(24)->map($shape)->values(),
+            'alternatives' => $found['alternatives']->map($shape)->values(),
+        ],
     ]);
 })->name('agent.search');
 
