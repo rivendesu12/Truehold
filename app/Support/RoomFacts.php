@@ -107,6 +107,15 @@ final class RoomFacts
             return true;
         }
 
+        // A studio is self-contained, so its advert naturally mentions an
+        // en-suite bathroom — but an agent asking for an en-suite means a
+        // bedroom with its own bathroom inside a shared property, which is a
+        // different product at a different price. Studios have their own
+        // filter; they do not belong in this answer.
+        if (PropertyClassifier::bucket($property) === 'studio') {
+            return false;
+        }
+
         // Every room this advert states is something other than an en-suite.
         if ($stated !== []) {
             return false;
