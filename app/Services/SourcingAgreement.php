@@ -19,6 +19,9 @@ class SourcingAgreement
 {
     public const REFERRAL_BONUS = 50;
 
+    /** Written on the blank "15.____" line under ADDITIONAL CLAUSE. */
+    public const VALIDITY_CLAUSE = 'This Agreement is valid for two (2) years from the date of this Agreement.';
+
     /** Cash is cheaper than a transfer; the office quotes both. */
     public const FEE_CASH = 220;
     public const FEE_TRANSFER = 250;
@@ -56,6 +59,12 @@ class SourcingAgreement
                 $pdf->SetFont('Helvetica', '', 9.4);
                 $pdf->Text(344.4, 440.5, $this->money($fee));
                 $pdf->Text(229.0, 463.3, (string) $referral);
+            }
+
+            if ($n === 3) {
+                // Sits on the underline after "15.", which runs x 94 to 494.
+                $pdf->SetFont('Helvetica', '', 9.4);
+                $pdf->Text(112.0, 657.2, $this->text(self::VALIDITY_CLAUSE));
             }
 
             if ($n === $pages) {
