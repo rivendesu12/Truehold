@@ -129,6 +129,19 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
 
     // A partner agency: their vacancy link, their terms, or their rooms.
     $ask = (array) ($spec['agency_request'] ?? []);
+
+    // Our own Room targets sheet: a link, not an agency.
+    if (! empty($ask['wanted']) && preg_match('/\btargets?\b/i', (string) ($ask['name'] ?? '')) && ($ask['want'] ?? 'link') !== 'bank') {
+        $url = config('truehold.room_targets_url');
+
+        return response()->json([
+            'agency' => $url ? ['name' => 'Room targets', 'link' => $url, 'office' => true] : null,
+            'agency_asked' => 'Room targets',
+            'sigou' => $url ? (string) ($spec['sigou'] ?? '') : 'Room targets link is not set up, ask Giaco',
+            'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
+        ]);
+    }
+
     if (! empty($ask['wanted']) && ! empty($ask['name'])) {
         $directory = app(\App\Services\AgencyDirectory::class);
         $agency = $directory->find($ask['name']);

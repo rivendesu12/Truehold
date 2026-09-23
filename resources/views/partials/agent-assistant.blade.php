@@ -474,6 +474,9 @@
         + '</div>';
 
     const agencyCard = (a) => {
+        // Our own sheet: just the link.
+        if (a.office) return '<div class="th-ask__deal"><h4>' + esc(a.name) + '</h4>'
+            + '<a class="th-ask__dealbtn" href="' + esc(a.link) + '" target="_blank" rel="noopener">Open ' + esc(a.name) + '</a></div>';
         const fact = (k, v) => v ? '<div class="th-ask__wifirow"><div><span>' + k + '</span><b style="font-family:inherit">' + esc(v) + '</b></div></div>' : '';
         return '<div class="th-ask__deal"><h4>' + esc(a.name) + '</h4>'
             + (a.link ? '<a class="th-ask__dealbtn" href="' + esc(a.link) + '" target="_blank" rel="noopener">Open ' + esc(a.name) + '\'s list</a>' : '<p class="th-ask__hint">No link in the agencies sheet yet.</p>')

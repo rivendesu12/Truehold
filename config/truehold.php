@@ -9,6 +9,11 @@ return [
         env('TRUEHOLD_AGENTS', 'Alex,Emanuela,Mohammed,Oana,Pasquale,Giacomo')
     )))),
 
+    // Our own "Room targets" sheet, which Sigou hands out on request. Built
+    // from the sheet the site already reads, so no id lives in this public repo.
+    'room_targets_url' => env('ROOM_TARGETS_URL') ?: (env('SUPPLIER_TARGETS_SHEET_ID')
+        ? 'https://docs.google.com/spreadsheets/d/' . env('SUPPLIER_TARGETS_SHEET_ID') . '/edit' : null),
+
     // Partner agencies' bank details (AgencyBankDetails). A private file on
     // the server: the repository is public.
     'agency_bank_details' => env('AGENCY_BANK_DETAILS', storage_path('app/private/agency-bank-details.json')),

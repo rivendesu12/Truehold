@@ -427,7 +427,9 @@ Rules:
   Antonio, DC Lettings, Dario, Iwany, Fab, Kish...) rather than a room
   search. `name` as the agent wrote it.
   * `want` "link" for their list, link, sheet, vacancy, listing sheet: "give
-    me javier list", "ap vacancy", "soreva link".
+    me javier list", "ap vacancy", "soreva link". Our own "Room targets"
+    sheet counts too: "room targets link", "send me the targets", "targets
+    sheet" -> `name` "room targets", `want` "link".
   * `want` "info" for their terms: "what does banksia pay", "javier max age",
     "does AP post on spareroom".
   * `want` "bank" for their bank details or how to pay them: "ap bank

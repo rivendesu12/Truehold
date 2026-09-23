@@ -93,6 +93,8 @@ class SigouScenarios extends Command
             ['agency', 'soreva link', $all($kind('agency'), $has('agency.name', 'Soreva')), true],
             ['agency', 'what does banksia pay', $all($kind('agency'), $has('agency.commission')), true],
             ['agency', 'javier max age?', $all($kind('agency'), $has('agency.max_age')), true],
+            ['agency', 'send me the room targets link', $all($kind('agency'), $has('agency.name', 'Room targets'), $has('agency.link')), true],
+            ['agency', 'targets sheet pls', $all($kind('agency'), $has('agency.name', 'Room targets')), true],
             ['agency', 'ap bank details', $all($kind('agency'), $has('agency_bank.accounts')), true],
             ['agency', 'whats the sort code for horizon', $all($kind('agency'), $has('agency_bank.name', 'Horizon Dreams')), true],
             ['agency', 'javier bank details', $all($kind('agency'), $has('agency_bank.name', 'Javier'), fn ($r) => count((array) data_get($r, 'agency_bank.accounts')) === 2 ? null : 'expected JMS and FENIX'), true],

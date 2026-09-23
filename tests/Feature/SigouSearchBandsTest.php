@@ -244,3 +244,13 @@ it('leaves an agency out when told "no X", wherever the model put it', function 
         expect(collect($r['groups']['commission'])->concat($r['groups']['standard'])->pluck('id')->all())->toBe(['o1']);
     }
 });
+
+it('hands over our own Room targets sheet', function () {
+    config(['truehold.room_targets_url' => 'https://docs.google.com/spreadsheets/d/targets/edit']);
+    fakeSigou(['agency_request' => ['wanted' => true, 'name' => 'room targets', 'want' => 'link']], []);
+    $this->actingAs(User::factory()->create());
+
+    $this->postJson('/agent-search', ['q' => 'room targets link'])->assertOk()
+        ->assertJsonPath('agency.name', 'Room targets')
+        ->assertJsonPath('agency.link', 'https://docs.google.com/spreadsheets/d/targets/edit');
+});
