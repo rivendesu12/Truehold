@@ -32,7 +32,7 @@
         </datalist>
 
         <form class="th-ask__form" id="thAskForm">
-            <button type="button" class="th-ask__new" id="thAskNew" hidden title="Forget the last search and start a new one">New search</button>
+            <button type="button" class="th-ask__new" id="thAskNew" hidden title="Forget the last search and start a new one" aria-label="New search"><span class="th-ask__newlong">New search</span><span class="th-ask__newshort" aria-hidden="true">&#8634;</span></button>
             <input type="search" id="thAskInput" class="th-ask__input" autocomplete="off"
                    enterkeyhint="search" aria-label="Describe what the client wants"
                    placeholder="e.g. ensuite 30 min from Bond Street under £900">
@@ -66,6 +66,8 @@
 .th-ask__new{background:none;border:1px solid #d5dbe5;border-radius:8px;color:#42536b;
     padding:0 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
 .th-ask__new[hidden]{display:none}
+.th-ask__newshort{display:none}
+@media (max-width:640px){.th-ask__newshort{display:inline}}
 .th-ask__new:hover{background:#f4f6fa}
 .th-ask__refined{display:inline-block;background:#eef3ff;color:#2c4a8a;border-radius:4px;
     padding:1px 6px;font-size:11px;font-weight:700;margin-right:6px;vertical-align:1px}
@@ -254,6 +256,8 @@
     .th-ask{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px))}
     .th-ask__fab{padding:5px 16px 5px 5px}
     .th-ask--open .th-ask__fab{display:none}
+    .th-ask__newlong{display:none}
+    .th-ask__new{padding:0 11px;font-size:19px}
     .th-ask__panel{position:fixed;inset:0;width:auto;height:100%;height:100dvh;border-radius:0;box-shadow:none}
     .th-ask__head{order:-2;padding:10px 8px 10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px))}
     .th-ask__close{width:44px;height:44px;font-size:28px}
@@ -731,7 +735,7 @@
                     money(r.price),
                     size(r) ? esc(size(r)) : '',
                     r.zone ? 'zone ' + r.zone : '',
-                    r.agent ? esc(r.agent) : '',
+                    r.agent && !r.market ? esc(r.agent) : '',
                 ].filter(Boolean).join(' \u00b7 ') + '</small>'
                 + (r.station ? '<small class="th-ask__stn">' + esc(r.station)
                     + (r.walk ? ', ' + r.walk + ' min walk' : '')
