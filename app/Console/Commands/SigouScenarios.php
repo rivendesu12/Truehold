@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\AgentSearchAssistant;
 use App\Services\ScrapedListingsApiService;
 use Illuminate\Console\Command;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\Concerns\InteractsWithAuthentication;
 use Illuminate\Foundation\Testing\Concerns\MakesHttpRequests;
@@ -122,7 +123,8 @@ class SigouScenarios extends Command
 
             public function __construct(public $app) {}
         };
-        $runner->withoutMiddleware(VerifyCsrfToken::class);
+        // Laravel 12 names it ValidateCsrfToken; VerifyCsrfToken is the old alias.
+        $runner->withoutMiddleware([ValidateCsrfToken::class, VerifyCsrfToken::class]);
         $runner->actingAs($agent);
 
         $only = array_filter(explode(',', (string) $this->option('only')));
