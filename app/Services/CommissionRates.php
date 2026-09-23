@@ -39,6 +39,19 @@ class CommissionRates
 
     public function pays(array $property): bool
     {
+        // Named in config either way, that wins over whatever the feed says.
+        if ($this->listed($property, 'commission.never_pay')) {
+            return false;
+        }
+        if ($this->hasArrangement($property)) {
+            return true;
+        }
+        // The office's agencies tab: a partner with a commission entered pays.
+        $agency = app(AgencyDirectory::class)->find($property['agent_name'] ?? $property['landlord_name'] ?? null);
+        if ($agency && ! empty($agency['commission'])) {
+            return true;
+        }
+
         $paying = $property['paying'] ?? null;
 
         if (is_string($paying) && trim($paying) !== '') {
@@ -58,16 +71,20 @@ class CommissionRates
     /** Is this agency on the list of ones we know pay? */
     public function hasArrangement(array $property): bool
     {
-        $key = $this->normalise($property['agent_name'] ?? $property['landlord_name'] ?? null);
+        return $this->listed($property, 'commission.always_pay');
+    }
 
+    /** Is this listing's agency named in the given config list? */
+    protected function listed(array $property, string $configKey): bool
+    {
+        $key = $this->normalise($property['agent_name'] ?? $property['landlord_name'] ?? null);
         if ($key === '') {
             return false;
         }
 
-        foreach ((array) config('commission.always_pay', []) as $listed) {
+        foreach ((array) config($configKey, []) as $listed) {
             $listed = $this->normalise((string) $listed);
-
-            if ($listed !== '' && (str_contains($key, $listed) || str_contains($listed, $key))) {
+            if ($listed !== '' && preg_match('/(^| )' . preg_quote($listed, '/') . '( |$)/', $key)) {
                 return true;
             }
         }

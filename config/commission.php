@@ -41,7 +41,24 @@ return [
     |
     */
     'always_pay' => [
-        //
+        'javier',   // Javier (JMS), Javier (FENIX) and the supplier sheet's "Javier"
+        'jms',
+        'fenix',
+        'banksia',
+        'soreva',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Agencies that never pay, whatever the feed says
+    |--------------------------------------------------------------------------
+    |
+    | The feed marks some agencies as paying that do not. This wins over both
+    | the feed and always_pay.
+    |
+    */
+    'never_pay' => [
+        'instabook',
     ],
 
     // Real figures go here. Delete a line to fall back to the default.

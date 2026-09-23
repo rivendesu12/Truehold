@@ -27,6 +27,10 @@ class ClearPropertiesCache extends Command
         // it here, where taking a few seconds costs nobody anything.
         $count = $apiService->getAllProperties()->count();
 
+        // The agencies tab (links, max age, commission) rides along hourly.
+        $agencies = app(\App\Services\AgencyDirectory::class)->refresh();
+        $this->line("Agency directory: {$agencies} agencies.");
+
         $this->info("Properties cache refreshed: {$count} listings.");
 
         return 0;

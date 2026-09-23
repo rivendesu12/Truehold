@@ -86,14 +86,10 @@ trait FiltersPropertyCollection
         }
 
         if (isset($filters['paying_only']) && (auth()->check() || $allowRestricted)) {
-            $properties = $properties->filter(function ($property) {
-                $paying = $property['paying'] ?? null;
-                if ($paying === null || $paying === '') {
-                    return false;
-                }
-                $paying = is_string($paying) ? strtolower(trim($paying)) : $paying;
-                return $paying === 'yes' || $paying === true || $paying === 1;
-            });
+            // The same rule as the cards and Sigou: config's always/never
+            // lists, then the feed.
+            $rates = app(\App\Services\CommissionRates::class);
+            $properties = $properties->filter(fn ($property) => $rates->pays((array) $property));
         }
 
         if (isset($filters['room_count']) && $filters['room_count'] !== '') {
