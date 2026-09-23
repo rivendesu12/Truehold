@@ -111,15 +111,17 @@ return [
     ],
 
     // Zoopla tenant enquiries: read from the Joy Homes Zoho mailbox over IMAP
-    // (Zoho → Settings → Mail accounts → IMAP Access on; use an app-specific
-    // password) and appended to the leads sheet by `zoopla:leads`.
+    // (Zoho → Settings → Mail accounts → IMAP Access on) and appended to the
+    // leads sheet by `zoopla:leads`. The password is normally entered on
+    // /admin/zoopla-leads (App\Support\ZooplaLeadsSettings); .env overrides.
     'zoopla_leads' => [
         'imap_host' => env('ZOOPLA_LEADS_IMAP_HOST', 'imappro.zoho.eu'),
         'imap_port' => env('ZOOPLA_LEADS_IMAP_PORT', 993),
-        'username' => env('ZOOPLA_LEADS_IMAP_USER'),
+        'username' => env('ZOOPLA_LEADS_IMAP_USER', 'hello@joyhomeslondon.co.uk'),
         'password' => env('ZOOPLA_LEADS_IMAP_PASSWORD'),
         'folder' => env('ZOOPLA_LEADS_IMAP_FOLDER', 'INBOX'),
-        'spreadsheet_id' => env('ZOOPLA_LEADS_SHEET_ID'),
+        // "Joy Homes - Zoopla leads"
+        'spreadsheet_id' => env('ZOOPLA_LEADS_SHEET_ID', '1e2uNB9Ra5HmohdZgXvMyKVq1Te3rniO2EKtxI7OoFNY'),
         // Same service account as the supplier sheets; needs Editor on this one.
         'credentials_path' => env('ZOOPLA_LEADS_CREDENTIALS', env('SUPPLIER_TARGETS_CREDENTIALS')),
     ],

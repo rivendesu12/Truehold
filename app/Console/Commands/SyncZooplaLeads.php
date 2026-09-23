@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Services\ZooplaLeadParser;
 use App\Services\ZooplaLeadsSheet;
 use App\Support\ImapInbox;
+use App\Support\ZooplaLeadsSettings;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -26,10 +27,10 @@ class SyncZooplaLeads extends Command
 
     public function handle(ZooplaLeadsSheet $sheet): int
     {
-        $config = config('services.zoopla_leads');
+        $config = ['password' => ZooplaLeadsSettings::password()] + config('services.zoopla_leads');
 
         if (blank($config['username']) || blank($config['password'])) {
-            $this->warn('ZOOPLA_LEADS_IMAP_USER / ZOOPLA_LEADS_IMAP_PASSWORD not set; nothing to read.');
+            $this->warn('No Zoho password yet: enter it on /admin/zoopla-leads.');
 
             return self::SUCCESS;
         }
@@ -38,6 +39,9 @@ class SyncZooplaLeads extends Command
             $leads = $this->readLeads($config, max(1, (int) $this->option('days')));
         } catch (Throwable $e) {
             $this->error($e->getMessage());
+            $this->record(false, str_contains($e->getMessage(), 'LOGIN')
+                ? 'Zoho refused the password (or IMAP is off in Zoho).'
+                : 'Could not read the mailbox: ' . $e->getMessage());
 
             return self::FAILURE;
         }
@@ -57,6 +61,7 @@ class SyncZooplaLeads extends Command
 
         if (! $sheet->configured()) {
             $this->warn('ZOOPLA_LEADS_SHEET_ID or the service-account credentials are not set; nothing written.');
+            $this->record(false, 'Mailbox read fine, but the sheet is not configured on the server.');
 
             return self::FAILURE;
         }
@@ -66,9 +71,12 @@ class SyncZooplaLeads extends Command
             $added = $sheet->append($leads);
         } catch (Throwable $e) {
             $this->error('Sheet write failed: ' . $e->getMessage());
-            if ($email = $sheet->serviceAccountEmail()) {
-                $this->line("Is the sheet shared with {$email} as Editor?");
+            $shareWith = $sheet->serviceAccountEmail();
+            if ($shareWith) {
+                $this->line("Is the sheet shared with {$shareWith} as Editor?");
             }
+            $this->record(false, 'Mailbox read fine, but the sheet refused the write'
+                . ($shareWith ? " — share it with {$shareWith} as Editor." : '.'));
 
             return self::FAILURE;
         }
@@ -76,8 +84,18 @@ class SyncZooplaLeads extends Command
         foreach ($added as $tab => $count) {
             $this->line("  {$tab}: +{$count}");
         }
+        $this->record(true, count($leads) . ' Zoopla ' . str('enquiry')->plural(count($leads))
+            . ' in the last ' . $this->option('days') . ' days; ' . $added[ZooplaLeadsSheet::TO_MESSAGE] . ' new ' . str('person')->plural($added[ZooplaLeadsSheet::TO_MESSAGE]) . ' added.');
 
         return self::SUCCESS;
+    }
+
+    /** Shown on /admin/zoopla-leads. Dry runs change nothing. */
+    private function record(bool $ok, string $message): void
+    {
+        if (! $this->option('dry-run')) {
+            ZooplaLeadsSettings::recordRun(['ok' => $ok, 'message' => $message]);
+        }
     }
 
     /** @return array<int, array<string, mixed>> oldest first */

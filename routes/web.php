@@ -743,6 +743,8 @@ Route::middleware('guest')->group(function () {
 // Admin routes - require authentication
 Route::middleware('auth')->prefix('admin')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/zoopla-leads', [\App\Http\Controllers\ZooplaLeadsController::class, 'show'])->name('admin.zoopla-leads');
+    Route::post('/zoopla-leads', [\App\Http\Controllers\ZooplaLeadsController::class, 'save'])->name('admin.zoopla-leads.save');
     Route::get('/properties', [AdminController::class, 'properties'])->name('admin.properties');
     Route::get('/properties/create', [AdminController::class, 'create'])->name('admin.properties.create');
     Route::post('/properties', [AdminController::class, 'store'])->name('admin.properties.store');

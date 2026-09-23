@@ -84,3 +84,32 @@ it('takes the area from the address', function () {
     expect(ZooplaLeadParser::area('Mayfield Road, Walthamstow E17 4AB'))->toBe('Walthamstow');
     expect(ZooplaLeadParser::area('Canary Wharf, E14'))->toBe('Canary Wharf');
 });
+
+describe('the password page', function () {
+    beforeEach(function () {
+        $this->app->useStoragePath(sys_get_temp_dir() . '/zoopla-leads-test-' . uniqid());
+        config(['services.zoopla_leads.password' => null]);
+    });
+
+    it('is for admins only', function () {
+        $this->actingAs(\App\Models\User::factory()->create(['role' => 'agent']))
+            ->get('/admin/zoopla-leads')->assertForbidden();
+        $this->post('/admin/zoopla-leads', ['password' => 'x'])->assertForbidden();
+        expect(\App\Support\ZooplaLeadsSettings::password())->toBeNull();
+    });
+
+    it('stores the password encrypted and never shows it back', function () {
+        $admin = \App\Models\User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)->post('/admin/zoopla-leads', ['password' => 'correct horse 42'])
+            ->assertRedirect('/admin/zoopla-leads');
+
+        expect(\App\Support\ZooplaLeadsSettings::password())->toBe('correct horse 42');
+        expect(file_get_contents(\App\Support\ZooplaLeadsSettings::path()))->not->toContain('correct horse');
+
+        $this->actingAs($admin)->get('/admin/zoopla-leads')
+            ->assertOk()
+            ->assertSee('A password is saved')
+            ->assertDontSee('correct horse 42');
+    });
+});

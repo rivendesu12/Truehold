@@ -765,6 +765,20 @@
                 @endif
                 @endauth
 
+                @auth
+                @if(auth()->user()->isAdmin())
+                <div class="px-4 mt-6 mb-4">
+                    <span class="sidebar-text text-xs font-semibold text-gray-500 uppercase tracking-wider">Leads</span>
+                </div>
+
+                <a href="{{ route('admin.zoopla-leads') }}"
+                   class="sidebar-item flex items-center px-4 py-3 text-gray-700 hover:text-blue-600 {{ request()->routeIs('admin.zoopla-leads*') ? 'active' : '' }}">
+                    <i class="fas fa-envelope-open-text sidebar-icon mr-3 text-lg"></i>
+                    <span class="sidebar-text">Zoopla Leads</span>
+                </a>
+                @endif
+                @endauth
+
 
                 @auth
                 @if(auth()->user()->hasAdminPermission('admin_permissions', 'view'))
