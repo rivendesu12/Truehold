@@ -87,7 +87,9 @@ class SigouScenarios extends Command
             ['agency', 'what does banksia pay', $all($kind('agency'), $has('agency.commission')), true],
             ['agency', 'javier max age?', $all($kind('agency'), $has('agency.max_age')), true],
             ['agency', 'ap bank details', $all($kind('agency'), $has('agency_bank.accounts')), true],
-            ['agency', 'whats the sort code for horizon', $all($kind('agency'), $has('agency_bank.name', 'AP Horizon')), true],
+            ['agency', 'whats the sort code for horizon', $all($kind('agency'), $has('agency_bank.name', 'Horizon Dreams')), true],
+            ['agency', 'javier bank details', $all($kind('agency'), $has('agency_bank.name', 'Javier'), fn ($r) => count((array) data_get($r, 'agency_bank.accounts')) === 2 ? null : 'expected JMS and FENIX'), true],
+            ['agency', 'soreva account number', $all($kind('agency'), $has('agency_bank.name', 'Soreva Management')), true],
             ['agency', 'check what properties soreva has available now and send me here', $all($kind('search'), fn ($r) => collect($this->best($r))->first(fn ($b) => stripos((string) $b['agent'], 'soreva') === false) ? 'a non-Soreva room in the answer' : null), true],
 
             // Documents.

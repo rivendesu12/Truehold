@@ -488,7 +488,8 @@
                 + esc([a.company, a.bank].filter(Boolean).join(' \u00b7 ')) + '</b></p>'
                 + row('Account name', a.account_name) + row('Sort code', a.sort_code) + row('Account number', a.account_number)
                 + row('BIC', a.bic) + row('IBAN', a.iban) + row('Reference', a.reference) + '</div>').join('')
-            + (b.forms || []).map(f => '<a class="th-ask__deallink" style="display:block;margin-top:10px" href="' + esc(f.url) + '" target="_blank" rel="noopener">' + esc(f.label) + '</a>').join('')
+            + (b.forms || []).map(f => '<a class="th-ask__deallink" style="display:block;margin-top:10px" href="' + esc(f.url) + '" target="_blank" rel="noopener">' + esc(f.label) + '</a>'
+                + (f.note ? '<small class="th-ask__hint" style="display:block">' + esc(f.note) + '</small>' : '')).join('')
             + '</div>';
     };
 

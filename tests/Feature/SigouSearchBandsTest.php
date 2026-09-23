@@ -169,18 +169,28 @@ it('says it cannot find a place rather than offering all of London', function ()
 it('hands over an agency\'s bank details from the private file, by any of its names', function () {
     $path = storage_path('framework/testing/agency-bank-details.json');
     @mkdir(dirname($path), 0777, true);
-    file_put_contents($path, json_encode(['agencies' => [[
-        'name' => 'AP Horizon', 'aliases' => ['horizon dreams', 'ap real estate'],
-        'accounts' => [['company' => 'AP Real Estate', 'bank' => 'Test Bank', 'account_name' => 'AP Test', 'sort_code' => '00-00-00', 'account_number' => '12345678']],
-        'forms' => [['label' => 'AP tenant reference form', 'url' => 'https://forms.example/ap']],
-    ]]]));
+    file_put_contents($path, json_encode(['agencies' => [
+        ['name' => 'AP Real Estate', 'group' => 'AP Horizon', 'aliases' => ['ap'],
+            'accounts' => [['bank' => 'Test Bank', 'account_name' => 'AP Test', 'sort_code' => '00-00-00', 'account_number' => '11111111']],
+            'forms' => [['label' => 'AP holding deposit form', 'url' => 'https://forms.example/ap']]],
+        ['name' => 'Horizon Dreams', 'group' => 'AP Horizon', 'aliases' => ['horizon'],
+            'accounts' => [['bank' => 'Test Bank', 'account_name' => 'Horizon Test', 'sort_code' => '00-00-01', 'account_number' => '12345678']]],
+    ]]));
     config(['truehold.agency_bank_details' => $path]);
     fakeSigou(['agency_request' => ['wanted' => true, 'name' => 'horizon', 'want' => 'bank']], []);
     $this->actingAs(User::factory()->create());
 
     $this->postJson('/agent-search', ['q' => 'horizon bank details'])->assertOk()
-        ->assertJsonPath('agency_bank.name', 'AP Horizon')
+        ->assertJsonPath('agency_bank.name', 'Horizon Dreams')
+        ->assertJsonCount(1, 'agency_bank.accounts')
         ->assertJsonPath('agency_bank.accounts.0.account_number', '12345678');
+
+    // AP and Horizon bank apart; asking for both gives both, labelled.
+    fakeSigou(['agency_request' => ['wanted' => true, 'name' => 'ap horizon', 'want' => 'bank']], []);
+    $this->postJson('/agent-search', ['q' => 'ap horizon bank details'])->assertOk()
+        ->assertJsonPath('agency_bank.name', 'AP Horizon')
+        ->assertJsonPath('agency_bank.accounts.0.company', 'AP Real Estate')
+        ->assertJsonPath('agency_bank.accounts.1.company', 'Horizon Dreams');
 
     // An agency with none on file gets told so, not someone else's account.
     fakeSigou(['agency_request' => ['wanted' => true, 'name' => 'banksia', 'want' => 'bank']], []);

@@ -78,11 +78,18 @@ class AgencyDirectory
 
     public static function key(string $name): string
     {
-        $name = strtolower(trim($name));
-        $name = preg_replace('/\b(ltd|limited|lettings|letting|properties|property|rooms|living|homes|group|london)\b/', ' ', $name);
-        $name = trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z0-9 ]+/', ' ', $name)));
+        $name = self::plainKey($name);
 
         return ['ap horizon' => 'ap', 'horizon' => 'ap'][$name] ?? $name;
+    }
+
+    /** The name without company suffixes, but AP and Horizon kept apart. */
+    public static function plainKey(string $name): string
+    {
+        $name = strtolower(trim($name));
+        $name = preg_replace('/\b(ltd|limited|lettings|letting|properties|property|rooms|living|homes|group|london)\b/', ' ', $name);
+
+        return trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z0-9 ]+/', ' ', $name)));
     }
 
     protected function fetch(): array
