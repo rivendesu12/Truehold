@@ -28,3 +28,21 @@ it('works out ages from both date-of-birth formats in the workbook', function ()
     expect(Ap::age(37684))->toBe(23); // Excel serial for 03/03/2003
     expect(Ap::age('Kathryn'))->toBeNull();
 });
+
+it('reads cell links whatever order the attributes come in', function () {
+    $f = storage_path('framework/testing/links.xlsx');
+    @mkdir(dirname($f), 0777, true);
+    @unlink($f);
+    $z = new ZipArchive();
+    $z->open($f, ZipArchive::CREATE);
+    $z->addFromString('xl/workbook.xml', '<workbook xmlns:r="r"><sheets><sheet name="S" sheetId="1" r:id="rId1"/></sheets></workbook>');
+    $z->addFromString('xl/_rels/workbook.xml.rels', '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>');
+    $z->addFromString('xl/worksheets/sheet1.xml', '<worksheet xmlns:r="r"><sheetData><row r="3"><c r="C3" t="inlineStr"><is><t>Ramsey</t></is></c></row></sheetData>'
+        . '<hyperlinks><hyperlink r:id="rId7" ref="C3"/><hyperlink ref="D3" r:id="rId8"/></hyperlinks></worksheet>');
+    $z->addFromString('xl/worksheets/_rels/sheet1.xml.rels', '<Relationships><Relationship Id="rId7" Target="https://drive.google.com/a?x=1&amp;y=2"/><Relationship Id="rId8" Target="https://drive.google.com/b"/></Relationships>');
+    $z->close();
+
+    expect(\App\Support\XlsxReader::hyperlinks($f, 'S'))->toBe(['3:3' => 'https://drive.google.com/a?x=1&y=2', '3:4' => 'https://drive.google.com/b']);
+    expect(\App\Support\XlsxReader::rows($f, 'S')[0])->toBe([3 => 'Ramsey', '_row' => 3]);
+    unlink($f);
+});

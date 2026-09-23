@@ -100,11 +100,12 @@ class XlsxReader
             }
 
             $out = [];
-            if (preg_match_all('/<hyperlink\b[^>]*\bref="([A-Z]+)(\d+)"[^>]*\br:id="([^"]+)"/', $xml, $m, PREG_SET_ORDER)) {
-                foreach ($m as [, $col, $row, $id]) {
-                    if (isset($targets[$id])) {
-                        $out[$row . ':' . self::columnNumber($col)] = $targets[$id];
-                    }
+            // Attribute order varies between writers, so read each tag's own.
+            preg_match_all('/<hyperlink\b[^>]*>/', $xml, $tags);
+            foreach ($tags[0] as $tag) {
+                if (preg_match('/\bref="([A-Z]+)(\d+)/', $tag, $ref) && preg_match('/\br:id="([^"]+)"/', $tag, $id)
+                    && isset($targets[$id[1]])) {
+                    $out[$ref[2] . ':' . self::columnNumber($ref[1])] = $targets[$id[1]];
                 }
             }
 
