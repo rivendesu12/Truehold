@@ -31,8 +31,8 @@ class CrawlMarket extends Command
         );
         $this->newLine();
 
-        $this->table(['search pages', 'cards', 'agent adverts', 'saved', 'failed', 'stopped'], [[
-            $stats['pages'], $stats['cards'], $stats['agents'], $stats['saved'], $stats['failed'], $stats['stopped'] ?? '-',
+        $this->table(['search pages', 'cards', 'agent adverts', 'saved', 'no number', 'failed', 'stopped'], [[
+            $stats['pages'], $stats['cards'], $stats['agents'], $stats['saved'], $stats['no_number'], $stats['failed'], $stats['stopped'] ?? '-',
         ]]);
         $this->info('Wildcards now held: ' . $market->all()->count());
 

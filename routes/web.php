@@ -313,7 +313,6 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
         'url' => ! empty($p['market']) ? route('market.show', $p['token'])
             : (! empty($p['id']) ? url('/properties/' . $p['id']) : null),
         'market' => ! empty($p['market']),
-        'phone' => ! empty($p['market']) ? ($p['phone'] ?? null) : null,
     ];
 
     return response()->json([
@@ -371,8 +370,8 @@ Route::middleware('auth')->post('/agent-search/click', function (Request $reques
 })->name('agent.search.click');
 
 // A wildcard (a SpareRoom agent's room) shown on our own page, never sent to
-// SpareRoom. Clients opening a shared link get the room without the agency,
-// the phone or the advert reference.
+// SpareRoom. Clients opening a shared link get the room without the agency
+// or the advert reference.
 Route::get('/market/{token}', function (Request $request, string $token) {
     abort_unless(preg_match('/^[a-f0-9]{20}$/', $token), 404);
     $listing = app(\App\Services\MarketListingsService::class)->find($token);
@@ -385,7 +384,7 @@ Route::get('/market/{token}', function (Request $request, string $token) {
             '/(?:\+?44\s?|0)7\d{3}\s?\d{3}\s?\d{3}/', '/0\d{2,4}\s?\d{3,4}\s?\d{3,4}/',
             '/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', '#https?://\S+|www\.\S+#i',
         ], '[hidden]', (string) ($listing['description'] ?? '')));
-        unset($listing['agency'], $listing['agent_name'], $listing['phone'], $listing['spareroom_id'], $listing['url'], $listing['link'], $listing['external_ref']);
+        unset($listing['agency'], $listing['agent_name'], $listing['spareroom_id'], $listing['url'], $listing['link'], $listing['external_ref']);
     }
 
     return view('market.show', ['p' => $listing, 'isAgent' => $isAgent]);

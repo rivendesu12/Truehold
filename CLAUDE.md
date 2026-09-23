@@ -101,8 +101,9 @@ Mary while a search runs, rubs his hands on results. Agents only (`@auth`).
   `market:crawl` (every other night, polite, stops if refused) →
   `market_listings` table; offered only in Sigou's search, opened on our own
   page `/market/{token}` (token is an HMAC, not the advert number). Guests see
-  the room without agency/phone/ref. Logged out, SpareRoom hides phone
-  numbers, so `phone` is usually empty.
+  the room without agency/ref. Only adverts with a number are kept
+  (`has_phone`: the "Call" contact method, `phoneadvertiser`); we record
+  that one exists, never the digits (Giaco: not needed). `phone` column unused.
 - **Agencies** (`AgencyDirectory`): the "Agencies link" tab of Room targets,
   columns A-C and E-I only (D is never read; the "Agency rules" tab holds
   logins and is never touched). Link, max age, commission, agent share;

@@ -746,7 +746,7 @@
                         + (r.journey.changes === 1 ? ' change' : ' changes')) + '</small>' : '')
                 + (r.why ? '<small class="th-ask__why">' + esc(r.why) + '</small>' : '')
                 + (r.market ? '<small class="th-ask__wildwho">' + esc(r.agent || 'Agency not named')
-                    + (r.phone ? ' \u00b7 ' + esc(r.phone) : '') + '</small>' : '')
+                    + ' \u00b7 \ud83d\udcde number on the ad</small>' : '')
                 + '</span></a>';
 
             // Three bands, in the order an agent works through them.

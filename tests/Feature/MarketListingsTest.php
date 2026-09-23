@@ -14,8 +14,9 @@ function wildcard(array $overrides = []): string
         'spareroom_id' => '17868341',
         'token' => $token,
         'agency' => 'Marble Sales & Lettings',
-        'phone' => '07700 900123',
+        'phone' => null,
         'data' => json_encode($overrides + [
+            'has_phone' => true,
             'title' => 'Double Room / No Deposit / All Bills Included',
             'price' => 850,
             'location' => 'Cricklewood',
@@ -32,14 +33,14 @@ function wildcard(array $overrides = []): string
     return $token;
 }
 
-it('shows an agent the wildcard with the agency, phone and the original ad', function () {
+it('shows an agent the wildcard with the agency, that it has a number, and the original ad', function () {
     $token = wildcard();
     $this->actingAs(User::factory()->create());
 
     $this->get("/market/{$token}")->assertOk()
         ->assertSee('Double Room / No Deposit / All Bills Included')
         ->assertSee('Marble Sales &amp; Lettings', false)
-        ->assertSee('07700 900123')
+        ->assertSee('Number available on the advert')
         ->assertSee('spareroom.co.uk/17868341');
 });
 
@@ -72,6 +73,21 @@ it('drops a wildcard not seen for four days from what Sigou offers', function ()
     DB::table('market_listings')->update(['last_seen_at' => now()->subDays(5)]);
 
     expect(app(MarketListingsService::class)->all())->toHaveCount(0);
+});
+
+it('offers only wildcards whose advert has a number', function () {
+    wildcard(['has_phone' => false]);
+
+    expect(app(MarketListingsService::class)->all())->toHaveCount(0);
+});
+
+it('tells an advert that takes calls from one that does not, ignoring the support number', function () {
+    $market = app(MarketListingsService::class);
+    $footer = '<footer>Call us on 0161 768 1162</footer>';
+
+    expect($market->hasPhone('<li class="contact_methods__li phoneadvertiser"><i class="far fa-phone"></i> Call</li>' . $footer))->toBeTrue();
+    expect($market->hasPhone('<i class="far fa-phone page-tabs__icon"></i>' . $footer))->toBeTrue();
+    expect($market->hasPhone('<li class="contact_methods__li emailadvertiser">Message</li>' . $footer))->toBeFalse();
 });
 
 it('reads a SpareRoom results page: agents that are free to contact', function () {

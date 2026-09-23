@@ -80,7 +80,7 @@ it('offers SpareRoom agent wildcards in their own band, opening on our page', fu
     fakeSigou(['location' => 'Canary Wharf', 'property_types' => []], canaryWharfFeed());
     DB::table('market_listings')->insert([
         'spareroom_id' => '999', 'token' => MarketListingsService::tokenFor('999'), 'agency' => 'Dock Lettings', 'phone' => null,
-        'data' => json_encode(room('x', ['location' => 'Canary Wharf', 'latitude' => 51.5049, 'longitude' => -0.0212, 'nearest_station' => 'Canary Wharf', 'walk_minutes' => 2, 'url' => 'https://www.spareroom.co.uk/999'])),
+        'data' => json_encode(room('x', ['location' => 'Canary Wharf', 'latitude' => 51.5049, 'longitude' => -0.0212, 'nearest_station' => 'Canary Wharf', 'walk_minutes' => 2, 'has_phone' => true, 'url' => 'https://www.spareroom.co.uk/999'])),
         'first_seen_at' => now(), 'last_seen_at' => now(), 'created_at' => now(), 'updated_at' => now(),
     ]);
     $this->actingAs(User::factory()->create());

@@ -19,8 +19,9 @@ use Illuminate\Support\Facades\Log;
  *
  * SpareRoom has a "free to contact" filter but no "agents only" one, so the
  * search is free-to-contact London and each card's advertiser role decides.
- * Logged out, advert pages show the agency's name but not its phone number;
- * a number is kept whenever a page does show one.
+ * Only adverts that offer a phone number are kept: the page shows a "Call"
+ * contact method when the advertiser has one. We only record that there is
+ * a number, never the number itself (logged out, SpareRoom hides it anyway).
  */
 class MarketListingsService
 {
@@ -49,7 +50,7 @@ class MarketListingsService
                 ->where('last_seen_at', '>=', now()->subDays(self::KEEP_DAYS))
                 ->get()
                 ->map(fn ($row) => $this->shape($row))
-                ->filter()
+                ->filter(fn ($p) => $p && ! empty($p['has_phone']))
                 ->values();
         } catch (\Throwable $e) {
             // No table yet, or the database is unhappy: no wildcards, no error.
@@ -78,7 +79,6 @@ class MarketListingsService
             'market' => true,
             'agent_name' => $row->agency,
             'agency' => $row->agency,
-            'phone' => $row->phone,
             'spareroom_id' => $row->spareroom_id,
             'paying' => 'no',
             'last_seen_at' => $row->last_seen_at,
@@ -88,11 +88,11 @@ class MarketListingsService
     /**
      * Crawl free-to-contact London, keep the agents, store them.
      *
-     * @return array{pages:int, cards:int, agents:int, saved:int, failed:int, stopped:?string}
+     * @return array{pages:int, cards:int, agents:int, saved:int, no_number:int, failed:int, stopped:?string}
      */
     public function crawl(int $maxPages = 40, int $maxAdverts = 250, int $delayMs = 2500, ?callable $progress = null): array
     {
-        $stats = ['pages' => 0, 'cards' => 0, 'agents' => 0, 'saved' => 0, 'failed' => 0, 'stopped' => null];
+        $stats = ['pages' => 0, 'cards' => 0, 'agents' => 0, 'saved' => 0, 'no_number' => 0, 'failed' => 0, 'stopped' => null];
 
         $searchId = $this->startSearch();
         if (! $searchId) {
@@ -144,7 +144,9 @@ class MarketListingsService
             }
 
             $listing = $this->parseAdvert($html, (string) $id, $card);
-            if ($listing) {
+            if ($listing && ! $listing['has_phone']) {
+                $stats['no_number']++;
+            } elseif ($listing) {
                 $this->store((string) $id, $listing);
                 $stats['saved']++;
             }
@@ -274,7 +276,7 @@ class MarketListingsService
         }
 
         $listing['agency'] = $agency;
-        $listing['phone'] = $this->phone($html);
+        $listing['has_phone'] = $this->hasPhone($html);
         // Rooms and their stations/journey times, like the feed.
         try {
             $listing = app(TransportIndex::class)->annotate($listing);
@@ -300,13 +302,14 @@ class MarketListingsService
         return null;
     }
 
-    public function phone(string $html): ?string
+    /**
+     * Whether the advertiser takes calls: SpareRoom lists "Call" among the
+     * contact methods (and as a tab) only when there is a number. The support
+     * number in every page's footer is not it.
+     */
+    public function hasPhone(string $html): bool
     {
-        if (preg_match('/href="tel:([+0-9 ]{10,16})"/', $html, $m)) {
-            return trim($m[1]);
-        }
-
-        return null;
+        return (bool) preg_match('/contact_methods__li[^"]*\bphoneadvertiser\b|fa-phone page-tabs__icon/', $html);
     }
 
     protected function store(string $id, array $listing): void
@@ -316,7 +319,6 @@ class MarketListingsService
 
         $row = [
             'agency' => $listing['agency'] ?? null,
-            'phone' => $listing['phone'] ?? $existing?->phone,
             'data' => json_encode($listing),
             'last_seen_at' => $now,
             'updated_at' => $now,

@@ -121,11 +121,7 @@
                 <div class="card wild">
                     <h3>Wildcard · not a partner</h3>
                     <p class="agency">{{ $p['agency'] ?? 'Agency not named' }}</p>
-                    @if (! empty($p['phone']))
-                        <a class="btn" href="tel:{{ preg_replace('/\s+/', '', $p['phone']) }}">Call {{ $p['phone'] }}</a>
-                    @else
-                        <p class="muted">No number on the advert. Look the agency up, or message them from the ad.</p>
-                    @endif
+                    <p class="muted">&#128222; Number available on the advert.</p>
                     <p class="muted">A SpareRoom agent, free to contact. Call before promising the room to a client, and agree the terms first.</p>
                     <p class="muted">Ad ref {{ $p['spareroom_id'] ?? '' }} · <a href="https://www.spareroom.co.uk/{{ $p['spareroom_id'] ?? '' }}" target="_blank" rel="noopener nofollow">original ad</a></p>
                 </div>
