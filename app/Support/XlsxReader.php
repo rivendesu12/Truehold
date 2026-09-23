@@ -44,6 +44,7 @@ class XlsxReader
 
             foreach ($doc->sheetData->row as $row) {
                 $cells = [];
+                $rowNumber = (int) $row['r'];
                 foreach ($row->c as $c) {
                     $col = self::columnNumber((string) $c['r']);
                     $type = (string) $c['t'];
@@ -61,7 +62,49 @@ class XlsxReader
                     }
                 }
                 if ($cells) {
-                    $out[] = $cells;
+                    // The sheet's own row number, to pair a row with its links.
+                    $out[] = $cells + ['_row' => $rowNumber];
+                }
+            }
+
+            return $out;
+        } finally {
+            $zip->close();
+        }
+    }
+
+    /**
+     * Cell links of the named sheet, keyed "row:col" (1-based): the target
+     * of each hyperlink, which rows() cannot see.
+     *
+     * @return array<string, string>
+     */
+    public static function hyperlinks(string $path, string $sheetName): array
+    {
+        $zip = new \ZipArchive();
+        if ($zip->open($path) !== true) {
+            return [];
+        }
+
+        try {
+            $sheetPath = self::resolveSheetPath($zip, $sheetName);
+            $xml = $sheetPath ? $zip->getFromName($sheetPath) : false;
+            $rels = $sheetPath ? $zip->getFromName(dirname($sheetPath) . '/_rels/' . basename($sheetPath) . '.rels') : false;
+            if ($xml === false || $rels === false) {
+                return [];
+            }
+
+            $targets = [];
+            foreach ((@simplexml_load_string($rels) ?: [])->Relationship ?? [] as $rel) {
+                $targets[(string) $rel['Id']] = html_entity_decode((string) $rel['Target']);
+            }
+
+            $out = [];
+            if (preg_match_all('/<hyperlink\b[^>]*\bref="([A-Z]+)(\d+)"[^>]*\br:id="([^"]+)"/', $xml, $m, PREG_SET_ORDER)) {
+                foreach ($m as [, $col, $row, $id]) {
+                    if (isset($targets[$id])) {
+                        $out[$row . ':' . self::columnNumber($col)] = $targets[$id];
+                    }
                 }
             }
 

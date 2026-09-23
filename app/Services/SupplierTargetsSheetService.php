@@ -176,7 +176,59 @@ class SupplierTargetsSheetService
             $out->push($this->mapRow($row, $supplier, $property, $availableRaw, $availableDate));
         }
 
-        return $this->attachHouseholds($this->attachCoordinates($this->fillMissingPrices($out)))->values();
+        return $this->attachHouseholds($this->attachCoordinates($this->fillMissingPrices($out->concat($this->apRoomsNotListed($out)))))->values();
+    }
+
+    /**
+     * AP / Horizon rooms their workbook marks available that the Targets tab
+     * has not picked up (Ramsey Street D was one), shaped like Targets rows.
+     */
+    protected function apRoomsNotListed(Collection $rows): Collection
+    {
+        $ap = app(ApPortfolioPriceService::class);
+        $key = fn (string $property, string $room) => strtolower(preg_replace('/[^a-z0-9]+/i', '', $property) . '|' . preg_replace('/[^a-z0-9]+/i', '', $room));
+        $have = $rows->filter(fn ($r) => preg_match('/\b(ap|horizon)\b/i', (string) ($r['agent_name'] ?? '')))
+            ->map(fn ($r) => $key((string) ($r['source_property'] ?? ''), (string) ($r['source_room'] ?? '')))->flip();
+
+        return collect($ap->availableRooms())
+            ->reject(fn ($r) => isset($have[$key($r['property'], $r['room'])]))
+            ->map(function (array $r) {
+                $photoIds = $r['folder'] ? app(SupplierPhotoService::class)->photosForRoom($r['folder'], $r['room']) : [];
+                $photoUrls = array_map(fn ($id) => route('supplier.photo', ['fileId' => $id], false), $photoIds);
+
+                return [
+                    'id' => 'sheet-' . substr(sha1(strtolower('AP|' . $r['property'] . '|' . $r['room'])), 0, 20),
+                    'title' => $r['property'] . ($r['room'] !== '' ? ' — Room ' . $r['room'] : ''),
+                    'location' => $r['area'] !== '' ? $r['area'] : $r['postcode'],
+                    'postcode' => $r['postcode'],
+                    'latitude' => null,
+                    'longitude' => null,
+                    'price' => $r['price'],
+                    'description' => implode(' · ', array_filter([
+                        $r['beds'] !== '' ? rtrim(rtrim($r['beds'], '0'), '.') . ' bed' : null,
+                        $r['baths'] !== '' ? $r['baths'] . ' bath' : null,
+                        'Available: ' . $r['status'],
+                    ])),
+                    'property_type' => 'Room',
+                    'available_date' => $r['available_from'],
+                    'photo_count' => count($photoUrls),
+                    'first_photo_url' => $photoUrls[0] ?? null,
+                    'all_photos' => $photoUrls,
+                    'url' => null,
+                    'pictures_folder_url' => $r['folder'],
+                    'agent_name' => 'AP',
+                    'agent_id' => null,
+                    'management_company' => 'AP',
+                    'source_property' => $r['property'],
+                    'source_room' => $r['room'] !== '' ? $r['room'] : null,
+                    'total_rooms' => $r['beds'] !== '' ? (int) $r['beds'] : null,
+                    'status' => 'available',
+                    'source' => 'supplier_sheet',
+                    'from_ap_workbook' => true,
+                    'updated_at' => now()->toIso8601String(),
+                    'updatable' => false,
+                ];
+            })->values();
     }
 
     /**

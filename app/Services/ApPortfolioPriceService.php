@@ -30,6 +30,10 @@ class ApPortfolioPriceService
     private const COL_PRICE = 9;
     // Tenant columns. Only whether a room has a tenant, and that tenant's
     // age, are ever taken from them; names and phones are never read out.
+    private const COL_STATUS = 2;
+    private const COL_AREA = 5;
+    private const COL_BEDS = 7;
+    private const COL_BATHS = 8;
     private const COL_TENANT = 10;
     private const COL_DOB = 12;
 
@@ -99,6 +103,94 @@ class ApPortfolioPriceService
         }
 
         return $out;
+    }
+
+    /**
+     * Rooms the workbook marks available, for the ones Room targets lacks.
+     *
+     * Giaco's rule: available means the status says "Available" and not
+     * "booked" (the green cells). ROLLING means someone lives there; TBC is
+     * not a vacancy either. Within the same window as Room targets.
+     *
+     * @return array<int, array>
+     */
+    public function availableRooms(): array
+    {
+        if (! self::isConfigured()) {
+            return [];
+        }
+
+        return Cache::remember('ap_portfolio_available', now()->addHours(1), function () {
+            try {
+                $path = $this->download();
+                if (! $path) {
+                    return [];
+                }
+                $links = XlsxReader::hyperlinks($path, self::SHEET);
+                $window = (int) config('services.supplier_targets.window_days', 62);
+                $out = [];
+                foreach (XlsxReader::rows($path, self::SHEET) as $row) {
+                    $status = (string) ($row[self::COL_STATUS] ?? '');
+                    $property = trim((string) ($row[self::COL_PROPERTY] ?? ''));
+                    if ($property === '' || ! self::isAvailable($status)) {
+                        continue;
+                    }
+                    $from = self::availableFrom($status);
+                    if ($from && $from->gt(now()->addDays($window))) {
+                        continue;
+                    }
+                    $room = trim((string) ($row[self::COL_ROOM] ?? ''));
+                    $price = $this->parsePrice((string) ($row[self::COL_PRICE] ?? ''));
+                    if ($price === null) {
+                        continue;
+                    }
+                    $n = $row['_row'] ?? null;
+                    $folder = $n ? ($links[$n . ':' . self::COL_ROOM] ?? $links[$n . ':' . self::COL_PROPERTY] ?? null) : null;
+                    $area = trim((string) ($row[self::COL_AREA] ?? ''));
+                    $out[] = [
+                        'property' => $property,
+                        'room' => $room,
+                        'area' => mb_strlen($area) <= 25 ? $area : '',
+                        'postcode' => strtoupper(trim((string) ($row[self::COL_POSTCODE] ?? ''))),
+                        'beds' => (string) ($row[self::COL_BEDS] ?? ''),
+                        'baths' => (string) ($row[self::COL_BATHS] ?? ''),
+                        'price' => $price,
+                        'available_from' => ($from ?? now())->toDateString(),
+                        'status' => trim($status),
+                        'folder' => $folder && str_contains($folder, 'drive.google.com') ? $folder : null,
+                    ];
+                }
+                return $out;
+            } catch (\Throwable $e) {
+                Log::warning('AP portfolio rooms load failed', ['error' => $e->getMessage()]);
+                return [];
+            }
+        });
+    }
+
+    public static function isAvailable(string $status): bool
+    {
+        $s = strtolower($status);
+
+        return str_contains($s, 'available') && ! str_contains($s, 'booked') && ! str_contains($s, 'tbc');
+    }
+
+    /** "30 Sep 2026(Available)", "30 October ( Available)" (no year: the next one). */
+    public static function availableFrom(string $status): ?\Carbon\Carbon
+    {
+        if (! preg_match('/(\d{1,2})\s*([A-Za-z]{3,9})\s*(\d{4})?/', $status, $m)) {
+            return null;
+        }
+        try {
+            $date = \Carbon\Carbon::parse($m[1] . ' ' . $m[2] . ' ' . ($m[3] ?? now()->year));
+        } catch (\Throwable $e) {
+            return null;
+        }
+        if (empty($m[3]) && $date->lt(now()->subMonths(2))) {
+            $date->addYear();
+        }
+
+        return $date->lt(now()->startOfDay()) ? now()->startOfDay() : $date;
     }
 
     /**
