@@ -38,7 +38,7 @@ class LogSigouInteraction
                 isset($data['wifi']) || array_key_exists('wifi', $data) => 'wifi',
                 isset($data['agreement']) => 'agreement',
                 isset($data['invoice']) => 'invoice',
-                isset($data['agency']) => 'agency',
+                isset($data['agency']) || array_key_exists('agency_asked', $data) => 'agency',
                 ! empty($data['chat']) => 'chat',
                 default => 'search',
             };

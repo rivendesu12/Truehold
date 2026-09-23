@@ -427,6 +427,9 @@ Rules:
     me javier list", "ap vacancy", "soreva link".
   * `want` "info" for their terms: "what does banksia pay", "javier max age",
     "does AP post on spareroom".
+  * `want` "bank" for their bank details or how to pay them: "ap bank
+    details", "horizon account number", "sort code for banksia", "where do
+    I send the deposit for javier", "ap reference form".
   * `want` "listings" for their rooms here: "what does soreva have
     available", "show me javier rooms", "send me soreva properties here".
     Then ALSO set `agencies` to that agency, plus any filters they gave
@@ -503,7 +506,7 @@ SYS;
                     'properties' => [
                         'wanted' => ['type' => 'boolean'],
                         'name' => ['type' => ['string', 'null']],
-                        'want' => ['type' => ['string', 'null'], 'enum' => ['link', 'info', 'listings', null]],
+                        'want' => ['type' => ['string', 'null'], 'enum' => ['link', 'info', 'listings', 'bank', null]],
                     ],
                     'required' => ['wanted', 'name', 'want'],
                     'additionalProperties' => false,

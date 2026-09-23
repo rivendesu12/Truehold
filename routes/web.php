@@ -133,6 +133,19 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
         $directory = app(\App\Services\AgencyDirectory::class);
         $agency = $directory->find($ask['name']);
 
+        if (($ask['want'] ?? null) === 'bank') {
+            $bank = app(\App\Services\AgencyBankDetails::class)->find($ask['name'])
+                ?? ($agency ? app(\App\Services\AgencyBankDetails::class)->find($agency['name']) : null);
+
+            return response()->json([
+                'agency' => null,
+                'agency_bank' => $bank,
+                'agency_asked' => $ask['name'],
+                'sigou' => $bank ? (string) ($spec['sigou'] ?? '') : 'No bank details for ' . ($agency['name'] ?? $ask['name']) . ' yet malaka, ask Giaco to send them',
+                'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
+            ]);
+        }
+
         if (($ask['want'] ?? null) === 'listings') {
             // Their rooms: an ordinary search restricted to them.
             $spec['agencies'] = array_values(array_unique(array_merge((array) ($spec['agencies'] ?? []), [$agency['name'] ?? $ask['name']])));

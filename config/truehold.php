@@ -9,4 +9,8 @@ return [
         env('TRUEHOLD_AGENTS', 'Alex,Emanuela,Mohammed,Oana,Pasquale,Giacomo')
     )))),
 
+    // Partner agencies' bank details (AgencyBankDetails). A private file on
+    // the server: the repository is public.
+    'agency_bank_details' => env('AGENCY_BANK_DETAILS', storage_path('app/private/agency-bank-details.json')),
+
 ];

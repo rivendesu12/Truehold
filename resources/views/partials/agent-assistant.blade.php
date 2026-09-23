@@ -478,6 +478,20 @@
             + '</div>';
     };
 
+    // Bank details: every account the agency takes payment on, each figure
+    // with its own Copy button, and their tenant reference forms.
+    const bankCard = (b) => {
+        const row = (k, v) => v ? '<div class="th-ask__wifirow"><div><span>' + k + '</span><b>' + esc(v) + '</b></div>'
+            + '<button type="button" class="th-ask__copy" data-copy="' + esc(v) + '">Copy</button></div>' : '';
+        return '<div class="th-ask__deal"><h4>' + esc(b.name) + ' \u00b7 bank details</h4>'
+            + (b.accounts || []).map(a => '<div style="margin-top:12px"><p class="th-ask__hint" style="margin:0 0 4px"><b>'
+                + esc([a.company, a.bank].filter(Boolean).join(' \u00b7 ')) + '</b></p>'
+                + row('Account name', a.account_name) + row('Sort code', a.sort_code) + row('Account number', a.account_number)
+                + row('BIC', a.bic) + row('IBAN', a.iban) + row('Reference', a.reference) + '</div>').join('')
+            + (b.forms || []).map(f => '<a class="th-ask__deallink" style="display:block;margin-top:10px" href="' + esc(f.url) + '" target="_blank" rel="noopener">' + esc(f.label) + '</a>').join('')
+            + '</div>';
+    };
+
     // Buttons that ask Sigou something on the agent's behalf.
     body.addEventListener('click', (e) => {
         const b = e.target.closest('[data-ask]');
@@ -649,9 +663,10 @@
 
             // A partner agency: their list, their terms, their rooms here.
             if ('agency_asked' in data) {
-                body.innerHTML = data.agency ? agencyCard(data.agency) : '';
-                Sigou.set(data.agency ? 'happy' : 'shocked', 2000);
-                say((data.sigou || '').trim() || (data.agency ? 'Here ' + data.agency.name + ' bro' : 'Who is that? Not in our list'));
+                const found = data.agency || data.agency_bank;
+                body.innerHTML = data.agency_bank ? bankCard(data.agency_bank) : (data.agency ? agencyCard(data.agency) : '');
+                Sigou.set(found ? 'happy' : 'shocked', 2000);
+                say((data.sigou || '').trim() || (found ? 'Here ' + found.name + ' bro' : 'Who is that? Not in our list'));
                 lastQ = q;
                 input.value = '';
                 return;

@@ -189,10 +189,13 @@ class SorevaSheetService
 
         // Their property links point at the photo folders, so the same
         // private-Drive proxy the other suppliers use serves these too.
-        $photoFolder = $roomFolderUrl ?: $folderUrl;
-        $photoIds = $photoFolder
-            ? app(SupplierPhotoService::class)->photosForRoom($photoFolder, $room)
-            : [];
+        // The room's own folder usually holds one or two pictures; the
+        // property folder has the rest of the house. Room first.
+        $photos = app(SupplierPhotoService::class);
+        $photoIds = array_slice(array_values(array_unique(array_merge(
+            $roomFolderUrl ? $photos->photosForRoom($roomFolderUrl, $room) : [],
+            $folderUrl ? $photos->photosForRoom($folderUrl, $room) : [],
+        ))), 0, 12);
         $photoUrls = array_map(
             fn ($id) => route('supplier.photo', ['fileId' => $id], false),
             $photoIds

@@ -30,17 +30,14 @@ class WarmSupplierPhotos extends Command
         $folders = [];
 
         foreach ($listings as $listing) {
-            $folder = ($listing['drive_room_folder'] ?? null) ?: ($listing['drive_folder_url'] ?? null);
-
-            if (empty($folder)) {
-                continue;
+            // Soreva has both: a folder per room and one per property.
+            foreach (array_filter([$listing['drive_room_folder'] ?? null, $listing['drive_folder_url'] ?? null]) as $folder) {
+                // Keyed by folder and room, which is what the cache is keyed by.
+                $folders[$folder . '|' . ($listing['source_room'] ?? '')] = [
+                    'folder' => $folder,
+                    'room' => $listing['source_room'] ?? null,
+                ];
             }
-
-            // Keyed by folder and room, which is what the cache is keyed by.
-            $folders[$folder . '|' . ($listing['source_room'] ?? '')] = [
-                'folder' => $folder,
-                'room' => $listing['source_room'] ?? null,
-            ];
         }
 
         if (! $folders) {
