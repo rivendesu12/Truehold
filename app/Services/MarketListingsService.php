@@ -128,6 +128,7 @@ class MarketListingsService
 
         $agentIds = [];
         foreach ($bands as $band) {
+            $seenInBand = [];
             for ($page = 0; $page < self::PAGES_PER_SEARCH && $stats['pages'] < $maxPages; $page++) {
                 usleep($delayMs * 1000);
                 $html = $this->get('/flatshare/?offset=' . ($page * 10) . '&search_id=' . $band['id'] . '&sort_by=by_day&mode=list');
@@ -140,9 +141,11 @@ class MarketListingsService
                 }
 
                 $cards = $this->cards($html);
-                if (! $cards) {
-                    break; // past the last page
+                // Past the last page SpareRoom may repeat it rather than stop.
+                if (! $cards || ! array_diff_key($cards, $seenInBand)) {
+                    break;
                 }
+                $seenInBand += $cards;
                 $stats['pages']++;
                 $stats['cards'] += count($cards);
 
