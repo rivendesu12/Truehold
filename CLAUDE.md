@@ -64,7 +64,10 @@ commission / no-commission / other options.
 php artisan audit:code       # calls to methods that don't exist
 php artisan audit:data       # field coverage, unmapped data, filter correctness
 php artisan audit:exposure   # what a client sees on a shared link
-php artisan assistant:test   # 34 real agent briefs
+php artisan assistant:test   # real briefs through the parser (--only, --quick, --compare)
+php artisan sigou:scenarios  # everything agents ask, end to end through the endpoint
+php artisan assistant:insights  # how agents use Sigou
+php artisan market:crawl     # refresh SpareRoom wildcards
 php artisan suppliers:check  # what each direct supplier returns
 php artisan commission:agencies
 php artisan photos:warm
@@ -89,6 +92,30 @@ Mary while a search runs, rubs his hands on results. Agents only (`@auth`).
   client/tenant/colleague, nothing sexual, never claims to know results.
 - `chit_chat: true` answers without searching. A real brief read as chat
   fails the test.
+- Results come in three bands: **best** (whole brief, actually in the area:
+  own area field, nearest station ≤12 min walk, postcode district, or ≤½ mi
+  for areas with no station; never the title), **other options** (nearby up
+  to 2/4 mi, over budget, longer journey, relaxed — each with a `why`), and
+  **wildcards** (below). Nothing widened ever lands in best.
+- **Wildcards** = SpareRoom letting agents' free-to-contact rooms.
+  `market:crawl` (every other night, polite, stops if refused) →
+  `market_listings` table; offered only in Sigou's search, opened on our own
+  page `/market/{token}` (token is an HMAC, not the advert number). Guests see
+  the room without agency/phone/ref. Logged out, SpareRoom hides phone
+  numbers, so `phone` is usually empty.
+- **Agencies** (`AgencyDirectory`): the "Agencies link" tab of Room targets,
+  columns A-C and E-I only (D is never read; the "Agency rules" tab holds
+  logins and is never touched). Link, max age, commission, agent share;
+  refreshed hourly with the feed. "give me javier list" / "what does banksia
+  pay" / "what does soreva have available".
+- Commission: `config/commission.php` never_pay beats always_pay beats the
+  agencies sheet beats the feed's `paying`. One rule (`CommissionRates::pays`)
+  for cards, Sigou and the paying filter.
+- Every question is logged to `assistant_interactions` (own DB, 180 days) with
+  clicks per band; `assistant:insights` summarises, `assistant:usage` shows cost.
+- End-to-end check: `sigou:scenarios` (~35 real calls through the endpoint, ~2p).
+  Model reasoning is off (`OPENAI_REASONING_EFFORT=none`); the instructions are
+  byte-identical per call so they cache (date and jokes ride in the user message).
 - **The persona must not change the filters.** Check with
   `assistant:test --compare --sigou` (runs every brief with and without him,
   lists filter differences; `false` vs `null` on garden/parking/etc. is

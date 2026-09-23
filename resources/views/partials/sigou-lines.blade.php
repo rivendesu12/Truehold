@@ -119,12 +119,17 @@ window.SigouLines = (function () {
         const onBrief = paying + g.standard.length;
 
         if (data.unplaced) return 'Where is ' + data.unplaced + '? Never heard man. Try a station';
+        const wild = (g.wildcards || []).length;
+        if (!onBrief && !g.alternatives.length && wild) return pick([
+            'Nothing from our people. Only wildcards from SpareRoom agents, call them first bro',
+            'Our partners have nothing. ' + wild + ' wildcards, risky but agents always want to do business',
+        ]);
         if (!onBrief && !g.alternatives.length) return pick([
             'Nothing. Zero. Crazy tragic',
             'What do you mean zero? …Zero yeah',
             'Nothing man. The client need to open the wallet',
         ]);
-        if (!onBrief) return pick(['Nothing exact but these are close. Sell it bro', 'Not perfect but close. The client will survive']);
+        if (!onBrief) return pick(['Nothing exactly like that malaka. Here the closest ones', 'Not exact but close. The client will survive', 'Nothing exact. Look the yellow ones bro']);
         if (onBrief > 15) return onBrief + '?? Too many re, be more picky.' + (paying ? ' ' + paying + ' pay commission tho' : '');
         if (paying) return pick([
             'Ela! ' + paying + ' with commission 🤑',

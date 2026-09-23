@@ -56,3 +56,16 @@ Schedule::command('transport:build-journeys')
     ->weeklyOn(1, '03:30')
     ->withoutOverlapping()
     ->runInBackground();
+
+// Sigou's wildcards: free-to-contact SpareRoom agent listings. Every other
+// night, off-peak, a few seconds between requests; listings not seen for four
+// days drop out, so a missed run changes nothing.
+Schedule::command('market:crawl')
+    ->cron('40 3 */2 * *')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Sigou's interaction log keeps six months.
+Schedule::call(fn () => \Illuminate\Support\Facades\DB::table('assistant_interactions')
+    ->where('created_at', '<', now()->subDays(180))->delete())
+    ->monthlyOn(2, '04:00');

@@ -94,6 +94,20 @@
 .th-ask__warn{background:#fff6e0;border:1px solid #f0d89a;color:#7a5c12;padding:8px 10px;border-radius:6px;font-size:13px;margin:0 0 10px}
 .th-ask__stn{display:block;color:#7b8598;font-size:12px}
 
+/* Result bands: green best, yellow other options, light red wildcards */
+.th-ask__band{border-radius:12px;padding:6px 12px 2px;margin:10px 0}
+.th-ask__band .th-ask__sec{margin:8px 0 2px}
+.th-ask__band--best{background:#effaf2;border:1px solid #cdebd6}
+.th-ask__band--best .th-ask__sec{color:#1d6b38}
+.th-ask__band--other{background:#fffaeb;border:1px solid #f3e2b0}
+.th-ask__band--other .th-ask__sec{color:#8a6d1f}
+.th-ask__band--wild{background:#fff4f4;border:1px solid #f3cccc}
+.th-ask__band--wild .th-ask__sec{color:#9b2c2c}
+.th-ask__band .th-ask__res{border-bottom-color:rgba(0,0,0,.06)}
+.th-ask__band .th-ask__res:hover{background:rgba(255,255,255,.6)}
+.th-ask__none{background:#f4f6fa;border-radius:8px;padding:9px 12px;font-size:13.5px;color:#34445c;margin:0 0 6px}
+.th-ask__wildwho{display:block;color:#9b2c2c;font-size:12px;font-weight:600;margin-top:2px}
+
 /* Sourcing agreement card */
 .th-ask__deal{border:1px solid #e3e8f0;border-radius:12px;padding:14px 16px;background:#fbfcfe;margin:4px 0 8px}
 .th-ask__deal h4{margin:0 0 10px;font-size:15px}
@@ -445,6 +459,29 @@
         + (w.qr_url ? '<a class="th-ask__deallink" href="' + esc(w.qr_url) + '" target="_blank" rel="noopener">Open full screen</a>' : '')
         + '</div>';
 
+    const agencyCard = (a) => {
+        const fact = (k, v) => v ? '<div class="th-ask__wifirow"><div><span>' + k + '</span><b style="font-family:inherit">' + esc(v) + '</b></div></div>' : '';
+        return '<div class="th-ask__deal"><h4>' + esc(a.name) + '</h4>'
+            + (a.link ? '<a class="th-ask__dealbtn" href="' + esc(a.link) + '" target="_blank" rel="noopener">Open ' + esc(a.name) + '\'s list</a>' : '<p class="th-ask__hint">No link in the agencies sheet yet.</p>')
+            + '<div style="margin-top:12px">'
+            + fact('Max age', a.max_age ? String(a.max_age) : '')
+            + fact('Commission', a.commission)
+            + fact('Agent share', a.agent_share)
+            + fact('Post on SpareRoom', a.post_on_spareroom)
+            + '</div>'
+            + (a.rooms ? '<button type="button" class="th-ask__dealbtn th-ask__dealbtn--alt" data-ask="show me all ' + esc(a.name) + ' rooms">Show their ' + a.rooms + ' rooms here</button>'
+                : '<p class="th-ask__hint">We hold none of their rooms right now.</p>')
+            + '</div>';
+    };
+
+    // Buttons that ask Sigou something on the agent's behalf.
+    body.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-ask]');
+        if (!b) return;
+        input.value = b.dataset.ask;
+        form.requestSubmit();
+    });
+
     const invoiceCard = (a) => {
         const missing = a.missing || [];
         const field = (name, label, control, hint) =>
@@ -464,6 +501,20 @@
             + '<p class="th-ask__err" data-deal-error hidden></p>'
             + '</form>';
     };
+
+    // Which result an agent opens, so we learn which band is useful.
+    let logId = null;
+    body.addEventListener('click', (e) => {
+        const a = e.target.closest('.th-ask__res');
+        if (!a || !logId || !navigator.sendBeacon) return;
+        const f = new FormData();
+        f.append('_token', csrf());
+        f.append('log', logId);
+        f.append('id', a.dataset.id || '');
+        f.append('band', a.dataset.band || 'best');
+        f.append('pos', a.dataset.pos || 0);
+        navigator.sendBeacon(@json(route('agent.search.click')), f);
+    });
 
     body.addEventListener('input', (e) => {
         const row = e.target.closest('.th-ask__dealrow');
@@ -592,6 +643,16 @@
                 return;
             }
 
+            // A partner agency: their list, their terms, their rooms here.
+            if ('agency_asked' in data) {
+                body.innerHTML = data.agency ? agencyCard(data.agency) : '';
+                Sigou.set(data.agency ? 'happy' : 'shocked', 2000);
+                say((data.sigou || '').trim() || (data.agency ? 'Here ' + data.agency.name + ' bro' : 'Who is that? Not in our list'));
+                lastQ = q;
+                input.value = '';
+                return;
+            }
+
             // A sourcing-fee invoice: same idea as the agreement card.
             if (data.invoice) {
                 body.innerHTML = invoiceCard(data.invoice);
@@ -656,7 +717,8 @@
                     + '">COMMISSION' + fee + '</span>';
             };
 
-            const row = (r) => '<a class="th-ask__res" href="' + esc(r.url) + '" target="_blank" rel="noopener">'
+            const row = (r, i, bandName) => '<a class="th-ask__res" href="' + esc(r.url) + '" target="_blank" rel="noopener"'
+                + ' data-id="' + esc(r.id || '') + '" data-band="' + esc(bandName || '') + '" data-pos="' + (i || 0) + '">'
                 + (r.photo
                     ? '<img src="' + esc(r.photo) + '" alt="" loading="lazy"'
                         + ' onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),'
@@ -679,41 +741,30 @@
                     + (r.journey.changes === 0 ? ', direct' : ', ' + r.journey.changes
                         + (r.journey.changes === 1 ? ' change' : ' changes')) + '</small>' : '')
                 + (r.why ? '<small class="th-ask__why">' + esc(r.why) + '</small>' : '')
+                + (r.market ? '<small class="th-ask__wildwho">' + esc(r.agent || 'Agency not named')
+                    + (r.phone ? ' \u00b7 ' + esc(r.phone) : '') + '</small>' : '')
                 + '</span></a>';
 
-            const section = (title, items, note) => {
+            // Three bands, in the order an agent works through them.
+            const band = (cls, title, items, note) => {
                 if (!items || !items.length) return '';
-                return '<h4 class="th-ask__sec">' + esc(title)
-                    + ' <span>' + items.length + '</span></h4>'
+                return '<section class="th-ask__band th-ask__band--' + cls + '">'
+                    + '<h4 class="th-ask__sec">' + title + ' <span>' + items.length + '</span></h4>'
                     + (note ? '<p class="th-ask__secnote">' + esc(note) + '</p>' : '')
-                    + items.map(row).join('');
+                    + items.map((r, i) => row(r, i, cls)).join('') + '</section>';
             };
 
-            const g = data.groups || {commission: [], standard: [], alternatives: []};
-            const onBrief = g.commission.length + g.standard.length;
+            logId = data.log_id || null;
+            const g = data.groups || {commission: [], standard: [], alternatives: [], wildcards: []};
+            const best = (g.commission || []).concat(g.standard || []);
+            const others = g.alternatives || [];
+            const wild = g.wildcards || [];
+            const onBrief = best.length;
 
             let html = '';
             if (data.explanation) html += '<p class="th-ask__note">' + esc(data.explanation) + '</p>';
 
-            html += '<p class="th-ask__hint">'
-                 + (data.refined ? '<span class="th-ask__refined" title="Your last search, with this change">REFINED</span>' : '')
-                 + '<strong>' + onBrief + '</strong> match'
-                 + (onBrief === 1 ? '' : 'es')
-                 + (data.hub && data.max_journey
-                        ? ' within <strong>' + data.max_journey + ' minutes</strong> of ' + esc(data.hub)
-                        : (data.radius ? ' within <strong>' + data.radius + ' miles</strong> straight-line' : ''))
-                 + (data.widened ? ' <em>(nothing exactly there — showing nearby)</em>' : '')
-                 + '</p>';
-
-            const dropped = (data.relaxed || []).filter(function (r) { return r !== 'bedrooms'; });
-            if (dropped.length) {
-                html += '<p class="th-ask__warn">Nothing matched everything, so these were set aside: <strong>'
-                     + esc(dropped.map(function (d) { return d.replace(/_/g, ' '); }).join(', '))
-                     + '</strong>. Check each listing before you send it.</p>';
-            }
-            if ((data.relaxed || []).includes('bedrooms')) {
-                html += '<p class="th-ask__warn">Bedroom count set aside \u2014 too few listings state one.</p>';
-            }
+            if (data.refined) html += '<p class="th-ask__hint"><span class="th-ask__refined" title="Your last search, with this change">REFINED</span> your last search</p>';
 
             if (data.unplaced) {
                 html += '<p class="th-ask__warn">We could not place <strong>'
@@ -721,16 +772,23 @@
                      + 'Try a station name, or a postcode.</p>';
             }
 
-            html += section('Commission — meets the brief', g.commission);
-            html += section('No commission — meets the brief', g.standard);
-            html += section('Other options worth offering', g.alternatives,
-                            'Each of these misses the brief in one way, noted underneath.');
+            // Nothing exact: say so plainly, then the closest options.
+            if (!onBrief && (others.length || wild.length)) {
+                html += '<p class="th-ask__none">Nothing matches that exactly'
+                     + (data.area ? ' in <strong>' + esc(data.area) + '</strong>' : '')
+                     + '. Here are the closest options.</p>';
+            }
 
-            if (!onBrief && (data.why_none || []).length) {
-                html += '<p class="th-ask__warn">Nothing matched. In the whole feed, '
-                     + esc(data.why_none.join('; ')) + '.</p>';
-            } else if (!onBrief && !g.alternatives.length) {
-                html += '<p class="th-ask__hint">Nothing matched, even stretched. Try widening the area or the budget.</p>';
+            html += band('best', '👍 Best matches', best,
+                data.hub && data.max_journey ? 'Within ' + data.max_journey + ' minutes of ' + data.hub
+                    : (data.area ? 'In ' + data.area : ''));
+            html += band('other', 'Other options', others, 'Close to the brief; how each one differs is noted underneath.');
+            html += band('wild', 'Wildcards', wild, 'SpareRoom letting agents, free to contact, not our partners. Call and agree terms before offering.');
+
+            if (!onBrief && !others.length && !wild.length) {
+                html += (data.why_none || []).length
+                    ? '<p class="th-ask__warn">Nothing matched. In the whole feed, ' + esc(data.why_none.join('; ')) + '.</p>'
+                    : '<p class="th-ask__hint">Nothing matched, even stretched. Try widening the area or the budget.</p>';
             }
 
             body.innerHTML = html;

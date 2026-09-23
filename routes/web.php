@@ -55,8 +55,10 @@ Route::get('/properties/{property}', [PropertyController::class, 'show'])->name(
 Route::get('/manage/properties', [PropertyManagementController::class, 'index'])->name('properties.manage');
 
 // Agent search assistant: plain-English search, signed-in agents only.
-Route::middleware('auth')->post('/agent-search', function (Request $request) {
-    $question = trim((string) $request->input('q', ''));
+Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInteraction::class])->post('/agent-search', function (Request $request) {
+    // Every message is a paid model call: a sentence is plenty, and a pasted
+    // essay should not be billed as one.
+    $question = mb_substr(trim((string) $request->input('q', '')), 0, 600);
     if ($question === '') {
         return response()->json(['error' => 'Ask me something, malaka.'], 422);
     }
@@ -96,6 +98,9 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
     }
 
     $spec = $assistant->parse($question, $locations, $previous ?: null, $pending ?: null, $pendingInvoice ?: null);
+    // For the interaction log (LogSigouInteraction).
+    $request->attributes->set('sigou.spec', $spec);
+    $request->attributes->set('sigou.usage', $assistant->lastUsage);
     if (! $spec) {
         return response()->json(['error' => 'Could not understand that — try rephrasing.'], 502);
     }
@@ -120,6 +125,29 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
             'sigou' => ! empty($wifi['ssid']) ? (string) ($spec['sigou'] ?? '') : 'Nobody told me the WiFi yet, ask Giaco',
             'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
         ]);
+    }
+
+    // A partner agency: their vacancy link, their terms, or their rooms.
+    $ask = (array) ($spec['agency_request'] ?? []);
+    if (! empty($ask['wanted']) && ! empty($ask['name'])) {
+        $directory = app(\App\Services\AgencyDirectory::class);
+        $agency = $directory->find($ask['name']);
+
+        if (($ask['want'] ?? null) === 'listings') {
+            // Their rooms: an ordinary search restricted to them.
+            $spec['agencies'] = array_values(array_unique(array_merge((array) ($spec['agencies'] ?? []), [$agency['name'] ?? $ask['name']])));
+        } else {
+            $key = \App\Services\AgencyDirectory::key($agency['name'] ?? $ask['name']);
+            $rooms = $feed->filter(fn ($p) => ($k = \App\Services\AgencyDirectory::key((string) ($p['agent_name'] ?? $p['landlord_name'] ?? ''))) !== ''
+                && ($k === $key || preg_match('/(^| )' . preg_quote($key, '/') . '( |$)/', $k)))->count();
+
+            return response()->json([
+                'agency' => $agency ? $agency + ['rooms' => $rooms, 'want' => $ask['want'] ?? 'link'] : null,
+                'agency_asked' => $ask['name'],
+                'sigou' => $agency ? (string) ($spec['sigou'] ?? '') : 'Who is ' . $ask['name'] . '? Not in our agencies list bro',
+                'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
+            ]);
+        }
     }
 
     // A sourcing-fee invoice. When an agreement is asked for in the same
@@ -239,6 +267,16 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
 
     $found = $assistant->search($spec, $feed);
 
+    // Wildcards: the same brief over SpareRoom agents' free-to-contact rooms.
+    // Their best matches, or the nearest ones when none match exactly; never
+    // mixed into our own results.
+    $wild = collect();
+    $marketRooms = app(\App\Services\MarketListingsService::class)->all();
+    if ($marketRooms->isNotEmpty() && empty($spec['agencies']) && empty($spec['commission_only'])) {
+        $market = $assistant->search($spec, $marketRooms);
+        $wild = $market['results']->take(6)->concat($market['alternatives']->take(max(0, 3 - $market['results']->count())))->values();
+    }
+
     $hub = $found['hub'] ?? null;
 
     $shape = fn ($p) => [
@@ -271,7 +309,11 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
             ]
             : null,
         'why' => $p['why'] ?? null,
-        'url' => ! empty($p['id']) ? url('/properties/' . $p['id']) : null,
+        // Wildcards open on our own page, never on SpareRoom.
+        'url' => ! empty($p['market']) ? route('market.show', $p['token'])
+            : (! empty($p['id']) ? url('/properties/' . $p['id']) : null),
+        'market' => ! empty($p['market']),
+        'phone' => ! empty($p['market']) ? ($p['phone'] ?? null) : null,
     ];
 
     return response()->json([
@@ -285,6 +327,7 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
         'why_none' => $found['why_none'] ?? [],
         'max_journey' => $found['max_journey'] ?? null,
         'widened' => (bool) ($found['widened'] ?? false),
+        'area' => $found['area'] ?? null,
         'relaxed' => $found['relaxed'] ?? [],
         'commission_only' => (bool) ($spec['commission_only'] ?? false),
         'sigou' => (string) ($spec['sigou'] ?? ''),
@@ -301,9 +344,52 @@ Route::middleware('auth')->post('/agent-search', function (Request $request) {
             'commission' => $found['commission']->take(24)->map($shape)->values(),
             'standard' => $found['standard']->take(24)->map($shape)->values(),
             'alternatives' => $found['alternatives']->map($shape)->values(),
+            'wildcards' => $wild->map($shape)->values(),
         ],
     ]);
 })->name('agent.search');
+
+// Which result an agent opened, sent by the panel as a beacon. Our own
+// database; used to see which section of Sigou's answer is actually useful.
+Route::middleware('auth')->post('/agent-search/click', function (Request $request) {
+    $data = $request->validate([
+        'log' => ['required', 'integer'],
+        'id' => ['required', 'string', 'max:80'],
+        'band' => ['required', 'in:best,other,wild'],
+        'pos' => ['nullable', 'integer', 'min:0', 'max:100'],
+    ]);
+    $row = \Illuminate\Support\Facades\DB::table('assistant_interactions')
+        ->where('id', $data['log'])->where('user_id', $request->user()->id)->first();
+    if ($row) {
+        $clicks = json_decode((string) $row->clicks, true) ?: [];
+        $clicks[] = ['id' => $data['id'], 'band' => $data['band'], 'pos' => $data['pos'] ?? null, 'at' => now()->toIso8601String()];
+        \Illuminate\Support\Facades\DB::table('assistant_interactions')->where('id', $row->id)
+            ->update(['clicks' => json_encode(array_slice($clicks, -50))]);
+    }
+
+    return response()->noContent();
+})->name('agent.search.click');
+
+// A wildcard (a SpareRoom agent's room) shown on our own page, never sent to
+// SpareRoom. Clients opening a shared link get the room without the agency,
+// the phone or the advert reference.
+Route::get('/market/{token}', function (Request $request, string $token) {
+    abort_unless(preg_match('/^[a-f0-9]{20}$/', $token), 404);
+    $listing = app(\App\Services\MarketListingsService::class)->find($token);
+    abort_unless($listing, 404);
+
+    $isAgent = (bool) $request->user();
+    if (! $isAgent) {
+        // Contact details inside the advert text would let a client go round us.
+        $listing['description'] = trim(preg_replace([
+            '/(?:\+?44\s?|0)7\d{3}\s?\d{3}\s?\d{3}/', '/0\d{2,4}\s?\d{3,4}\s?\d{3,4}/',
+            '/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', '#https?://\S+|www\.\S+#i',
+        ], '[hidden]', (string) ($listing['description'] ?? '')));
+        unset($listing['agency'], $listing['agent_name'], $listing['phone'], $listing['spareroom_id'], $listing['url'], $listing['link'], $listing['external_ref']);
+    }
+
+    return view('market.show', ['p' => $listing, 'isAgent' => $isAgent]);
+})->name('market.show');
 
 // The office's sourcing agreement, filled in and signed by the agent. POST so
 // the client's name never sits in a URL, a log or the browser history.
