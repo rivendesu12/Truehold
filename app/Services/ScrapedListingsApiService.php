@@ -94,6 +94,67 @@ class ScrapedListingsApiService
     }
 
     /**
+     * Spreadsheet rows sometimes carry their photo list as one JSON string
+     * ('["https://...","https://..."]') rather than a list, so the site saw a
+     * single "photo" that was forty links glued together. Always a list of
+     * distinct URLs from here on, with all_photos and first_photo_url to match.
+     */
+    public static function normalisePhotos(array $p): array
+    {
+        $raw = $p['photos'] ?? null;
+        $list = [];
+
+        $take = function ($value) use (&$list, &$take) {
+            if (is_array($value)) {
+                foreach ($value as $v) {
+                    $take($v);
+                }
+                return;
+            }
+            $value = trim((string) $value);
+            if ($value === '') {
+                return;
+            }
+            if ($value[0] === '[') {
+                $decoded = json_decode($value, true);
+                if (is_array($decoded)) {
+                    $take($decoded);
+                    return;
+                }
+            }
+            if (str_contains($value, ',') && ! str_starts_with($value, 'data:')) {
+                foreach (preg_split('/\s*,\s*(?=https?:|\/)/', $value) as $part) {
+                    $part = trim($part, " \t\n\r\"'[]");
+                    if ($part !== '') {
+                        $list[] = $part;
+                    }
+                }
+                return;
+            }
+            $list[] = trim($value, "\"'[] ");
+        };
+
+        $take($raw);
+        if (! $list && ! empty($p['all_photos'])) {
+            $take($p['all_photos']);
+        }
+
+        $list = array_values(array_unique(array_filter($list, fn ($u) => preg_match('#^(https?://|/)#', $u))));
+        if (! $list) {
+            return $p;
+        }
+
+        $p['photos'] = $list;
+        $p['all_photos'] = implode(', ', $list);
+        if (empty($p['first_photo_url']) || str_starts_with((string) $p['first_photo_url'], '[')) {
+            $p['first_photo_url'] = $list[0];
+        }
+        $p['photo_count'] = count($list);
+
+        return $p;
+    }
+
+    /**
      * Get all properties from the Harbor Ops API (cached).
      */
     public function getAllProperties(): Collection
@@ -103,7 +164,8 @@ class ScrapedListingsApiService
 
             $feed = $this->fetchAllListings()
                 ->reject(fn ($p) => isset($notAccepting[(string) ($p['id'] ?? '')]))
-                ->filter(fn ($p) => $this->isAvailable($p));
+                ->filter(fn ($p) => $this->isAvailable($p))
+                ->map(fn ($p) => self::normalisePhotos($p));
 
             // Supplier rooms come from the Room targets sheet, not this API. They
             // carry no source advert, so the availability rules above do not apply

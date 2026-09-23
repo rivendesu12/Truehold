@@ -59,7 +59,7 @@ class SupplierPhotoService
      *
      * @return array<int, string>
      */
-    public function photosForRoom(?string $folderUrl, ?string $roomCode): array
+    public function photosForRoom(?string $folderUrl, ?string $roomCode, bool $refresh = false): array
     {
         $folderId = $this->folderIdFromUrl($folderUrl);
         if (! $folderId) {
@@ -67,6 +67,11 @@ class SupplierPhotoService
         }
 
         $cacheKey = 'supplier_photos_' . sha1($folderId . '|' . (string) $roomCode);
+
+        // photos:warm --force: ask Drive again rather than trust the week-old list.
+        if ($refresh) {
+            Cache::forget($cacheKey);
+        }
 
         // A week, not twelve hours. Folder contents barely change, and every
         // expiry used to land the next page request with a hundred Drive calls
@@ -156,7 +161,24 @@ class SupplierPhotoService
             }
         }
 
-        $ordered = array_slice(array_merge($roomImages, $rest), 0, self::TOTAL_CAP);
+        $ordered = array_merge($roomImages, $rest);
+        // Suppliers often upload the same photo twice (Rodney Street's Room 2
+        // folder held six pictures, each twice). Drive gives every file a
+        // content checksum: keep the first of each.
+        $seen = [];
+        $ordered = array_values(array_filter($ordered, function ($f) use (&$seen) {
+            $sum = method_exists($f, 'getMd5Checksum') ? (string) $f->getMd5Checksum() : '';
+            if ($sum === '') {
+                return true;
+            }
+            if (isset($seen[$sum])) {
+                return false;
+            }
+            $seen[$sum] = true;
+            return true;
+        }));
+
+        $ordered = array_slice($ordered, 0, self::TOTAL_CAP);
         $ids = array_map(fn ($f) => $f->getId(), $ordered);
 
         $this->allowIds($ids);
@@ -178,7 +200,7 @@ class SupplierPhotoService
         do {
             $response = $drive->files->listFiles([
                 'q' => sprintf("'%s' in parents and trashed = false", $folderId),
-                'fields' => 'nextPageToken, files(id, name, mimeType)',
+                'fields' => 'nextPageToken, files(id, name, mimeType, md5Checksum)',
                 'pageSize' => 200,
                 'orderBy' => 'name_natural',
                 'pageToken' => $pageToken,

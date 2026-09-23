@@ -66,7 +66,7 @@ class WarmSupplierPhotos extends Command
                 continue;
             }
 
-            $ids = $photos->photosForRoom($entry['folder'], $entry['room']);
+            $ids = $photos->photosForRoom($entry['folder'], $entry['room'], (bool) $this->option('force'));
 
             if ($ids) {
                 $fetched++;
