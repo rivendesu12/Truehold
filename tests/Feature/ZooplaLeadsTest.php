@@ -113,3 +113,14 @@ describe('the password page', function () {
             ->assertDontSee('correct horse 42');
     });
 });
+
+it('saves nothing when no password is typed', function () {
+    $this->app->useStoragePath(sys_get_temp_dir() . '/zoopla-leads-test-' . uniqid());
+    config(['services.zoopla_leads.password' => null]);
+
+    $this->artisan('zoopla:password')
+        ->expectsQuestion('Zoho password for hello@joyhomeslondon.co.uk (hidden as you type)', '')
+        ->assertFailed();
+
+    expect(\App\Support\ZooplaLeadsSettings::password())->toBeNull();
+});
