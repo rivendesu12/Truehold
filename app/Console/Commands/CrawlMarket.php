@@ -15,7 +15,7 @@ use Illuminate\Console\Command;
  */
 class CrawlMarket extends Command
 {
-    protected $signature = 'market:crawl {--pages=100} {--adverts=300} {--delay=2500}';
+    protected $signature = 'market:crawl {--pages=100} {--adverts=600} {--delay=2500}';
 
     protected $description = 'Crawl free-to-contact SpareRoom agent listings for Sigou\'s wildcards';
 
