@@ -54,6 +54,12 @@ class AgentSearchAssistant
     private const WIDEN_MILES = 2.0;
     private const WIDEN_STEPS = [2.0, 4.0, 7.0];
 
+    /**
+     * "In" an area: about a ten-minute walk from its centre. Three quarters of
+     * a mile let Poplar and Langdon Park count as Canary Wharf.
+     */
+    private const AREA_MILES = 0.5;
+
     public function provider(): string
     {
         return config('services.assistant.provider', 'openai') === 'anthropic' ? 'anthropic' : 'openai';
@@ -195,6 +201,9 @@ SYS;
 
     private bool $persona = true;
 
+    /** Tokens the last call used, for the interaction log. */
+    public ?array $lastUsage = null;
+
     /**
      * The model answers one search at a time and cannot know it made the same
      * joke on the last one, so each call is handed two of his running jokes
@@ -235,7 +244,7 @@ SYS;
     }
 
     /** Keys that describe the reply rather than the search. */
-    public const NOT_FILTERS = ['explanation', 'chit_chat', 'sigou', 'sigou_found', 'sigou_none', 'refines_previous', 'agreement', 'wifi', 'invoice'];
+    public const NOT_FILTERS = ['explanation', 'chit_chat', 'sigou', 'sigou_found', 'sigou_none', 'refines_previous', 'agreement', 'wifi', 'invoice', 'agency_request'];
 
     /**
      * The filters worth carrying into a follow-up: everything the agent
@@ -407,6 +416,19 @@ Rules:
   the answer into it and keep `wanted` true, as for an agreement. An
   agreement AND an invoice in one message sets both.
   Sigou's `sigou` line: ask for exactly what is missing, or say it is ready.
+- `agency_request` is for a question about one of our partner agencies
+  (Javier, AP Horizon, Banksia, Soreva, Urban, Right Room, Life Stay,
+  Antonio, DC Lettings, Dario, Iwany, Fab, Kish...) rather than a room
+  search. `name` as the agent wrote it.
+  * `want` "link" for their list, link, sheet, vacancy, listing sheet: "give
+    me javier list", "ap vacancy", "soreva link".
+  * `want` "info" for their terms: "what does banksia pay", "javier max age",
+    "does AP post on spareroom".
+  * `want` "listings" for their rooms here: "what does soreva have
+    available", "show me javier rooms", "send me soreva properties here".
+    Then ALSO set `agencies` to that agency, plus any filters they gave
+    ("soreva in stratford under 900").
+  Otherwise `wanted` false and the rest null.
 - `wifi` true when the agent asks for the office WiFi: "wifi", "wifi
   password", "internet for the client", "what's the network". Then leave
   every search filter null. You do not know the password and must not make
@@ -473,6 +495,16 @@ SYS;
                 'commission_only' => ['type' => 'boolean'],
                 'refines_previous' => ['type' => 'boolean'],
                 'wifi' => ['type' => 'boolean'],
+                'agency_request' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'wanted' => ['type' => 'boolean'],
+                        'name' => ['type' => ['string', 'null']],
+                        'want' => ['type' => ['string', 'null'], 'enum' => ['link', 'info', 'listings', null]],
+                    ],
+                    'required' => ['wanted', 'name', 'want'],
+                    'additionalProperties' => false,
+                ],
                 'invoice' => [
                     'type' => 'object',
                     'properties' => [
@@ -511,7 +543,7 @@ SYS;
                 'smokers', 'pets', 'region', 'garden', 'parking', 'furnished', 'no_deposit',
                 'max_deposit', 'available_by', 'max_commitment_months',
                 'good_transport', 'agencies', 'sort',
-                'commission_only', 'nice_to_have', 'explanation', 'refines_previous', 'agreement', 'wifi', 'invoice',
+                'commission_only', 'nice_to_have', 'explanation', 'refines_previous', 'agreement', 'wifi', 'invoice', 'agency_request',
             ],
             'additionalProperties' => false,
         ];
@@ -585,6 +617,7 @@ SYS;
             'output' => (int) ($usage['completion_tokens'] ?? 0),
             'reasoning' => (int) ($usage['completion_tokens_details']['reasoning_tokens'] ?? 0),
         ];
+        $this->lastUsage = $row;
         Log::info('Assistant call', $row + ['model' => $this->model()]);
 
         try {
@@ -755,136 +788,249 @@ SYS;
 
         $term = strtolower(trim((string) ($spec['location'] ?? '')));
 
-        // Attempt order, stopping at the first that returns anything:
-        //   1. the brief exactly as given
-        //   2. the same brief with the area stepped out 2 / 4 / 7 miles
-        //   3. the same again without the bedroom filter, which the data often
-        //      cannot answer at all (no whole property carries a bedroom count)
-        $attempt = function (array $useSpec, ?array $useCenter, ?float $useRadius) use ($properties, $term) {
-            if ($useCenter && $useRadius) {
-                $scoped = $this->withinRadius($properties, $useCenter, $useRadius);
-            } elseif ($term !== '') {
-                $scoped = $properties->filter($this->textMatcher($term));
-            } else {
-                $scoped = $properties;
+        // "In Canary Wharf" is a place, not a circle. Agents reported "Canary
+        // Wharf" and "Elephant and Castle" coming back as Mile End: a title
+        // saying "near Canary Wharf" counted as being there, "near X" meant
+        // two miles, and an empty result quietly stepped out to four and then
+        // seven miles and presented those as matches. Now a named area is
+        // matched on the listing's own area, its nearest station or postcode
+        // district, or a short walk from the centre; anything further is
+        // offered separately, labelled with how far it is.
+        $areaName = $term !== '' ? $term : strtolower(trim((string) ($spec['near_landmark'] ?? '')));
+        $areaAsk = $areaName !== '' && empty($spec['radius_miles']) && empty($spec['minutes_from_landmark'])
+            && empty($spec['_max_journey']) && empty($spec['direct_only']);
+        $areaCenter = $areaAsk ? ($center ?: $this->centroidFor($properties, $areaName)) : null;
+        $areaLabel = trim((string) ($spec['location'] ?? '')) ?: trim((string) ($spec['near_landmark'] ?? ''));
+
+        // Where the area has its own station, being "in" it means that is the
+        // nearest station (or the listing says so). Distance from the centre
+        // decides only for areas without one (Soho, Fitzrovia), because many
+        // coordinates are a postcode district's centre: the E14 centre sits
+        // by Canary Wharf, which put rooms by Poplar "in Canary Wharf".
+        $stationArea = false;
+        if ($areaAsk) {
+            foreach ([$areaName, str_ireplace(' and ', ' & ', $areaName)] as $try) {
+                $station = $transport->findStation($try);
+                // findStation is fuzzy ("Bow" finds Bromley-by-Bow): only a
+                // station actually called this counts.
+                if ($station && self::normPlace($station['name']) === self::normPlace($areaName)) {
+                    $stationArea = true;
+                    break;
+                }
             }
-            return $this->applyPreferences($scoped, $useSpec);
+            $stationArea = $stationArea || $properties->contains(fn ($p) => self::normPlace((string) ($p['nearest_station'] ?? '')) === self::normPlace($areaName));
+        }
+
+        $scope = function (?array $useCenter, ?float $useRadius) use ($properties, $term, $areaAsk, $areaName, $areaCenter, $stationArea) {
+            if ($areaAsk) {
+                return $properties->filter(fn ($p) => $this->inArea($p, $areaName, $areaCenter, $stationArea));
+            }
+            if ($useCenter && $useRadius) {
+                return $this->withinRadius($properties, $useCenter, $useRadius);
+            }
+            if ($term !== '') {
+                return $properties->filter($this->textMatcher($term));
+            }
+            return $properties;
         };
 
-        $withoutBeds = $spec;
-        unset($withoutBeds['min_bedrooms'], $withoutBeds['max_bedrooms']);
-        $hasBedFilter = ! empty($spec['min_bedrooms']) || ! empty($spec['max_bedrooms']);
-
-        $wideCenter = $center ?: ($term !== '' ? $this->centroidFor($properties, $term) : null);
-        $ladder = [];
-
-        foreach (self::WIDEN_STEPS as $step) {
-            if (! $wideCenter || ($radius && $step <= (float) $radius)) {
-                continue;
+        // Best matches: the whole brief, exactly where they asked. Nothing
+        // widened or relaxed ever lands here.
+        $best = $this->applyPreferences($scope($center, $radius), $spec)->values();
+        $seen = $best->pluck('id')->filter()->flip();
+        $other = collect();
+        $keep = function ($p, string $why) use (&$other, &$seen) {
+            $id = $p['id'] ?? null;
+            if ($id === null || isset($seen[$id])) {
+                return;
             }
-            $ladder[] = $step;
-        }
+            $seen[$id] = true;
+            $p['why'] = $why;
+            $other->push($p);
+        };
 
-        $plan = [['spec' => $spec, 'center' => $center, 'radius' => $radius, 'widened' => false, 'relaxed' => []]];
-
-        // A journey search widens in minutes, not miles: ten more minutes on
-        // the tube is what an agent would offer next, and it is a number the
-        // client understands.
-        if (! empty($spec['_max_journey'])) {
-            foreach ([10, 20] as $extra) {
-                $looser = $spec;
-                $looser['_max_journey'] = (int) $spec['_max_journey'] + $extra;
-                $plan[] = ['spec' => $looser, 'center' => null, 'radius' => null, 'widened' => true, 'relaxed' => []];
-            }
-            $ladder = [];
-        }
-
-        foreach ($ladder as $step) {
-            $plan[] = ['spec' => $spec, 'center' => $wideCenter, 'radius' => $step, 'widened' => true, 'relaxed' => []];
-        }
-
-        if ($hasBedFilter) {
-            $plan[] = ['spec' => $withoutBeds, 'center' => $center, 'radius' => $radius, 'widened' => false, 'relaxed' => ['bedrooms']];
-            foreach ($ladder as $step) {
-                $plan[] = ['spec' => $withoutBeds, 'center' => $wideCenter, 'radius' => $step, 'widened' => true, 'relaxed' => ['bedrooms']];
-            }
-
-            // A journey brief empties $ladder, so its widened steps have to be
-            // repeated here or "45 minutes from the City in a max 3-bed" would
-            // give up before trying an hour.
-            if (! empty($spec['_max_journey'])) {
-                foreach ([10, 20] as $extra) {
-                    $looser = $withoutBeds;
-                    $looser['_max_journey'] = (int) $spec['_max_journey'] + $extra;
-                    $plan[] = ['spec' => $looser, 'center' => null, 'radius' => null, 'widened' => true, 'relaxed' => ['bedrooms']];
+        // Nearby: the same brief within two miles of the area, four if that is
+        // still thin, each labelled with the distance.
+        if ($areaAsk && $areaCenter) {
+            foreach ([2.0, 4.0] as $ring) {
+                if ($ring > 2.0 && $best->count() + $other->count() >= 5) {
+                    break;
+                }
+                $around = $this->applyPreferences($this->withinRadius($properties, $areaCenter, $ring), $spec)
+                    ->sortBy(fn ($p) => \App\Support\PropertyClassifier::milesBetween(
+                        (float) $p['latitude'], (float) $p['longitude'], $areaCenter[0], $areaCenter[1]));
+                foreach ($around as $p) {
+                    $d = \App\Support\PropertyClassifier::milesBetween(
+                        (float) $p['latitude'], (float) $p['longitude'], $areaCenter[0], $areaCenter[1]);
+                    $keep($p, sprintf('%.1f mi from %s', $d, $areaLabel ?: 'the area'));
                 }
             }
         }
 
-        // Last resort: drop the preferences that are nice-to-have rather than
-        // the point of the search. A brief with six conditions on partly-filled
-        // columns returns nothing far more often than it should, and "nothing"
-        // is the least useful answer we can give.
-        $soft = [];
-        foreach (self::SOFT_KEYS as $key) {
-            if (! empty($spec[$key])) {
-                $soft[] = $key;
+        // Not an area search (a journey, a radius, a zone): when the exact
+        // brief is empty, the widened and relaxed readings are offered as other
+        // options, never as matches.
+        $withoutBeds = $spec;
+        unset($withoutBeds['min_bedrooms'], $withoutBeds['max_bedrooms']);
+        $hasBedFilter = ! empty($spec['min_bedrooms']) || ! empty($spec['max_bedrooms']);
+
+        if (! $areaAsk && $best->isEmpty()) {
+            $steps = [];
+            if (! empty($spec['_max_journey'])) {
+                foreach ([10, 20] as $extra) {
+                    $looser = $spec;
+                    $looser['_max_journey'] = (int) $spec['_max_journey'] + $extra;
+                    $steps[] = [$looser, null, null];
+                }
+            } elseif ($center) {
+                foreach (self::WIDEN_STEPS as $step) {
+                    if (! $radius || $step > (float) $radius) {
+                        $steps[] = [$spec, $center, $step];
+                    }
+                }
+            }
+            foreach ($steps as [$useSpec, $useCenter, $useRadius]) {
+                $found = $this->applyPreferences($useCenter ? $this->withinRadius($properties, $useCenter, $useRadius) : $properties, $useSpec);
+                foreach ($found as $p) {
+                    if (! empty($useSpec['_max_journey']) && ! empty($spec['_hub'])) {
+                        $minutes = (int) ($p['journey_minutes'][$spec['_hub']]['minutes'] ?? 0);
+                        $keep($p, sprintf('%d minutes door to door, past the %d you asked for', $minutes, (int) $spec['_max_journey']));
+                    } elseif ($useCenter) {
+                        $d = \App\Support\PropertyClassifier::milesBetween((float) $p['latitude'], (float) $p['longitude'], $useCenter[0], $useCenter[1]);
+                        $keep($p, sprintf('%.1f mi out, past the %s mi you asked for', $d, $radius ?: self::WIDEN_MILES));
+                    }
+                }
+                if ($other->isNotEmpty()) {
+                    break;
+                }
             }
         }
 
-        if ($soft) {
-            $relaxedSpec = $spec;
-            foreach ($soft as $key) {
-                unset($relaxedSpec[$key]);
-            }
-
-            $plan[] = ['spec' => $relaxedSpec, 'center' => $center, 'radius' => $radius, 'widened' => false, 'relaxed' => $soft];
-
-            foreach ($ladder as $step) {
-                $plan[] = ['spec' => $relaxedSpec, 'center' => $wideCenter, 'radius' => $step, 'widened' => true, 'relaxed' => $soft];
-            }
-        }
-
-        $results = collect();
-        $widened = false;
+        // In the right place, but a condition the adverts rarely state had to
+        // go: the bedroom count, or the nice-to-have preferences.
         $relaxed = [];
-
-        foreach ($plan as $try) {
-            $candidate = $attempt($try['spec'], $try['center'], $try['radius']);
-            if ($candidate->isNotEmpty()) {
-                $results = $candidate;
-                $center = $try['center'];
-                $radius = $try['radius'];
-                $widened = $try['widened'];
-                $relaxed = $try['relaxed'];
-                break;
+        if ($best->count() < 3) {
+            if ($hasBedFilter) {
+                foreach ($this->applyPreferences($scope($center, $radius), $withoutBeds) as $p) {
+                    $keep($p, 'bedrooms not stated on the advert');
+                }
+                $relaxed[] = 'bedrooms';
+            }
+            $soft = array_values(array_filter(self::SOFT_KEYS, fn ($k) => ! empty($spec[$k])));
+            if ($soft) {
+                $relaxedSpec = $spec;
+                foreach ($soft as $k) {
+                    unset($relaxedSpec[$k]);
+                }
+                foreach ($this->applyPreferences($scope($center, $radius), $relaxedSpec) as $p) {
+                    $keep($p, 'in the area, but not confirmed: ' . str_replace('_', ' ', implode(', ', $soft)));
+                }
+                $relaxed = array_merge($relaxed, $soft);
             }
         }
 
-        // Three groups, in the order an agent works through them: paying
-        // agencies that meet the brief, then non-paying ones that meet it, then
-        // near-misses worth mentioning with the reason they missed.
-        $onBrief = $results->values();
-        $alternatives = $this->alternativesFor($spec, $properties, $onBrief, $center, $radius);
+        // The classic near-misses: over budget in the area, a longer journey,
+        // a different property type. Each carries its reason.
+        foreach ($this->alternativesFor($spec, $properties, $best, $areaAsk ? null : $center, $areaAsk ? null : $radius) as $p) {
+            $keep($p, (string) ($p['why'] ?? 'close to the brief'));
+        }
+        // Over budget but in the area, for an area search.
+        if ($areaAsk && ! empty($spec['max_price'])) {
+            $stretched = $spec;
+            $stretched['max_price'] = (float) $spec['max_price'] * 1.25;
+            foreach ($this->applyPreferences($scope(null, null), $stretched) as $p) {
+                $over = (float) $p['price'] - (float) $spec['max_price'];
+                if ($over > 0) {
+                    $keep($p, sprintf('GBP %s over budget, but in %s', number_format($over), $areaLabel ?: 'the area'));
+                }
+            }
+        }
+
+        // Nearest and closest-to-brief first, commission-paying breaking ties;
+        // short enough to scan.
+        $other = $other->take(20)->values();
 
         return [
-            'results' => $onBrief,
-            'matched' => $onBrief->count(),
-            'commission' => $onBrief->filter(fn ($p) => $this->paysCommission($p))
+            'results' => $best,
+            'matched' => $best->count(),
+            'commission' => $best->filter(fn ($p) => $this->paysCommission($p))
                 ->sortByDesc(fn ($p) => $p['commission_value'] ?? 0)->values(),
-            'standard' => $onBrief->reject(fn ($p) => $this->paysCommission($p))->values(),
+            'standard' => $best->reject(fn ($p) => $this->paysCommission($p))->values(),
             'unplaced' => $unplaced,
             'unanswerable' => $this->unanswerable($spec, $properties),
-            'why_none' => $onBrief->isEmpty() ? $this->diagnose($spec, $properties) : [],
+            'why_none' => $best->isEmpty() ? $this->diagnose($spec, $properties) : [],
             'hub' => $spec['_hub'] ?? null,
             'hub_label' => ! empty($spec['_hub']) ? $transport->hubLabel($spec['_hub']) : null,
             'max_journey' => $spec['_max_journey'] ?? null,
-            'alternatives' => $alternatives,
-            'center' => $center,
-            'radius' => $radius,
-            'widened' => $widened,
-            'relaxed' => $relaxed,
+            'alternatives' => $other,
+            'area' => $areaAsk ? $areaLabel : null,
+            'center' => $areaCenter ?: $center,
+            'radius' => $areaAsk ? null : $radius,
+            // "Nothing exactly there": no best match, other options offered.
+            'widened' => $best->isEmpty() && $other->isNotEmpty(),
+            'relaxed' => $best->isEmpty() ? $relaxed : [],
         ];
+    }
+
+    private static function normPlace(string $v): string
+    {
+        return trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z0-9 ]+/', ' ', str_replace('&', ' and ', strtolower($v)))));
+    }
+
+    /** "Elephant & Castle" is "elephant and castle"; whole words only. */
+    private function nameMatches(string $value, string $area): bool
+    {
+        $value = self::normPlace($value);
+        $want = self::normPlace($area);
+        if ($value === '' || $want === '') {
+            return false;
+        }
+
+        return (bool) preg_match('/(^| )' . preg_quote($want, '/') . '( |$)/', $value)
+            || (bool) preg_match('/(^| )' . preg_quote($value, '/') . '( |$)/', $want);
+    }
+
+    /**
+     * Is this listing in the named area? Its own area field, its nearest
+     * station within a walk, its postcode district, or a short walk from the
+     * area's centre. Never its title: titles advertise what is nearby.
+     */
+    public function inArea(array $p, string $area, ?array $center, bool $stationArea = false): bool
+    {
+        $want = self::normPlace($area);
+        if ($want === '') {
+            return true;
+        }
+
+        if ($this->nameMatches((string) ($p['location'] ?? ''), $area)) {
+            return true;
+        }
+
+        $station = (string) ($p['nearest_station'] ?? '');
+        if ($station !== '' && $this->nameMatches($station, $area) && (int) ($p['walk_minutes'] ?? 99) <= 12) {
+            return true;
+        }
+
+        if (preg_match('/^[a-z]{1,2}[0-9][0-9a-z]?$/', str_replace(' ', '', $want))) {
+            $postcode = strtolower(str_replace(' ', '', (string) ($p['postcode'] ?? '')));
+            $district = preg_replace('/[0-9][a-z]{2}$/', '', $postcode);
+            if ($district !== '' && $district === str_replace(' ', '', $want)) {
+                return true;
+            }
+        }
+
+        // A listing near a different station is not in a station area, however
+        // close its (often approximate) coordinates are.
+        if ($stationArea && $station !== '') {
+            return false;
+        }
+
+        if ($center && is_numeric($p['latitude'] ?? null) && is_numeric($p['longitude'] ?? null)) {
+            return \App\Support\PropertyClassifier::milesBetween(
+                (float) $p['latitude'], (float) $p['longitude'], $center[0], $center[1]) <= self::AREA_MILES;
+        }
+
+        return false;
     }
 
     /**
@@ -1596,12 +1742,9 @@ SYS;
         return null;
     }
 
+    /** One rule for the whole site: config's always/never lists, then the feed. */
     public function paysCommission(array $property): bool
     {
-        $paying = $property['paying'] ?? null;
-        if (is_string($paying)) {
-            return strtolower(trim($paying)) === 'yes';
-        }
-        return (bool) $paying;
+        return app(CommissionRates::class)->pays($property);
     }
 }
