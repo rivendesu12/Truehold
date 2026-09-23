@@ -295,7 +295,8 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
     if ($lookup !== '') {
         $marketRooms = $marketRooms->filter(fn ($p) => \App\Support\Household::isProperty($p, $lookup))->values();
     }
-    if ($marketRooms->isNotEmpty() && empty($spec['agencies']) && empty($spec['commission_only']) && empty($found['unplaced'])) {
+    // Wildcards are other agencies: none when the agent asked for particular ones.
+    if ($marketRooms->isNotEmpty() && ! \App\Services\AgentSearchAssistant::splitAgencies($spec)[0] && empty($spec['commission_only']) && empty($found['unplaced'])) {
         $market = $assistant->search($spec, $marketRooms);
         $wild = $market['results']->take(6)->concat($market['alternatives']->take(max(0, 3 - $market['results']->count())))->values();
     }

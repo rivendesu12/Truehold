@@ -230,3 +230,17 @@ it('writes a household the way an agent reads it', function () {
     expect(\App\Support\Household::isProperty(['title' => '53 Fursecroft — D5'], '53 fursecroft'))->toBeTrue();
     expect(\App\Support\Household::isProperty(['title' => '5 Fursecroft Road'], '53 fursecroft'))->toBeFalse();
 });
+
+it('leaves an agency out when told "no X", wherever the model put it', function () {
+    $feed = [
+        room('c1', ['location' => 'Stratford', 'agent_name' => 'Cloudrooms Ltd']),
+        room('o1', ['location' => 'Stratford', 'agent_name' => 'Capital Living']),
+    ];
+    $this->actingAs(User::factory()->create());
+
+    foreach ([['agencies' => ['no cloudrooms']], ['exclude_agencies' => ['Cloud Rooms']]] as $spec) {
+        fakeSigou($spec + ['property_types' => []], $feed);
+        $r = $this->postJson('/agent-search', ['q' => 'no cloudrooms please'])->assertOk()->json();
+        expect(collect($r['groups']['commission'])->concat($r['groups']['standard'])->pluck('id')->all())->toBe(['o1']);
+    }
+});

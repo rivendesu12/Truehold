@@ -376,7 +376,10 @@ Rules:
 - `good_transport` true for vague transport asks — "good transport links",
   "well connected", "easy to get into town" — with no number given. Do not
   set it when they gave a specific station, line, zone or journey time.
-- `agencies` when they name a landlord or agency to restrict to.
+- `agencies` when they name a landlord or agency to restrict to ("only
+  javier", "banksia rooms"). An agency they do NOT want ("no cloudrooms",
+  "not instabook", "anything but AP") goes in `exclude_agencies`, never in
+  `agencies`.
 - `sort` "cheapest" when they ask for the cheapest or best value; otherwise
   leave it null.
 - `commission_only` true if they ask for only agencies that pay commission.
@@ -505,6 +508,7 @@ SYS;
                 'max_commitment_months' => ['type' => ['number', 'null']],
                 'good_transport' => ['type' => ['boolean', 'null']],
                 'agencies' => ['type' => 'array', 'items' => ['type' => 'string']],
+                'exclude_agencies' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'sort' => ['type' => ['string', 'null'], 'enum' => ['cheapest', null]],
                 'commission_only' => ['type' => 'boolean'],
                 'refines_previous' => ['type' => 'boolean'],
@@ -557,7 +561,7 @@ SYS;
                 'max_house_size', 'room_type', 'bills_included', 'students',
                 'smokers', 'pets', 'region', 'garden', 'parking', 'furnished', 'no_deposit',
                 'max_deposit', 'available_by', 'max_commitment_months',
-                'good_transport', 'agencies', 'sort',
+                'good_transport', 'agencies', 'exclude_agencies', 'sort',
                 'commission_only', 'nice_to_have', 'explanation', 'refines_previous', 'agreement', 'wifi', 'invoice', 'agency_request', 'property_lookup',
             ],
             'additionalProperties' => false,
@@ -1418,34 +1422,16 @@ SYS;
             $results = $results->filter(fn ($p) => LondonRegion::matches($p, $region));
         }
 
-        if (! empty($spec['agencies'])) {
-            $rates = app(CommissionRates::class);
-            $wanted = array_map(fn ($a) => $rates->normalise((string) $a), (array) $spec['agencies']);
-            $results = $results->filter(function ($p) use ($rates, $wanted) {
-                $key = $rates->normalise($p['agent_name'] ?? $p['landlord_name'] ?? null);
+        // "no Cloudrooms" is a name to leave out, whichever list the model
+        // put it in: once it came back as agencies ["no cloudrooms"] and
+        // emptied the search.
+        [$only, $without] = self::splitAgencies($spec);
 
-                // A listing with no agency name normalises to '', and
-                // str_contains($want, '') is true for every request — so
-                // "only Banksia" was matching every unattributed listing.
-                if ($key === '') {
-                    return false;
-                }
-
-                // "Banksia Properties" must find "Banksia Rooms": the words
-                // agencies tack onto their name say nothing about which one.
-                $core = fn (string $n) => trim(preg_replace('/\s+/', ' ', preg_replace(
-                    '/\b(properties|property|rooms|room|lettings|letting|living|homes|estates|estate|group|london)\b/', '', $n)));
-                $keyCore = $core($key) ?: $key;
-
-                foreach ($wanted as $want) {
-                    $wantCore = $core($want) ?: $want;
-                    if ($want !== '' && (str_contains($key, $want) || str_contains($want, $key)
-                        || str_contains($keyCore, $wantCore) || str_contains($wantCore, $keyCore))) {
-                        return true;
-                    }
-                }
-                return false;
-            });
+        if ($only) {
+            $results = $results->filter(fn ($p) => $this->agencyMatches($p, $only));
+        }
+        if ($without) {
+            $results = $results->reject(fn ($p) => $this->agencyMatches($p, $without));
         }
 
         // "Good transport links" with no number attached. Defined once, in
@@ -1773,5 +1759,60 @@ SYS;
     public function paysCommission(array $property): bool
     {
         return app(CommissionRates::class)->pays($property);
+    }
+
+    /**
+     * The agencies asked for, and the ones asked to be left out.
+     *
+     * @return array{0: array<int, string>, 1: array<int, string>}
+     */
+    public static function splitAgencies(array $spec): array
+    {
+        $only = [];
+        $without = array_values(array_filter(array_map('strval', (array) ($spec['exclude_agencies'] ?? []))));
+        foreach ((array) ($spec['agencies'] ?? []) as $name) {
+            $name = trim((string) $name);
+            if (preg_match('/^(?:no|not|without|except|excluding|exclude|minus|but not|apart from)\s+(.+)$/i', $name, $m)) {
+                $without[] = trim($m[1]);
+            } elseif ($name !== '') {
+                $only[] = $name;
+            }
+        }
+
+        return [$only, $without];
+    }
+
+    /** Whether a listing belongs to any of these agencies. */
+    protected function agencyMatches(array $p, array $names): bool
+    {
+        $rates = app(CommissionRates::class);
+        $key = $rates->normalise($p['agent_name'] ?? $p['landlord_name'] ?? null);
+
+        // A listing with no agency name normalises to '', and
+        // str_contains($want, '') is true for every request — so
+        // "only Banksia" was matching every unattributed listing.
+        if ($key === '') {
+            return false;
+        }
+
+        // "Banksia Properties" must find "Banksia Rooms": the words
+        // agencies tack onto their name say nothing about which one.
+        $core = fn (string $n) => trim(preg_replace('/\s+/', ' ', preg_replace(
+            '/\b(properties|property|rooms|room|lettings|letting|living|homes|estates|estate|group|london)\b/', '', $n)));
+        $keyCore = $core($key) ?: $key;
+        // "Cloudrooms" and "Cloud Rooms" are one name.
+        $flat = fn (string $n) => str_replace(' ', '', $n);
+
+        foreach ($names as $name) {
+            $want = $rates->normalise((string) $name);
+            $wantCore = $core($want) ?: $want;
+            if ($want !== '' && (str_contains($key, $want) || str_contains($want, $key)
+                || str_contains($keyCore, $wantCore) || str_contains($wantCore, $keyCore)
+                || str_contains($flat($key), $flat($want)))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
