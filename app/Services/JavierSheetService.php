@@ -75,9 +75,10 @@ class JavierSheetService
         $tab = "'" . config('suppliers.javier.tab', 'ROOMS') . "'";
 
         try {
+            // Google wants ranges=..&ranges=.., not PHP's ranges[0]=.. form.
+            $query = 'ranges=' . rawurlencode($tab . '!B1:N600') . '&ranges=' . rawurlencode($tab . '!R1:S600');
             $response = Http::withToken($token)->timeout(30)->get(
-                'https://sheets.googleapis.com/v4/spreadsheets/' . $id . '/values:batchGet',
-                ['ranges' => [$tab . '!B1:N600', $tab . '!R1:S600']]
+                'https://sheets.googleapis.com/v4/spreadsheets/' . $id . '/values:batchGet?' . $query
             );
         } catch (\Throwable $e) {
             Log::warning('Javier sheet fetch failed', ['error' => $e->getMessage()]);
