@@ -310,6 +310,9 @@ Rules:
 - For "N minutes from X" or "near X", set `near_landmark` to X and
   `minutes_from_landmark` to N. If they say a distance in miles instead, set
   `radius_miles`. If they name one of our own areas, set `location`.
+  Never drop a place the agent names, even one missing from the list below
+  or one you do not recognise: put it in `location` as written. We report
+  places we cannot find; silently searching all of London is wrong.
   Where the tenant works or studies, with no time, distance or "near", is
   context: set nothing for it.
 - Tube zones are real data we hold per listing, taken from the fare zone of
@@ -837,6 +840,13 @@ SYS;
         // Best matches: the whole brief, exactly where they asked. Nothing
         // widened or relaxed ever lands here.
         $best = $this->applyPreferences($scope($center, $radius), $spec)->values();
+
+        // A place we cannot find anywhere (not a station, not a known area,
+        // on no listing): say so rather than return an empty area silently.
+        if ($areaAsk && ! $areaCenter && ! $stationArea && $unplaced === null
+            && ! $properties->contains(fn ($p) => $this->nameMatches((string) ($p['location'] ?? ''), $areaName))) {
+            $unplaced = $areaLabel ?: $areaName;
+        }
         $seen = $best->pluck('id')->filter()->flip();
         $other = collect();
         $keep = function ($p, string $why) use (&$other, &$seen) {

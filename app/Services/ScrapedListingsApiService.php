@@ -155,6 +155,32 @@ class ScrapedListingsApiService
     }
 
     /**
+     * Ali's scrape of the Javier / Smart Share sheets ("spreadsheet" rows)
+     * stopped refreshing in August: 12 Melrose House still showed as a room
+     * weeks after it left Javier's own vacancy list. Javier's current rooms
+     * arrive fresh from the Room targets sheet, so a copy the scraper has not
+     * touched for two weeks is dropped rather than shown as available.
+     */
+    protected function isStaleSheetCopy(array $p): bool
+    {
+        if (($p['source'] ?? null) !== 'spreadsheet') {
+            return false;
+        }
+
+        $days = (int) config('services.harborops.spreadsheet_max_age_days', 14);
+        $seen = $p['updated_at'] ?? $p['created_at'] ?? null;
+        if ($days <= 0 || ! $seen) {
+            return false;
+        }
+
+        try {
+            return \Carbon\Carbon::parse($seen)->lt(now()->subDays($days));
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
      * Get all properties from the Harbor Ops API (cached).
      */
     public function getAllProperties(): Collection
@@ -165,6 +191,7 @@ class ScrapedListingsApiService
             $feed = $this->fetchAllListings()
                 ->reject(fn ($p) => isset($notAccepting[(string) ($p['id'] ?? '')]))
                 ->filter(fn ($p) => $this->isAvailable($p))
+                ->reject(fn ($p) => $this->isStaleSheetCopy($p))
                 ->map(fn ($p) => self::normalisePhotos($p));
 
             // Supplier rooms come from the Room targets sheet, not this API. They
