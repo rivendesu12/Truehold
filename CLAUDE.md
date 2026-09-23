@@ -192,11 +192,11 @@ gating the Blade alone is not enough.
    "COMMISSION" with no figure. `commission:agencies` prints the keys.
 3. **Soreva** — new sheet (`1klNq5…`) has real links. Its agent tab now
    holds tenant name/phone/DOB/email in L-P; the reader stops at K.
-5. **Smart Share** only came through Ali's dropped scrape; not in the
+4. **Smart Share** only came through Ali's dropped scrape; not in the
    Agencies link tab.
-6. **Off-box backups** before real CRM data lands.
-7. Restrict the Google Maps key to the domains.
-8. truehold.co.uk DNS: not needed for now, truehold.yaenlinea.co is the site.
+5. **Off-box backups** before real CRM data lands.
+6. Restrict the Google Maps key to the domains.
+7. truehold.co.uk DNS: not needed for now, truehold.yaenlinea.co is the site.
 
 ## Availability check
 
