@@ -8,7 +8,7 @@ use App\Services\ScrapedListingsApiService;
 
 class ClearPropertiesCache extends Command
 {
-    protected $signature = 'properties:clear-cache';
+    protected $signature = 'properties:clear-cache {--crawl : also redo the SpareRoom advertiser crawl now}';
     protected $description = 'Clear the property feed caches (Harbor Ops API and Google Sheets)';
 
     public function handle(PropertyGoogleSheetsService $sheetsService, ScrapedListingsApiService $apiService)
@@ -24,7 +24,11 @@ class ClearPropertiesCache extends Command
         // AP workbook lookups (rooms, flatmates) re-read with the rest.
         \Illuminate\Support\Facades\Cache::forget('ap_portfolio_available');
         \Illuminate\Support\Facades\Cache::forget('ap_portfolio_households');
-        app(\App\Services\SpareRoomAdvertService::class)->clearCache();
+        // The SpareRoom crawl is ~25 advertisers and a few hundred pages: it
+        // keeps its own six-hour cache and is only redone early on request.
+        if ($this->option('crawl')) {
+            app(\App\Services\SpareRoomAdvertService::class)->clearCache();
+        }
 
         // Clearing and walking away leaves the next visitor to rebuild the
         // feed — which is exactly the wait this is supposed to prevent. Rebuild
