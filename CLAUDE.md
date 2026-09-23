@@ -165,16 +165,21 @@ gating the Blade alone is not enough.
    `always_pay`. Javier and AP unknown; Banksia/Soreva do. Mechanism built, empty.
 2. **Commission rates** — intentionally blank; a paying agency shows as
    "COMMISSION" with no figure. `commission:agencies` prints the keys.
-3. **Soreva photos** — their sheet's hyperlink URLs are the literal text
-   `[link removed]`. Need a version with working links.
-4. **Javier photos** — 13 rows have no folder link in the sheet.
-5. **truehold.co.uk DNS** → `89.58.38.5`, then certbot.
+3. **Soreva photos** — in their "Letting agent List" tab the property cells
+   are `=HYPERLINK("[link removed]", "Colmer Road")` (Colmer Road D1-D5,
+   Vernon Road M1/D5); Princess Street and Hyde Park Mansion have no link.
+   Soreva must paste the real Drive folder links back in.
+4. **Javier's own sheet** ("JAVIER VACANCY", tab ROOMS) is readable by the
+   service account but not read yet: Javier rooms only come via Room targets
+   (2 rooms). Reading it needs a check of which columns hold tenant data.
+5. **Smart Share** only came through Ali's dropped scrape; not in the
+   Agencies link tab.
 6. **Off-box backups** before real CRM data lands.
 7. Restrict the Google Maps key to the domains.
-8. Ask Andrei/Ali: why 279 feed rows have no URL and 198 have `url = "Pictures"`.
+8. truehold.co.uk DNS: not needed for now, truehold.yaenlinea.co is the site.
 
-## Not verified
+## Availability check
 
-`properties:check-availability` has not been watched end-to-end since the
-September 2026 changes. It runs unattended every 6h and **hides listings**.
-Worth one supervised run.
+`properties:check-availability` runs every 6h unattended. Spot-checked
+23 Sep 2026: 229 adverts, 66 hidden; 6 hidden re-fetched were all really gone,
+4 shown were all really live.
