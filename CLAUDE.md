@@ -98,7 +98,9 @@ Mary while a search runs, rubs his hands on results. Agents only (`@auth`).
   to 2/4 mi, over budget, longer journey, relaxed — each with a `why`), and
   **wildcards** (below). Nothing widened ever lands in best.
 - **Wildcards** = SpareRoom letting agents' free-to-contact rooms.
-  `market:crawl` (every other night, polite, stops if refused) →
+  `market:crawl` (nightly, polite, stops if refused; SpareRoom shows 1,000
+  results per search, so SpareRoom's zones 1-3 search is split into rent
+  bands, then single/double/flats; only new adverts are opened) →
   `market_listings` table; offered only in Sigou's search, opened on our own
   page `/market/{token}` (token is an HMAC, not the advert number). Guests see
   the room without agency/ref. Only adverts with a number are kept

@@ -90,6 +90,17 @@ it('tells an advert that takes calls from one that does not, ignoring the suppor
     expect($market->hasPhone('<li class="contact_methods__li emailadvertiser">Message</li>' . $footer))->toBeFalse();
 });
 
+it('offers only zones 1 to 3', function () {
+    wildcard(['zone' => 4]);
+
+    expect(app(MarketListingsService::class)->all())->toHaveCount(0);
+});
+
+it('knows when a search holds more than SpareRoom will list', function () {
+    expect(MarketListingsService::isFull('<p>Showing 1-10 of <strong>1000+</strong> results</p>'))->toBeTrue();
+    expect(MarketListingsService::isFull('<p>Showing 1-10 of <strong>899</strong> results</p>'))->toBeFalse();
+});
+
 it('reads a SpareRoom results page: agents that are free to contact', function () {
     $html = '<article data-listing-id="1" data-listing-advertiser-role="agent" data-listing-early-bird="" data-listing-neighbourhood="Bow" data-listing-postcode="E3">'
         . '<article data-listing-id="2" data-listing-advertiser-role="live out landlord" data-listing-early-bird="">'

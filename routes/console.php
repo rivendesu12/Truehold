@@ -57,11 +57,11 @@ Schedule::command('transport:build-journeys')
     ->withoutOverlapping()
     ->runInBackground();
 
-// Sigou's wildcards: free-to-contact SpareRoom agent listings. Every other
-// night, off-peak, a few seconds between requests; listings not seen for four
-// days drop out, so a missed run changes nothing.
+// Sigou's wildcards: free-to-contact SpareRoom agent listings, zones 1-3.
+// Nightly, off-peak, a few seconds between requests, only new adverts opened;
+// listings not seen for three days drop out, so a missed run changes nothing.
 Schedule::command('market:crawl')
-    ->cron('40 3 */2 * *')
+    ->dailyAt('02:10')
     ->withoutOverlapping()
     ->runInBackground();
 
