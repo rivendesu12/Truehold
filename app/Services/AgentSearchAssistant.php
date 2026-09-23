@@ -430,7 +430,8 @@ Rules:
   * `want` "bank" for their bank details or how to pay them: "ap bank
     details", "horizon account number", "sort code for banksia", "where do
     I send the deposit for javier", "ap reference form", "horizon holding
-    deposit form".
+    deposit form". Sigou's line: a money joke (the deposit vanishing,
+    his commission, checking the numbers twice); never the numbers.
   * `want` "listings" for their rooms here: "what does soreva have
     available", "show me javier rooms", "send me soreva properties here".
     Then ALSO set `agencies` to that agency, plus any filters they gave

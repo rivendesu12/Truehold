@@ -215,6 +215,23 @@ window.SigouLines = (function () {
         return pick(['Invoice ready bro. Number ' + a.next_number + ', dont lose it', 'Ready. Money first, then invoice, you know the rules 😂']);
     };
 
-    return {greeting, fresh, agreement, wifi, invoice, poke: () => pick(pokes), nudge: () => pick(nudges), thinking, result, error, offline};
+    // Bank details: money is involved, so he gets excited and paranoid.
+    const bank = (name) => pick([
+        'Money money money 💸 Check every number twice malaka, banks dont give back',
+        'Here the account. One wrong digit and the deposit goes on holiday without us',
+        'Sort code, account, done. Now where is my commission 😂',
+        'Pay them and screenshot it. No screenshot, no room bro',
+        'Bank details for ' + name + '. If the money disappears is not Sigou fault',
+        'Rich people stuff 💷 Copy, paste, pray',
+        'Holding deposit first, form after. You know the drill malaka',
+        'Send it, then buy me a Lost Mary. Triple mango 😂',
+        'Ooh money. I feel it in my hands already 🤑',
+    ]);
+    const noBank = (name) => pick([
+        'No bank details for ' + name + ' yet malaka. Ask Giaco, he has everything',
+        'I dont have their account bro. Dont send money to random people pls',
+    ]);
+
+    return {greeting, fresh, agreement, wifi, invoice, bank, noBank, poke: () => pick(pokes), nudge: () => pick(nudges), thinking, result, error, offline};
 })();
 </script>

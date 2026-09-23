@@ -143,6 +143,10 @@
 .th-ask__wifirow div{flex:1;min-width:0}
 .th-ask__wifirow span{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7b8598}
 .th-ask__wifirow b{display:block;font-size:15px;word-break:break-all;font-family:ui-monospace,Menlo,monospace}
+.th-ask__money{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5}
+.th-ask__money span{position:absolute;top:-40px;font-size:24px;animation:th-money-fall linear forwards}
+@keyframes th-money-fall{to{transform:translateY(110vh) rotate(540deg);opacity:.2}}
+@media (prefers-reduced-motion:reduce){.th-ask__money{display:none}}
 .th-ask__copy{flex:none;border:0;border-radius:8px;background:#0b5d4e;color:#fff;font-weight:700;font-size:13px;padding:8px 12px;cursor:pointer}
 .th-ask__wifirow + .th-ask__dealbtn{margin-top:6px}
 
@@ -418,6 +422,12 @@
         input.focus();
     });
     input.addEventListener('keydown', (e) => {
+        // Enter sends, on every keyboard (not mid-way through an IME word).
+        if (e.key === 'Enter' && !e.isComposing && !e.shiftKey) {
+            e.preventDefault();
+            if (!send.disabled) form.requestSubmit();
+            return;
+        }
         if (e.key === 'ArrowUp' && !input.value && lastQ) {
             e.preventDefault();
             input.value = lastQ;
@@ -478,14 +488,32 @@
             + '</div>';
     };
 
+    // Money makes it rain for a couple of seconds.
+    const moneyRain = () => {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const box = document.createElement('div');
+        box.className = 'th-ask__money';
+        for (let i = 0; i < 22; i++) {
+            const n = document.createElement('span');
+            n.textContent = ['\ud83d\udcb7', '\ud83d\udcb8', '\ud83d\udcb0', '\ud83e\ude99'][i % 4];
+            n.style.left = (Math.random() * 95) + '%';
+            n.style.animationDelay = (Math.random() * 0.9) + 's';
+            n.style.animationDuration = (1.6 + Math.random() * 1.4) + 's';
+            box.appendChild(n);
+        }
+        panel.appendChild(box);
+        setTimeout(() => box.remove(), 4200);
+    };
+
     // Bank details: every account the agency takes payment on, each figure
     // with its own Copy button, and their tenant reference forms.
     const bankCard = (b) => {
         const row = (k, v) => v ? '<div class="th-ask__wifirow"><div><span>' + k + '</span><b>' + esc(v) + '</b></div>'
             + '<button type="button" class="th-ask__copy" data-copy="' + esc(v) + '">Copy</button></div>' : '';
+        const several = new Set((b.accounts || []).map(a => a.company)).size > 1;
         return '<div class="th-ask__deal"><h4>' + esc(b.name) + ' \u00b7 bank details</h4>'
             + (b.accounts || []).map(a => '<div style="margin-top:12px"><p class="th-ask__hint" style="margin:0 0 4px"><b>'
-                + esc([a.company, a.bank].filter(Boolean).join(' \u00b7 ')) + '</b></p>'
+                + esc([several ? a.company : null, a.bank].filter(Boolean).join(' \u00b7 ')) + '</b></p>'
                 + row('Account name', a.account_name) + row('Sort code', a.sort_code) + row('Account number', a.account_number)
                 + row('BIC', a.bic) + row('IBAN', a.iban) + row('Reference', a.reference) + '</div>').join('')
             + (b.forms || []).map(f => '<a class="th-ask__deallink" style="display:block;margin-top:10px" href="' + esc(f.url) + '" target="_blank" rel="noopener">' + esc(f.label) + '</a>'
@@ -666,8 +694,18 @@
             if ('agency_asked' in data) {
                 const found = data.agency || data.agency_bank;
                 body.innerHTML = data.agency_bank ? bankCard(data.agency_bank) : (data.agency ? agencyCard(data.agency) : '');
-                Sigou.set(found ? 'happy' : 'shocked', 2000);
-                say((data.sigou || '').trim() || (found ? 'Here ' + found.name + ' bro' : 'Who is that? Not in our list'));
+                if (data.agency_bank) {
+                    // Rubs his hands while it rains.
+                    moneyRain();
+                    Sigou.set('happy', 3200);
+                    say(Math.random() < 0.5 && (data.sigou || '').trim() ? data.sigou : SigouLines.bank(data.agency_bank.name));
+                } else if ('agency_bank' in data) {
+                    Sigou.set('shocked', 2000);
+                    say(SigouLines.noBank(data.agency_asked));
+                } else {
+                    Sigou.set(found ? 'happy' : 'shocked', 2000);
+                    say((data.sigou || '').trim() || (found ? 'Here ' + found.name + ' bro' : 'Who is that? Not in our list'));
+                }
                 lastQ = q;
                 input.value = '';
                 return;
