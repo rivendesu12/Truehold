@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\DB;
  */
 class SigouScenarios extends Command
 {
-    protected $signature = 'sigou:scenarios {--only= : search,agency,docs,wifi,chat,edge}';
+    protected $signature = 'sigou:scenarios {--only= : search,lookup,agency,docs,wifi,chat,edge}';
 
     protected $description = 'Run what agents ask Sigou through the real endpoint and check the answers';
 
@@ -79,6 +79,11 @@ class SigouScenarios extends Command
             ['search', 'zone 1 under 450', $all($kind('search'), fn ($r) => $this->best($r) ? null : ((data_get($r, 'groups.alternatives') || data_get($r, 'groups.wildcards')) ? null : 'nothing offered at all')), true],
             ['search', 'cheapest room you have', $kind('search'), true],
             ['search', 'only javier rooms with commission', $all($kind('search'), fn ($r) => collect($this->best($r))->first(fn ($b) => ! $b['commission']) ? 'a best match without commission' : null), true],
+
+            // One property by name: its rooms and who lives there.
+            ['lookup', 'who lives in netherby house', $all($kind('search'), $has('lookup'), fn ($r) => collect($this->best($r))->first(fn ($b) => stripos($b['title'], 'netherby') === false) ? 'a room from another property' : null), true],
+            ['lookup', 'flatmates at colmer road?', $all($kind('search'), $has('lookup'), fn ($r) => collect($this->best($r))->first(fn ($b) => stripos($b['title'], 'colmer') === false) ? 'a room from another property' : null), true],
+            ['lookup', 'room in battersea under 1000', $all($kind('search'), fn ($r) => ($r['lookup'] ?? null) ? 'an area search read as one property' : null), true],
 
             // Agencies.
             ['agency', 'give me javier list', $all($kind('agency'), $has('agency.name', 'Javier'), $has('agency.link')), true],

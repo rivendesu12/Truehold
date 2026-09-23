@@ -28,6 +28,10 @@ class ApPortfolioPriceService
     private const COL_ROOM = 4;
     private const COL_POSTCODE = 6;
     private const COL_PRICE = 9;
+    // Tenant columns. Only whether a room has a tenant, and that tenant's
+    // age, are ever taken from them; names and phones are never read out.
+    private const COL_TENANT = 10;
+    private const COL_DOB = 12;
 
     public static function isConfigured(): bool
     {
@@ -95,6 +99,105 @@ class ApPortfolioPriceService
         }
 
         return $out;
+    }
+
+    /**
+     * Who lives in each property: per property, the let rooms and the age of
+     * each tenant. Nothing that identifies anyone.
+     *
+     * @return array<string, array<int, array{room:string, age:?int}>>
+     */
+    public function households(): array
+    {
+        if (! self::isConfigured()) {
+            return [];
+        }
+
+        return Cache::remember('ap_portfolio_households', now()->addHours(6), function () {
+            try {
+                $path = $this->download();
+                if (! $path) {
+                    return [];
+                }
+                $out = [];
+                foreach (XlsxReader::rows($path, self::SHEET) as $row) {
+                    $property = $this->norm((string) ($row[self::COL_PROPERTY] ?? ''));
+                    if ($property === '' || trim((string) ($row[self::COL_TENANT] ?? '')) === '') {
+                        continue;
+                    }
+                    // The header row of the Horizon section has "Full name" there.
+                    if (str_contains(strtolower((string) ($row[self::COL_TENANT] ?? '')), 'name')) {
+                        continue;
+                    }
+                    $out[$property][] = [
+                        'room' => $this->norm((string) ($row[self::COL_ROOM] ?? '')),
+                        'age' => self::age($row[self::COL_DOB] ?? null),
+                    ];
+                }
+                return $out;
+            } catch (\Throwable $e) {
+                Log::warning('AP portfolio household load failed', ['error' => $e->getMessage()]);
+                return [];
+            }
+        });
+    }
+
+    /**
+     * The flatmates a room would have: tenants in the property's other rooms.
+     *
+     * @return array{count:int, ages:?string, source:string}|null
+     */
+    public function householdFor(?string $property, ?string $room): ?array
+    {
+        $p = $this->norm((string) $property);
+        $r = $this->norm((string) $room);
+        if ($p === '') {
+            return null;
+        }
+
+        $all = $this->households();
+        $tenants = $all[$p] ?? null;
+        if ($tenants === null && strlen($p) >= 6) {
+            foreach ($all as $key => $list) {
+                if (str_contains($key, $p) || str_contains($p, $key)) {
+                    $tenants = $list;
+                    break;
+                }
+            }
+        }
+        if (! $tenants) {
+            return null;
+        }
+
+        $others = array_values(array_filter($tenants, fn ($t) => $t['room'] !== $r));
+        $ages = array_values(array_filter(array_column($others, 'age')));
+        sort($ages);
+
+        return [
+            'count' => count($others),
+            'ages' => $ages ? ($ages[0] === end($ages) ? (string) $ages[0] : $ages[0] . ' to ' . end($ages)) : null,
+            'source' => 'agency sheet',
+        ];
+    }
+
+    /** Age in years from a date of birth: an Excel serial or dd/mm/yyyy. */
+    public static function age(mixed $dob): ?int
+    {
+        $dob = trim((string) $dob);
+        try {
+            if (is_numeric($dob) && (float) $dob > 1000) {
+                $date = \Carbon\Carbon::createFromTimestamp(((float) $dob - 25569) * 86400);
+            } elseif (preg_match('#^(\d{1,2})/(\d{1,2})/(\d{4})$#', $dob, $m)) {
+                $date = \Carbon\Carbon::create((int) $m[3], (int) $m[2], (int) $m[1]);
+            } else {
+                return null;
+            }
+        } catch (\Throwable $e) {
+            return null;
+        }
+        $age = $date->diffInYears(now());
+
+        return $age >= 16 && $age <= 90 ? (int) $age : null;
     }
 
     /** Resolve a price for a listing, or null. */

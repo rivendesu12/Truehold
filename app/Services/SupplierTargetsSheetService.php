@@ -176,7 +176,27 @@ class SupplierTargetsSheetService
             $out->push($this->mapRow($row, $supplier, $property, $availableRaw, $availableDate));
         }
 
-        return $this->attachCoordinates($this->fillMissingPrices($out))->values();
+        return $this->attachHouseholds($this->attachCoordinates($this->fillMissingPrices($out)))->values();
+    }
+
+    /**
+     * AP / Horizon rooms: who already lives there, from their workbook.
+     */
+    protected function attachHouseholds(Collection $rows): Collection
+    {
+        $ap = app(ApPortfolioPriceService::class);
+
+        return $rows->map(function (array $row) use ($ap) {
+            if (! preg_match('/\b(ap|horizon)\b/i', (string) ($row['agent_name'] ?? ''))) {
+                return $row;
+            }
+            $household = $ap->householdFor($row['source_property'] ?? null, $row['source_room'] ?? null);
+            if ($household) {
+                $row['household'] = $household;
+                $row['housemates'] = $row['housemates'] ?? $household['count'];
+            }
+            return $row;
+        });
     }
 
     /**

@@ -200,6 +200,7 @@ class SpareRoomAdvertService
         [$lat, $lng] = $this->coordinates($html);
 
         $totalRooms = $this->intAfter($lines, 'Total # rooms');
+        $household = $this->household($lines);
         $roomType = $this->roomType($lines);
         $photos = $this->photos($html);
 
@@ -225,7 +226,8 @@ class SpareRoomAdvertService
             'available_date' => $this->availableDate($lines),
             'room_count' => 1,
             'total_rooms' => $totalRooms,
-            'housemates' => $this->intAfter($lines, 'flatmates'),
+            'housemates' => $household['count'] ?? $this->intAfter($lines, 'flatmates'),
+            'household' => $household,
             'deposit' => $this->moneyAfter($lines, 'Deposit'),
             'bills_included' => $this->valueAfter($lines, 'Bills included?'),
             'min_term' => $this->valueAfter($lines, 'Minimum term'),
@@ -248,6 +250,40 @@ class SpareRoomAdvertService
             'updatable' => false,
             'updated_at' => now()->toIso8601String(),
         ];
+    }
+
+    /**
+     * Who lives there now, from the "Current household" block: how many,
+     * their ages, genders and occupation, as the advertiser states them
+     * ("3 Females, 3 Males", "22 to 31", "Professionals"). Nobody's name.
+     *
+     * @return array{count:?int, ages:?string, gender:?string, occupation:?string, smokers:?string, pets:?string}|null
+     */
+    protected function household(array $lines): ?array
+    {
+        $start = array_search('Current household', $lines, true);
+        if ($start === false) {
+            return null;
+        }
+        $block = [];
+        foreach (array_slice($lines, $start + 1, 30) as $line) {
+            if (preg_match('/^New (flat|house)mate preferences$/i', $line)) {
+                break;
+            }
+            $block[] = $line;
+        }
+
+        $count = $this->intAfter($block, 'housemates') ?? $this->intAfter($block, 'flatmates');
+        $out = [
+            'count' => $count,
+            'ages' => $this->valueAfter($block, 'Ages') ?? $this->valueAfter($block, 'Age'),
+            'gender' => $this->valueAfter($block, 'Gender'),
+            'occupation' => $this->valueAfter($block, 'Occupation'),
+            'smokers' => $this->valueAfter($block, 'Smoker?'),
+            'pets' => $this->valueAfter($block, 'Any pets?'),
+        ];
+
+        return array_filter($out, fn ($v) => $v !== null && $v !== '') ? $out : null;
     }
 
     /**

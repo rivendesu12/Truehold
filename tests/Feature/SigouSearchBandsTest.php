@@ -203,3 +203,30 @@ it('hands over an agency\'s bank details from the private file, by any of its na
 
     @unlink($path);
 });
+
+it('answers who lives at a property with that property\'s rooms and their flatmates', function () {
+    fakeSigou(['property_lookup' => 'netherby house', 'property_types' => []], [
+        room('n1', ['title' => 'Netherby House — Room C', 'source_property' => 'Netherby House', 'household' => ['count' => 4, 'ages' => '22 to 27', 'source' => 'agency sheet']]),
+        room('s1', ['title' => 'Double near Stratford', 'household' => ['count' => 3, 'gender' => '2 Females, 1 Male', 'ages' => '24 to 30', 'occupation' => 'Professionals']]),
+    ]);
+    $this->actingAs(User::factory()->create());
+
+    $r = $this->postJson('/agent-search', ['q' => 'who lives in netherby house'])->assertOk()->json();
+    $best = collect($r['groups']['commission'])->concat($r['groups']['standard']);
+
+    expect($r['lookup'])->toBe('netherby house');
+    expect($best->pluck('id')->all())->toBe(['n1']);
+    expect($best[0]['household'])->toBe('4 flatmates · aged 22 to 27');
+    expect(json_encode($r))->not->toContain('raw_row');
+});
+
+it('writes a household the way an agent reads it', function () {
+    expect(\App\Support\Household::summary(['household' => ['count' => 3, 'gender' => '2 Females, 1 Male', 'ages' => '24 to 30', 'occupation' => 'Professionals']]))
+        ->toBe('3 flatmates · 2 females, 1 male · aged 24 to 30 · professionals');
+    expect(\App\Support\Household::summary(['household' => ['count' => 3, 'gender' => '3 Males', 'occupation' => 'Other']]))
+        ->toBe('3 flatmates · 3 males');
+    expect(\App\Support\Household::summary(['housemates' => 1]))->toBe('1 flatmate');
+    expect(\App\Support\Household::summary([]))->toBeNull();
+    expect(\App\Support\Household::isProperty(['title' => '53 Fursecroft — D5'], '53 fursecroft'))->toBeTrue();
+    expect(\App\Support\Household::isProperty(['title' => '5 Fursecroft Road'], '53 fursecroft'))->toBeFalse();
+});

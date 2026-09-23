@@ -244,7 +244,7 @@ SYS;
     }
 
     /** Keys that describe the reply rather than the search. */
-    public const NOT_FILTERS = ['explanation', 'chit_chat', 'sigou', 'sigou_found', 'sigou_none', 'refines_previous', 'agreement', 'wifi', 'invoice', 'agency_request'];
+    public const NOT_FILTERS = ['explanation', 'chit_chat', 'sigou', 'sigou_found', 'sigou_none', 'refines_previous', 'agreement', 'wifi', 'invoice', 'agency_request', 'property_lookup'];
 
     /**
      * The filters worth carrying into a follow-up: everything the agent
@@ -441,6 +441,12 @@ Rules:
   password", "internet for the client", "what's the network". Then leave
   every search filter null. You do not know the password and must not make
   one up; the page shows it. Sigou just hands it over in his voice.
+- `property_lookup`: the building or street when the agent asks about ONE
+  property by name: who lives there, the flatmates, what is free there,
+  its rooms: "who lives in netherby house", "flatmates at 53 fursecroft",
+  "what rooms at east india buildings", "tell me about chargrove place".
+  Just the name, as written. Leave every search filter null then. A brief
+  for an area ("room in battersea") is a search, not a lookup: null.
 - Follow-ups. The message may include PREVIOUS SEARCH, the filters of the
   agent's last search. Agents refine: "max 650", "what about zone 4", "with
   ensuite", "cheaper", "drop the zone", "and couples ok". Then return the
@@ -503,6 +509,7 @@ SYS;
                 'commission_only' => ['type' => 'boolean'],
                 'refines_previous' => ['type' => 'boolean'],
                 'wifi' => ['type' => 'boolean'],
+                'property_lookup' => ['type' => ['string', 'null']],
                 'agency_request' => [
                     'type' => 'object',
                     'properties' => [
@@ -551,7 +558,7 @@ SYS;
                 'smokers', 'pets', 'region', 'garden', 'parking', 'furnished', 'no_deposit',
                 'max_deposit', 'available_by', 'max_commitment_months',
                 'good_transport', 'agencies', 'sort',
-                'commission_only', 'nice_to_have', 'explanation', 'refines_previous', 'agreement', 'wifi', 'invoice', 'agency_request',
+                'commission_only', 'nice_to_have', 'explanation', 'refines_previous', 'agreement', 'wifi', 'invoice', 'agency_request', 'property_lookup',
             ],
             'additionalProperties' => false,
         ];

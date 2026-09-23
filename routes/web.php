@@ -278,6 +278,13 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
         'at' => now()->timestamp,
     ]);
 
+    // "Who lives in Netherby House": only that property's rooms, shown with
+    // their flatmates.
+    $lookup = trim((string) ($spec['property_lookup'] ?? ''));
+    if ($lookup !== '') {
+        $feed = $feed->filter(fn ($p) => \App\Support\Household::isProperty($p, $lookup))->values();
+    }
+
     $found = $assistant->search($spec, $feed);
 
     // Wildcards: the same brief over SpareRoom agents' free-to-contact rooms.
@@ -285,6 +292,9 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
     // mixed into our own results.
     $wild = collect();
     $marketRooms = app(\App\Services\MarketListingsService::class)->all();
+    if ($lookup !== '') {
+        $marketRooms = $marketRooms->filter(fn ($p) => \App\Support\Household::isProperty($p, $lookup))->values();
+    }
     if ($marketRooms->isNotEmpty() && empty($spec['agencies']) && empty($spec['commission_only']) && empty($found['unplaced'])) {
         $market = $assistant->search($spec, $marketRooms);
         $wild = $market['results']->take(6)->concat($market['alternatives']->take(max(0, 3 - $market['results']->count())))->values();
@@ -322,6 +332,7 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
             ]
             : null,
         'why' => $p['why'] ?? null,
+        'household' => \App\Support\Household::summary($p),
         // Wildcards open on our own page, never on SpareRoom.
         'url' => ! empty($p['market']) ? route('market.show', $p['token'])
             : (! empty($p['id']) ? url('/properties/' . $p['id']) : null),
@@ -340,6 +351,7 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
         'max_journey' => $found['max_journey'] ?? null,
         'widened' => (bool) ($found['widened'] ?? false),
         'area' => $found['area'] ?? null,
+        'lookup' => $lookup !== '' ? $lookup : null,
         'relaxed' => $found['relaxed'] ?? [],
         'commission_only' => (bool) ($spec['commission_only'] ?? false),
         'sigou' => (string) ($spec['sigou'] ?? ''),
