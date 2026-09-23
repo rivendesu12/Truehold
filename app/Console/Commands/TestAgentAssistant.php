@@ -596,15 +596,15 @@ class TestAgentAssistant extends Command
             // stock we hold. That is only acceptable when the search explains
             // itself, which is what expect_none asserts; otherwise returning
             // nothing is a failure from the agent's point of view.
+            // Exact matches are "best"; nearby or stretched ones are "other
+            // options". Either is an answer; nothing at all, unexplained, is not.
+            $offered = $found['matched'] + $found['alternatives']->count();
             if (! empty($case['expect_none'])) {
-                // Either we found something (the relaxation ladder did its
-                // job) or we explained why we could not. Both are acceptable;
-                // a bare zero is not.
-                if ($found['matched'] === 0 && empty($found['why_none'])) {
+                if ($offered === 0 && empty($found['why_none'])) {
                     $misses[] = 'zero results with no explanation';
                 }
-            } elseif (empty($misses) && $found['matched'] === 0) {
-                $misses[] = 'parsed fine but zero results';
+            } elseif (empty($misses) && $offered === 0) {
+                $misses[] = 'parsed fine but nothing offered';
             }
 
             return $misses;
