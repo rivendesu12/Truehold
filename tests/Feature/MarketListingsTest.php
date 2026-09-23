@@ -33,15 +33,18 @@ function wildcard(array $overrides = []): string
     return $token;
 }
 
-it('shows an agent the wildcard with the agency, that it has a number, and the original ad', function () {
+it('shows an agent the wildcard on the normal Truehold page, with the agency and the original ad', function () {
     $token = wildcard();
     $this->actingAs(User::factory()->create());
 
     $this->get("/market/{$token}")->assertOk()
         ->assertSee('Double Room / No Deposit / All Bills Included')
         ->assertSee('Marble Sales &amp; Lettings', false)
-        ->assertSee('Number available on the advert')
-        ->assertSee('spareroom.co.uk/17868341');
+        ->assertSee('View Original Listing')
+        ->assertSee('Open in Google Maps')
+        ->assertSee('spareroom.co.uk/17868341')
+        ->assertDontSee('Wildcard')
+        ->assertDontSee('not a partner');
 });
 
 it('shows a client the room but never who advertises it or how to reach them', function () {

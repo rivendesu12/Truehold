@@ -410,10 +410,20 @@ Route::get('/market/{token}', function (Request $request, string $token) {
             '/(?:\+?44\s?|0)7\d{3}\s?\d{3}\s?\d{3}/', '/0\d{2,4}\s?\d{3,4}\s?\d{3,4}/',
             '/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', '#https?://\S+|www\.\S+#i',
         ], '[hidden]', (string) ($listing['description'] ?? '')));
-        unset($listing['agency'], $listing['agent_name'], $listing['spareroom_id'], $listing['url'], $listing['link'], $listing['external_ref']);
+        unset($listing['agency'], $listing['agent_name'], $listing['landlord_name'], $listing['spareroom_id'], $listing['url'], $listing['link'], $listing['external_ref']);
+    } else {
+        // "View Original Listing" on the normal page opens the SpareRoom ad.
+        $listing['link'] = 'https://www.spareroom.co.uk/' . $listing['spareroom_id'];
     }
 
-    return view('market.show', ['p' => $listing, 'isAgent' => $isAgent]);
+    // The same page as every other Truehold listing: photos, facts, the map
+    // card, Share, and for agents the manager card and the original listing.
+    $property = new \App\Models\PropertyFromSheet($listing);
+    $property->setRelation('interests', collect());
+    $property->setRelation('interestedClients', collect());
+    $clients = $isAgent ? \App\Models\Client::orderBy('full_name', 'asc')->get() : collect();
+
+    return view('properties.show', compact('property', 'clients'));
 })->name('market.show');
 
 // The office's sourcing agreement, filled in and signed by the agent. POST so
