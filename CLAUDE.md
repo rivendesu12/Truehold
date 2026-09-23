@@ -23,15 +23,24 @@ branch `main`. SSH key `~/.ssh/truehold_deploy`.
 
 Secrets from Ali's original `.env` are compromised and still need rotating.
 
-## Data sources (~277 listings)
+## Data sources
+
+Ali's HarborOps feed is **off** (`HARBOROPS_ENABLED=false`, 23 Sep 2026): we
+read every agency ourselves.
 
 | Source | What |
 |---|---|
-| `spareroom` | HarborOps scraped-listings API (Ali's feed) |
-| `spreadsheet` | Ali's scrape of Javier/Smart Share sheets. **Dropped** (stale since Aug; we read the sheets ourselves) |
-| `supplier_sheet` | "Targets" tab — Banksia, AP, Javier. Fixed column indices |
-| `soreva_sheet` | Soreva's own sheet, read as **FORMULA** (hyperlinks hold photo folders) |
-| `spareroom_direct` | We crawl DC Lettings, Antonio, Life Stay (2 accounts) from seed adverts |
+| `supplier_sheet` | Room targets "Targets" tab — Banksia, AP. Plus AP workbook rooms it misses (`from_ap_workbook`) |
+| `javier_sheet` | Javier's own "JAVIER VACANCY" ROOMS tab (JMS, FENIX); Room targets' Javier rows give way to it |
+| `soreva_sheet` | Soreva's own sheet, read as **FORMULA** (hyperlinks hold photo folders); room links = room folders |
+| `spareroom_direct` | We crawl ~25 SpareRoom advertisers: `suppliers.spareroom.advertisers` + `suppliers.feed_agencies` (the ones Ali's feed had). Each advertiser's `/u{id}` page lists all their adverts. `'active' => false` pauses one (Cloudrooms) — also hidden from wildcards |
+| `spareroom` / `spreadsheet` | Ali's feed. Off. |
+
+**Availability rules (Giaco):** AP/Horizon workbook — "Available" and not
+booked; **ROLLING = someone lives there, not available**; TBC no. Javier —
+status MOVE OUT or APT BREAK only; MOVE OUT/HOLD or blank = not available.
+Tenant columns (names, phones, DOB, WhatsApp) are never read out; AP DOBs
+become flatmate ages only.
 
 All merged in `ScrapedListingsApiService::getAllProperties()` (cached, hourly).
 Availability: "The advertiser is not currently accepting applications" = gone.

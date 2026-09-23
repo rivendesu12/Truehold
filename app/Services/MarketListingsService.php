@@ -68,7 +68,7 @@ class MarketListingsService
                 ->where('last_seen_at', '>=', now()->subDays(self::KEEP_DAYS))
                 ->get()
                 ->map(fn ($row) => $this->shape($row))
-                ->filter(fn ($p) => $p && self::offered($p))
+                ->filter(fn ($p) => $p && self::offered($p) && ! self::paused((string) ($p['agency'] ?? '')))
                 ->values();
         } catch (\Throwable $e) {
             // No table yet, or the database is unhappy: no wildcards, no error.
@@ -210,6 +210,27 @@ class MarketListingsService
         }
 
         return $stats;
+    }
+
+    /**
+     * An agency switched off in config/suppliers.php ('active' => false) is
+     * not offered as a wildcard either. "Cloud Rooms" and "Cloudrooms Ltd"
+     * are one agency, so names are compared without spaces.
+     */
+    public static function paused(string $agency): bool
+    {
+        $flat = fn (string $s) => preg_replace('/(ltd|limited)$/', '', preg_replace('/[^a-z0-9]+/', '', strtolower($s)));
+        $name = $flat($agency);
+        if ($name === '') {
+            return false;
+        }
+        foreach ((array) config('suppliers.feed_agencies', []) as $a) {
+            if (($a['active'] ?? true) === false && $flat((string) $a['name']) === $name) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Offered to agents: a number on the advert, zones 1-3. */

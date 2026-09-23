@@ -90,6 +90,10 @@ class SpareRoomAdvertService
             (array) config('suppliers.feed_agencies', []),
         );
         foreach ($advertisers as $advertiser) {
+            // Switched off for now, kept in the config.
+            if (($advertiser['active'] ?? true) === false) {
+                continue;
+            }
             $out = $out->concat($this->crawlAdvertiser($advertiser, $progress));
         }
 
@@ -104,7 +108,12 @@ class SpareRoomAdvertService
     public function crawlAdvertiser(array $advertiser, ?callable $progress = null): Collection
     {
         $userId = (string) ($advertiser['user_id'] ?? '');
-        $queue = array_values(array_map('strval', $advertiser['seeds'] ?? []));
+        // Their own listings page names every advert they have up; the seeds
+        // and "more from this advertiser" links fill in if it is unavailable.
+        $queue = array_values(array_unique(array_merge(
+            $userId !== '' ? $this->advertiserAdvertIds($userId) : [],
+            array_map('strval', $advertiser['seeds'] ?? []),
+        )));
         $seen = [];
         $found = collect();
         $cap = (int) config('suppliers.spareroom.max_adverts_per_advertiser', 40);
@@ -154,6 +163,42 @@ class SpareRoomAdvertService
         }
 
         return $found;
+    }
+
+    /**
+     * Every advert id on an advertiser's own SpareRoom page (/u{id}), ten to
+     * a page.
+     *
+     * @return array<int, string>
+     */
+    public function advertiserAdvertIds(string $userId, int $maxPages = 8): array
+    {
+        $ids = [];
+        $delay = (int) config('suppliers.spareroom.delay_ms', 700);
+
+        for ($page = 0; $page < $maxPages; $page++) {
+            try {
+                $response = Http::withHeaders(['User-Agent' => self::AGENT])->timeout(30)
+                    ->get(self::BASE . '/u' . $userId, ['offset' => $page * 10]);
+            } catch (\Throwable $e) {
+                break;
+            }
+            if (! $response->successful()) {
+                break;
+            }
+            preg_match_all('/data-listing-id="(\d+)"/', $response->body(), $m);
+            $new = array_diff(array_unique($m[1]), $ids);
+            if (! $new) {
+                break;
+            }
+            $ids = array_merge($ids, array_values($new));
+            if (count($m[1]) < 10) {
+                break;
+            }
+            usleep($delay * 1000);
+        }
+
+        return $ids;
     }
 
     protected function fetch(string $advertId): ?string

@@ -117,3 +117,11 @@ it('finds the agency name even behind SpareRoom\'s inline scripts', function () 
 
     expect(app(MarketListingsService::class)->agency($html))->toBe('Marble Sales & Lettings');
 });
+
+it('leaves out an agency that is switched off, however its name is written', function () {
+    config(['suppliers.feed_agencies' => [['name' => 'Cloudrooms', 'user_id' => '1', 'seeds' => [], 'active' => false]]]);
+
+    expect(MarketListingsService::paused('Cloud Rooms'))->toBeTrue();
+    expect(MarketListingsService::paused('Cloudrooms Ltd'))->toBeTrue();
+    expect(MarketListingsService::paused('Marble Lettings'))->toBeFalse();
+});

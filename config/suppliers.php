@@ -15,7 +15,7 @@ return [
         // Politeness: these are someone else's pages. One request at a time,
         // with a pause, and a cap on how far a crawl can wander.
         'delay_ms' => 700,
-        'max_adverts_per_advertiser' => 40,
+        'max_adverts_per_advertiser' => 60,
         // Six hours: some thirty advertisers, a few hundred adverts a crawl.
         'cache_timeout' => env('SUPPLIER_SPAREROOM_CACHE', 21600),
 
@@ -57,7 +57,8 @@ return [
     | (23 Sep 2026). Seeds and account ids were read off the adverts his feed
     | held; the commission flag is what his feed said, and config/commission.php
     | still overrides it (Instabook never pays). "Gigi" was Life Stay's own
-    | account and "Cloud Rooms" the same account as Cloudrooms.
+    | account and "Cloud Rooms" the same account as Cloudrooms. 'active' =>
+    | false switches one off without losing it (Cloudrooms, Giaco, 23 Sep).
     */
     'feed_agencies' => [
             ['name' => 'Alchemy Accommodation', 'user_id' => '23190366', 'seeds' => ['17757673', '18330619', '18271886'], 'pays_commission' => true],
@@ -67,7 +68,7 @@ return [
             ['name' => 'Capital Living', 'user_id' => '1001446', 'seeds' => ['18408567', '18421359', '18427461'], 'pays_commission' => false],
             ['name' => 'Choices', 'user_id' => '675357', 'seeds' => ['18410154', '18381906', '18290550'], 'pays_commission' => false],
             ['name' => 'City Spare Lodge', 'user_id' => '3630781', 'seeds' => ['18425986', '18416733', '18271514'], 'pays_commission' => false],
-            ['name' => 'Cloudrooms', 'user_id' => '18517699', 'seeds' => ['18420740', '18420997', '18420957', '18427386', '18420784', '18369974'], 'pays_commission' => false],
+            ['name' => 'Cloudrooms', 'user_id' => '18517699', 'seeds' => ['18420740', '18420997', '18420957', '18427386', '18420784', '18369974'], 'pays_commission' => false, 'active' => false],
             ['name' => 'Come To London Limited', 'user_id' => '19672223', 'seeds' => ['18392751', '17810660', '16754935'], 'pays_commission' => false],
             ['name' => 'Depa Properties LTD', 'user_id' => '23039761', 'seeds' => ['18412855', '18401776', '18374572'], 'pays_commission' => false],
             ['name' => 'EASTERN HOMES PROPERTIES LTD', 'user_id' => '23328512', 'seeds' => ['17273262', '18223329', '18384474'], 'pays_commission' => false],

@@ -68,6 +68,9 @@ return [
     ],
 
     'harborops' => [
+        // Ali's feed. Off: every source it carried is now read or crawled by
+        // us (agency sheets, config/suppliers.php feed_agencies).
+        'enabled' => (bool) env('HARBOROPS_ENABLED', false),
         // Primary property feed: Harbor Ops scraped-listings public API
         'base_url' => env('HARBOROPS_API_URL'),
         'api_key' => env('HARBOROPS_API_KEY'),

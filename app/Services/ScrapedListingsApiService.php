@@ -647,6 +647,13 @@ class ScrapedListingsApiService
      */
     protected function fetchAllListings(): Collection
     {
+        // Ali's HarborOps feed is switched off: we read the agencies' sheets
+        // and crawl their SpareRoom adverts ourselves (23 Sep 2026). Set
+        // HARBOROPS_ENABLED=true to bring it back.
+        if (! config('services.harborops.enabled')) {
+            return collect();
+        }
+
         $endpoint = rtrim($this->baseUrl, '/') . '/api/public/scraped-listings';
         $properties = collect();
         $offset = 0;
