@@ -155,29 +155,14 @@ class ScrapedListingsApiService
     }
 
     /**
-     * Ali's scrape of the Javier / Smart Share sheets ("spreadsheet" rows)
-     * stopped refreshing in August: 12 Melrose House still showed as a room
-     * weeks after it left Javier's own vacancy list. Javier's current rooms
-     * arrive fresh from the Room targets sheet, so a copy the scraper has not
-     * touched for two weeks is dropped rather than shown as available.
+     * Ali's scrape of the Javier / Smart Share sheets ("spreadsheet" rows) is
+     * not used: it stopped refreshing in August (12 Melrose House still showed
+     * weeks after leaving Javier's list), and we read the agencies' sheets
+     * ourselves (Room targets, Soreva).
      */
-    protected function isStaleSheetCopy(array $p): bool
+    protected function isAliSheetCopy(array $p): bool
     {
-        if (($p['source'] ?? null) !== 'spreadsheet') {
-            return false;
-        }
-
-        $days = (int) config('services.harborops.spreadsheet_max_age_days', 14);
-        $seen = $p['updated_at'] ?? $p['created_at'] ?? null;
-        if ($days <= 0 || ! $seen) {
-            return false;
-        }
-
-        try {
-            return \Carbon\Carbon::parse($seen)->lt(now()->subDays($days));
-        } catch (\Throwable $e) {
-            return false;
-        }
+        return ($p['source'] ?? null) === 'spreadsheet';
     }
 
     /**
@@ -191,7 +176,7 @@ class ScrapedListingsApiService
             $feed = $this->fetchAllListings()
                 ->reject(fn ($p) => isset($notAccepting[(string) ($p['id'] ?? '')]))
                 ->filter(fn ($p) => $this->isAvailable($p))
-                ->reject(fn ($p) => $this->isStaleSheetCopy($p))
+                ->reject(fn ($p) => $this->isAliSheetCopy($p))
                 ->map(fn ($p) => self::normalisePhotos($p));
 
             // Supplier rooms come from the Room targets sheet, not this API. They

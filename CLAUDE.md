@@ -28,7 +28,7 @@ Secrets from Ali's original `.env` are compromised and still need rotating.
 | Source | What |
 |---|---|
 | `spareroom` | HarborOps scraped-listings API (Ali's feed) |
-| `spreadsheet` | Ali's scrape of Javier/Smart Share sheets; agency in `raw_row.Company` (JMS+FENIX = Javier) |
+| `spreadsheet` | Ali's scrape of Javier/Smart Share sheets. **Dropped** (stale since Aug; we read the sheets ourselves) |
 | `supplier_sheet` | "Targets" tab — Banksia, AP, Javier. Fixed column indices |
 | `soreva_sheet` | Soreva's own sheet, read as **FORMULA** (hyperlinks hold photo folders) |
 | `spareroom_direct` | We crawl DC Lettings, Antonio, Life Stay (2 accounts) from seed adverts |
