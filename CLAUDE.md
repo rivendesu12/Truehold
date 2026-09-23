@@ -115,6 +115,22 @@ Mary while a search runs, rubs his hands on results. Agents only (`@auth`).
   the room without agency/ref. Only adverts with a number are kept
   (`has_phone`: the "Call" contact method, `phoneadvertiser`); we record
   that one exists, never the digits (Giaco: not needed). `phone` column unused.
+- Wildcard links (`/market/{token}`) render the normal `properties.show`
+  page (map card, Share; agents also get the manager card and View Original
+  Listing). No "wildcard" box (Giaco: looked bad).
+- **Flatmates**: every result carries `household` ("3 flatmates · 2 females,
+  1 male · aged 24 to 30 · professionals", `App\Support\Household`). From
+  SpareRoom's "Current household" block, or the AP workbook (count + ages
+  from DOB; names/phones never read out). "who lives in X" sets
+  `property_lookup`, which narrows the search to that property.
+- **Bank details**: "ap bank details", "how do I pay fenix". Six companies
+  (AP Real Estate, Horizon Dreams, JMS, FENIX, Banksia, Soreva Management),
+  each its own entry; groups ("ap horizon", "javier") show all members.
+  Kept ONLY in `storage/app/private/agency-bank-details.json` on the server
+  (git-ignored; the repo is public). Holding deposit forms ride along. The
+  panel rains £ notes and Sigou does a money line.
+- "no Cloudrooms" → `exclude_agencies`; `splitAgencies()` also moves any
+  "no X" that lands in `agencies` (it once emptied a search).
 - **Agencies** (`AgencyDirectory`): the "Agencies link" tab of Room targets,
   columns A-C and E-I only (D is never read; the "Agency rules" tab holds
   logins and is never touched). Link, max age, commission, agent share;
@@ -174,13 +190,8 @@ gating the Blade alone is not enough.
    `always_pay`. Javier and AP unknown; Banksia/Soreva do. Mechanism built, empty.
 2. **Commission rates** — intentionally blank; a paying agency shows as
    "COMMISSION" with no figure. `commission:agencies` prints the keys.
-3. **Soreva photos** — in their "Letting agent List" tab the property cells
-   are `=HYPERLINK("[link removed]", "Colmer Road")` (Colmer Road D1-D5,
-   Vernon Road M1/D5); Princess Street and Hyde Park Mansion have no link.
-   Soreva must paste the real Drive folder links back in.
-4. **Javier's own sheet** ("JAVIER VACANCY", tab ROOMS) is readable by the
-   service account but not read yet: Javier rooms only come via Room targets
-   (2 rooms). Reading it needs a check of which columns hold tenant data.
+3. **Soreva** — new sheet (`1klNq5…`) has real links. Its agent tab now
+   holds tenant name/phone/DOB/email in L-P; the reader stops at K.
 5. **Smart Share** only came through Ali's dropped scrape; not in the
    Agencies link tab.
 6. **Off-box backups** before real CRM data lands.
@@ -189,6 +200,7 @@ gating the Blade alone is not enough.
 
 ## Availability check
 
-`properties:check-availability` runs every 6h unattended. Spot-checked
-23 Sep 2026: 229 adverts, 66 hidden; 6 hidden re-fetched were all really gone,
-4 shown were all really live.
+With Ali's feed off, `properties:check-availability` has nothing to check.
+Our own crawls drop an advert that is "not currently accepting
+applications" when they read it (SpareRoom advertisers every 6h, wildcards
+nightly); the sheets carry their own status.
