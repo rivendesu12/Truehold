@@ -127,7 +127,16 @@ class SorevaSheetService
         }
 
         $rows = $response->json('values') ?? [];
-        array_shift($rows); // header
+        // Titles and a colour key sit above the header row ("Status",
+        // "Property", ...); rooms start below it.
+        $header = 0;
+        foreach ($rows as $i => $row) {
+            if (strcasecmp(trim((string) ($row[0] ?? '')), 'status') === 0) {
+                $header = $i;
+                break;
+            }
+        }
+        $rows = array_slice($rows, $header + 1);
 
         $properties = collect();
 
@@ -155,6 +164,8 @@ class SorevaSheetService
         $status = $get(0);
         $property = $get(1);
         $folderUrl = $this->extractHyperlink($raw(1));
+        // The room number links to that room's own folder where they have one.
+        $roomFolderUrl = $this->extractHyperlink($raw(4));
         $rent = $get(3);
         $room = $get(4);
         $postcode = strtoupper($get(5));
@@ -178,8 +189,9 @@ class SorevaSheetService
 
         // Their property links point at the photo folders, so the same
         // private-Drive proxy the other suppliers use serves these too.
-        $photoIds = $folderUrl
-            ? app(SupplierPhotoService::class)->photosForRoom($folderUrl, $room)
+        $photoFolder = $roomFolderUrl ?: $folderUrl;
+        $photoIds = $photoFolder
+            ? app(SupplierPhotoService::class)->photosForRoom($photoFolder, $room)
             : [];
         $photoUrls = array_map(
             fn ($id) => route('supplier.photo', ['fileId' => $id], false),
@@ -225,6 +237,7 @@ class SorevaSheetService
             'all_photos' => $photoUrls ? implode(', ', $photoUrls) : null,
             'photo_count' => count($photoUrls),
             'drive_folder_url' => $folderUrl,
+            'drive_room_folder' => $roomFolderUrl,
             'updatable' => false,
             'updated_at' => now()->toIso8601String(),
         ];
@@ -261,11 +274,20 @@ class SorevaSheetService
     }
 
     /**
-     * "AVAILABLE 01/09/2025" and "AVAILABLE NOW - 2 MONTHS" both occur; the
-     * date is taken where one is written, and today otherwise.
+     * "AVAILABLE 01/09/2025", "Available from 04/Oct/2026" and "AVAILABLE NOW
+     * - 2 MONTHS" all occur; the date is taken where one is written, and
+     * today otherwise.
      */
     protected function availableFrom(string $status): ?string
     {
+        if (preg_match('#(\d{1,2})[/ -]([A-Za-z]{3,9})[/ -](\d{2,4})#', $status, $m)) {
+            try {
+                return \Carbon\Carbon::parse($m[1] . ' ' . $m[2] . ' ' . ((int) $m[3] < 100 ? 2000 + (int) $m[3] : $m[3]))->toDateString();
+            } catch (\Throwable $e) {
+                // Fall through to the numeric form.
+            }
+        }
+
         if (preg_match('#(\d{1,2})/(\d{1,2})/(\d{2,4})#', $status, $m)) {
             $year = (int) $m[3];
             $year += $year < 100 ? 2000 : 0;

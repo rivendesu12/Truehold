@@ -70,9 +70,11 @@ return [
     ],
 
     'soreva' => [
-        'spreadsheet_id' => env('SOREVA_SHEET_ID', '1GNk7Taim-VaiEFgOTVnOk5vNs_jrqV78PVYoeM3may8'),
+        'spreadsheet_id' => env('SOREVA_SHEET_ID', '1klNq5RWcbMYkW1dbUz0oYTE2ss8CB5zgX-PKsoOhCkE'),
         // The tab written for letting agents. The other tabs are internal
-        // status tracking and carry tenant contact details, which we never read.
+        // status tracking, which we never read; and this tab itself carries
+        // tenant name, phone, date of birth and email in columns L-P, which
+        // is why the reader stops at K (SorevaSheetService::RANGE).
         'tab' => env('SOREVA_SHEET_TAB', 'Letting agent List'),
         'cache_timeout' => env('SOREVA_CACHE_TIMEOUT', 900),
         'pays_commission' => true,
