@@ -69,6 +69,14 @@ return [
         'smartshare' => 'Smart Share',
     ],
 
+    // Javier's own vacancy sheet (JMS and FENIX). Only MOVE OUT and APT BREAK
+    // rows are offered; the tenant columns (O, P, T) are never read.
+    'javier' => [
+        'spreadsheet_id' => env('JAVIER_SHEET_ID', '1G-BmcFIet1yM-FAWFGOWiVO5HK6H7Rq5bePo-EQBYk8'),
+        'tab' => env('JAVIER_SHEET_TAB', 'ROOMS'),
+        'cache_timeout' => env('JAVIER_CACHE_TIMEOUT', 900),
+    ],
+
     'soreva' => [
         'spreadsheet_id' => env('SOREVA_SHEET_ID', '1klNq5RWcbMYkW1dbUz0oYTE2ss8CB5zgX-PKsoOhCkE'),
         // The tab written for letting agents. The other tabs are internal

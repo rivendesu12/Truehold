@@ -20,6 +20,7 @@ class ClearPropertiesCache extends Command
         // the feed would leave their stock an hour stale after a refresh.
         app(\App\Services\SupplierTargetsSheetService::class)->clearCache();
         app(\App\Services\SorevaSheetService::class)->clearCache();
+        app(\App\Services\JavierSheetService::class)->clearCache();
         app(\App\Services\SpareRoomAdvertService::class)->clearCache();
 
         // Clearing and walking away leaves the next visitor to rebuild the

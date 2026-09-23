@@ -184,11 +184,20 @@ class ScrapedListingsApiService
             // to them — the sheet's own "Available From" gate does.
             $supplier = app(SupplierTargetsSheetService::class)->getAllProperties();
 
+            // Javier's own sheet is the whole of his vacancy list; Room targets
+            // only copies a couple of his rooms, so it gives way when his sheet
+            // has been read.
+            $javier = app(JavierSheetService::class)->getAllProperties();
+            if ($javier->isNotEmpty()) {
+                $supplier = $supplier->reject(fn ($p) => str_starts_with((string) ($p['agent_name'] ?? ''), 'Javier'))->values();
+            }
+
             // Suppliers we source ourselves rather than through Harbor Ops:
             // Soreva Living's sheet, and landlords who only advertise on
             // SpareRoom. Both already carry their own availability rules, so
             // the feed's status allowlist does not apply to them.
             $direct = app(SorevaSheetService::class)->getAllProperties()
+                ->concat($javier)
                 ->concat(app(SpareRoomAdvertService::class)->getAllProperties());
 
             // Some of these advertisers are also scraped into the Harbor Ops
