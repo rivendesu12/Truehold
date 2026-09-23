@@ -154,3 +154,14 @@ it('counts Javier as paying and Instabook as not, whatever the feed says', funct
     expect($rates->pays(['agent_name' => 'Instabook Ltd', 'paying' => 'yes']))->toBeFalse();
     expect($rates->pays(['agent_name' => 'Gladstay Limited', 'paying' => 'no']))->toBeFalse();
 });
+
+it('says it cannot find a place rather than offering all of London', function () {
+    fakeSigou(['location' => 'Atlantis', 'max_price' => 700, 'property_types' => []], canaryWharfFeed());
+    $this->actingAs(User::factory()->create());
+
+    $r = $this->postJson('/agent-search', ['q' => 'room in atlantis under 700'])->assertOk()->json();
+
+    expect($r['unplaced'])->toBe('Atlantis');
+    expect($r['groups']['standard'])->toBe([]);
+    expect($r['groups']['alternatives'])->toBe([]);
+});

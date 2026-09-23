@@ -941,8 +941,13 @@ SYS;
 
         // The classic near-misses: over budget in the area, a longer journey,
         // a different property type. Each carries its reason.
-        foreach ($this->alternativesFor($spec, $properties, $best, $areaAsk ? null : $center, $areaAsk ? null : $radius) as $p) {
-            $keep($p, (string) ($p['why'] ?? 'close to the brief'));
+        // (Not for an area search: they would scan all of London and label
+        // the result "in the area". Nearby, over budget and relaxed are
+        // already covered for areas above and below.)
+        if (! $areaAsk) {
+            foreach ($this->alternativesFor($spec, $properties, $best, $center, $radius) as $p) {
+                $keep($p, (string) ($p['why'] ?? 'close to the brief'));
+            }
         }
         // Over budget but in the area, for an area search.
         if ($areaAsk && ! empty($spec['max_price'])) {

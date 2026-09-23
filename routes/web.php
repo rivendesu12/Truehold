@@ -272,7 +272,7 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
     // mixed into our own results.
     $wild = collect();
     $marketRooms = app(\App\Services\MarketListingsService::class)->all();
-    if ($marketRooms->isNotEmpty() && empty($spec['agencies']) && empty($spec['commission_only'])) {
+    if ($marketRooms->isNotEmpty() && empty($spec['agencies']) && empty($spec['commission_only']) && empty($found['unplaced'])) {
         $market = $assistant->search($spec, $marketRooms);
         $wild = $market['results']->take(6)->concat($market['alternatives']->take(max(0, 3 - $market['results']->count())))->values();
     }
