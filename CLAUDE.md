@@ -198,6 +198,18 @@ gating the Blade alone is not enough.
 6. Restrict the Google Maps key to the domains.
 7. truehold.co.uk DNS: not needed for now, truehold.yaenlinea.co is the site.
 
+## Zoopla leads (Joy Homes)
+
+`zoopla:leads` (every 5 min) reads "Tenant enquiry from X via Zoopla" emails
+from the Joy Homes Zoho mailbox (hello@joyhomeslondon.co.uk) over IMAP and
+appends them to the "Joy Homes - Zoopla leads" sheet, laid out like the old
+"New Zoopla leads": **Sheet1** every enquiry, **To message** one row per new
+phone, **Message template** the CRM import format. Read-only on the mailbox
+(EXAMINE + BODY.PEEK, nothing marked read); looks back 3 days and dedupes
+against the sheet, so a failed run is harmless. Rows are append-only.
+`--dry-run` shows what it finds. Price and Zoopla's listing ref are only in
+the HTML part; the plain part says 7bit but is quoted-printable.
+
 ## Availability check
 
 With Ali's feed off, `properties:check-availability` has nothing to check.

@@ -65,6 +65,14 @@ Schedule::command('market:crawl')
     ->withoutOverlapping()
     ->runInBackground();
 
+// Zoopla enquiries from the Zoho mailbox into the leads sheet. A lead is
+// worth most in its first minutes, hence the short interval; each run looks
+// back three days, so a failed one costs nothing.
+Schedule::command('zoopla:leads')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // Sigou's interaction log keeps six months.
 Schedule::call(fn () => \Illuminate\Support\Facades\DB::table('assistant_interactions')
     ->where('created_at', '<', now()->subDays(180))->delete())

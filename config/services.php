@@ -110,6 +110,20 @@ return [
         'suppliers' => env('SUPPLIER_TARGETS_SUPPLIERS', ''),
     ],
 
+    // Zoopla tenant enquiries: read from the Joy Homes Zoho mailbox over IMAP
+    // (Zoho → Settings → Mail accounts → IMAP Access on; use an app-specific
+    // password) and appended to the leads sheet by `zoopla:leads`.
+    'zoopla_leads' => [
+        'imap_host' => env('ZOOPLA_LEADS_IMAP_HOST', 'imappro.zoho.eu'),
+        'imap_port' => env('ZOOPLA_LEADS_IMAP_PORT', 993),
+        'username' => env('ZOOPLA_LEADS_IMAP_USER'),
+        'password' => env('ZOOPLA_LEADS_IMAP_PASSWORD'),
+        'folder' => env('ZOOPLA_LEADS_IMAP_FOLDER', 'INBOX'),
+        'spreadsheet_id' => env('ZOOPLA_LEADS_SHEET_ID'),
+        // Same service account as the supplier sheets; needs Editor on this one.
+        'credentials_path' => env('ZOOPLA_LEADS_CREDENTIALS', env('SUPPLIER_TARGETS_CREDENTIALS')),
+    ],
+
     // AP / Horizon portfolio workbook. A real .xlsx in Drive, so it is downloaded
     // and parsed rather than read through the Sheets API (which 400s on it).
     // Used to fill price gaps the Targets tab and the feed both have.
