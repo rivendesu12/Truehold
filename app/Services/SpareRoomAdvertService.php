@@ -52,11 +52,27 @@ class SpareRoomAdvertService
             return collect(Cache::get(self::CACHE_KEY, []));
         }
 
-        return Cache::remember(
-            self::CACHE_KEY,
-            (int) config('suppliers.spareroom.cache_timeout', 1800),
-            fn () => $this->crawlAll()
-        );
+        $cached = Cache::get(self::CACHE_KEY);
+        if ($cached !== null) {
+            return collect($cached);
+        }
+
+        $rooms = $this->crawlAll();
+
+        // A crawl SpareRoom refused comes back empty or thin: keep serving the
+        // last good one rather than dropping these agencies from the site.
+        $lastGood = (array) Cache::get(self::CACHE_KEY . '_last_good', []);
+        if ($rooms->count() < count($lastGood) / 2) {
+            Log::warning('SpareRoom crawl came back thin; serving the last good copy', ['got' => $rooms->count(), 'had' => count($lastGood)]);
+            Cache::put(self::CACHE_KEY, $lastGood, now()->addHour());
+
+            return collect($lastGood);
+        }
+
+        Cache::put(self::CACHE_KEY, $rooms->all(), (int) config('suppliers.spareroom.cache_timeout', 21600));
+        Cache::put(self::CACHE_KEY . '_last_good', $rooms->all(), now()->addDays(14));
+
+        return $rooms;
     }
 
     public function clearCache(): void
@@ -69,7 +85,11 @@ class SpareRoomAdvertService
     {
         $out = collect();
 
-        foreach ((array) config('suppliers.spareroom.advertisers', []) as $advertiser) {
+        $advertisers = array_merge(
+            (array) config('suppliers.spareroom.advertisers', []),
+            (array) config('suppliers.feed_agencies', []),
+        );
+        foreach ($advertisers as $advertiser) {
             $out = $out->concat($this->crawlAdvertiser($advertiser, $progress));
         }
 

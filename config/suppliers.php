@@ -16,7 +16,8 @@ return [
         // with a pause, and a cap on how far a crawl can wander.
         'delay_ms' => 700,
         'max_adverts_per_advertiser' => 40,
-        'cache_timeout' => env('SUPPLIER_SPAREROOM_CACHE', 1800),
+        // Six hours: some thirty advertisers, a few hundred adverts a crawl.
+        'cache_timeout' => env('SUPPLIER_SPAREROOM_CACHE', 21600),
 
         // `user_id` is the advertiser's own SpareRoom id, read off the report
         // link on any of their adverts. Every crawled advert is checked
@@ -49,6 +50,38 @@ return [
                 'pays_commission' => true,
             ],
         ],
+    ],
+
+    /*
+    | The agencies Ali's HarborOps feed used to bring in, crawled by us instead
+    | (23 Sep 2026). Seeds and account ids were read off the adverts his feed
+    | held; the commission flag is what his feed said, and config/commission.php
+    | still overrides it (Instabook never pays). "Gigi" was Life Stay's own
+    | account and "Cloud Rooms" the same account as Cloudrooms.
+    */
+    'feed_agencies' => [
+            ['name' => 'Alchemy Accommodation', 'user_id' => '23190366', 'seeds' => ['17757673', '18330619', '18271886'], 'pays_commission' => true],
+            ['name' => 'Banksia Rooms', 'user_id' => '9042565', 'seeds' => ['18426202', '18426096', '18426171'], 'pays_commission' => true],
+            ['name' => 'BOND & MAIN GROUP LTD', 'user_id' => '24055614', 'seeds' => ['18418088', '18425508'], 'pays_commission' => false],
+            ['name' => 'Built Asset Managment', 'user_id' => '19457130', 'seeds' => ['18419479', '18427414', '18420785'], 'pays_commission' => true],
+            ['name' => 'Capital Living', 'user_id' => '1001446', 'seeds' => ['18408567', '18421359', '18427461'], 'pays_commission' => false],
+            ['name' => 'Choices', 'user_id' => '675357', 'seeds' => ['18410154', '18381906', '18290550'], 'pays_commission' => false],
+            ['name' => 'City Spare Lodge', 'user_id' => '3630781', 'seeds' => ['18425986', '18416733', '18271514'], 'pays_commission' => false],
+            ['name' => 'Cloudrooms', 'user_id' => '18517699', 'seeds' => ['18420740', '18420997', '18420957', '18427386', '18420784', '18369974'], 'pays_commission' => false],
+            ['name' => 'Come To London Limited', 'user_id' => '19672223', 'seeds' => ['18392751', '17810660', '16754935'], 'pays_commission' => false],
+            ['name' => 'Depa Properties LTD', 'user_id' => '23039761', 'seeds' => ['18412855', '18401776', '18374572'], 'pays_commission' => false],
+            ['name' => 'EASTERN HOMES PROPERTIES LTD', 'user_id' => '23328512', 'seeds' => ['17273262', '18223329', '18384474'], 'pays_commission' => false],
+            ['name' => 'Gladstay Limited', 'user_id' => '1999675', 'seeds' => ['18422226'], 'pays_commission' => true],
+            ['name' => 'Globe Homes Ltd', 'user_id' => '15868888', 'seeds' => ['18417795', '18422131', '18408753'], 'pays_commission' => false],
+            ['name' => 'Halfrome LTD', 'user_id' => '21447935', 'seeds' => ['17943270', '18168058', '17746059'], 'pays_commission' => false],
+            ['name' => 'Instabook Ltd', 'user_id' => '20618506', 'seeds' => ['16669501', '17657782', '16980272'], 'pays_commission' => true],
+            ['name' => 'KEY2STAY LTD', 'user_id' => '24113633', 'seeds' => ['18426501', '18412673', '18415087'], 'pays_commission' => false],
+            ['name' => 'Kish', 'user_id' => '8593186', 'seeds' => ['12663760', '18150746'], 'pays_commission' => true],
+            ['name' => 'My Place Properties', 'user_id' => '22116668', 'seeds' => ['18376013', '16791329'], 'pays_commission' => true],
+            ['name' => 'PPM', 'user_id' => '890512', 'seeds' => ['18427211'], 'pays_commission' => true],
+            ['name' => 'SilverLine Rooms', 'user_id' => '20889927', 'seeds' => ['18410802', '18380379'], 'pays_commission' => true],
+            ['name' => 'UK LONDON FLAT', 'user_id' => '20824796', 'seeds' => ['18422285', '18402638', '18354956'], 'pays_commission' => true],
+            ['name' => 'Urban Base Properties', 'user_id' => '13002775', 'seeds' => ['18425505', '18423497', '18423460'], 'pays_commission' => true],
     ],
 
     /*
