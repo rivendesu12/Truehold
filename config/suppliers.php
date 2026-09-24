@@ -105,14 +105,16 @@ return [
 
     /*
     | Rooms agencies only send on WhatsApp. A Cowork task copies them from the
-    | groups into the "WhatsApp rooms" tab of Room targets (docs/whatsapp-
-    | rooms-task.md); the site applies the rules below (Giaco, 24 Sep 2026).
+    | groups into "Truehold - WhatsApp rooms (AI only)", a sheet of its own
+    | that nobody needs to open (docs/whatsapp-rooms-task.md); the site
+    | applies the rules below (Giaco, 24 Sep 2026). No tab = the first tab.
     |   fresh_days: a room not seen in the group (Fausto: on a daily list) for
     |               longer than this is taken to be gone.
     |   deposit_weeks: their deposit, in weeks of rent.
     */
     'whatsapp' => [
-        'tab' => env('WHATSAPP_ROOMS_TAB', 'WhatsApp rooms'),
+        'spreadsheet_id' => env('WHATSAPP_ROOMS_SHEET_ID', '1py4itQJmFxDXgQae5B3irWOoMmoE88ohtu6zavTr5Io'),
+        'tab' => env('WHATSAPP_ROOMS_TAB'),
         'cache_timeout' => 900,
         'default_total_rooms' => 4,
         'default_bathrooms' => 1,

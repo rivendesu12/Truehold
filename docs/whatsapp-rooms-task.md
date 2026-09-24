@@ -4,17 +4,19 @@ Run once a day (e.g. 09:30). Paste everything below the line as the task.
 
 ---
 
-Update the "WhatsApp rooms" tab of the Room targets Google Sheet
-(https://docs.google.com/spreadsheets/d/1aId9bPdtDHuuTo_8FMlg2JgZsb0tXiFHYwZVtVvHaRc)
-from three WhatsApp groups in WhatsApp Web. Only copy what the messages say;
-the Truehold site applies all the rules (deposits, prices, expiry).
+Update the Google Sheet "Truehold - WhatsApp rooms (AI only)"
+(https://docs.google.com/spreadsheets/d/1py4itQJmFxDXgQae5B3irWOoMmoE88ohtu6zavTr5Io)
+from three WhatsApp groups in WhatsApp Web. The sheet is only for this task
+and the site; it has one tab. Only copy what the messages say; the Truehold
+site applies all the rules (deposits, prices, expiry).
 
-If the tab does not exist, create it with exactly this header row:
+The header row is exactly:
 
 Agency | Status | Area | Street | Postcode | Room | Price | Per | Price for 2 | Room type | Available from | Posted | Last seen | Photos link | Bathrooms | Notes
 
 One row per room. A room is the same room when Agency + Postcode + Street +
-Room match; update that row instead of adding a new one. Dates as DD/MM/YYYY.
+Room match; update that row instead of adding a new one. Dates as
+YYYY-MM-DD (e.g. 2026-09-24): the sheet would read 10/09 as 9 October.
 
 **Keep it cheap:** read only messages newer than the latest "Last seen" date
 for that agency in the tab. Read messages as page text (a small script over
@@ -29,14 +31,14 @@ Agents sometimes post a tenant's profile (name, date of birth, email,
 nationality): skip those messages entirely.
 
 **Reading the tab** (cheap): open
-`https://docs.google.com/spreadsheets/d/1aId9bPdtDHuuTo_8FMlg2JgZsb0tXiFHYwZVtVvHaRc/gviz/tq?tqx=out:html&sheet=WhatsApp%20rooms`
+`https://docs.google.com/spreadsheets/d/1py4itQJmFxDXgQae5B3irWOoMmoE88ohtu6zavTr5Io/gviz/tq?tqx=out:html`
 and read the table as text.
 
 **Writing the tab:** rebuild the whole table (kept + updated + new rows,
 Let rows included) and replace it in one paste: Name box → A1, select all,
 Delete, Name box → A1, then dispatch a `paste` ClipboardEvent carrying the
 tab-separated text on `document.activeElement` (typing Tab into Sheets puts
-everything in one cell). Dates as DD/MM/YYYY; the site reads them either way.
+everything in one cell). Dates as YYYY-MM-DD.
 
 This runs as the scheduled task `whatsapp-rooms-truehold` (daily 09:30, in
 the Claude desktop app, which must be open; a missed run happens on launch).

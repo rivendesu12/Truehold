@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Rooms agencies only send on WhatsApp (Fausto, Vic, Fab), from the
- * "WhatsApp rooms" tab of Room targets. A Cowork task copies what the groups
- * say into that tab once a day; everything that is a rule lives here:
+ * Rooms agencies only send on WhatsApp (Fausto, Vic, Fab), from their own
+ * sheet (suppliers.whatsapp.spreadsheet_id). A Cowork task copies what the
+ * groups say into it once a day; everything that is a rule lives here:
  * whether a room still counts, its monthly price, deposit and defaults.
  *
  * Columns: A Agency, B Status, C Area, D Street, E Postcode, F Room,
@@ -26,7 +26,7 @@ class WhatsAppRoomsService
 
     public static function isConfigured(): bool
     {
-        return ! empty(config('services.supplier_targets.spreadsheet_id'))
+        return ! empty(config('suppliers.whatsapp.spreadsheet_id'))
             && ! empty(config('services.supplier_targets.credentials_path'));
     }
 
@@ -65,10 +65,11 @@ class WhatsAppRoomsService
             return null;
         }
 
-        $range = "'" . config('suppliers.whatsapp.tab', 'WhatsApp rooms') . "'!A1:P1000";
+        $tab = config('suppliers.whatsapp.tab');
+        $range = ($tab ? "'" . $tab . "'!" : '') . 'A1:P1000';
         try {
             $response = Http::withToken($token)->timeout(30)->get(
-                'https://sheets.googleapis.com/v4/spreadsheets/' . config('services.supplier_targets.spreadsheet_id')
+                'https://sheets.googleapis.com/v4/spreadsheets/' . config('suppliers.whatsapp.spreadsheet_id')
                     . '/values/' . rawurlencode($range),
                 // A cell Sheets took for a date comes as its day number, so the
                 // sheet's locale (US: 10/09 = 9 Oct) cannot flip day and month.
@@ -79,7 +80,7 @@ class WhatsAppRoomsService
             return null;
         }
         if (! $response->successful()) {
-            Log::warning('WhatsApp rooms tab returned an error', ['status' => $response->status()]);
+            Log::warning('WhatsApp rooms sheet returned an error', ['status' => $response->status()]);
             return null;
         }
 

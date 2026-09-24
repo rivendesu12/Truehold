@@ -34,7 +34,7 @@ read every agency ourselves.
 | `javier_sheet` | Javier's own "JAVIER VACANCY" ROOMS tab (JMS, FENIX); Room targets' Javier rows give way to it |
 | `soreva_sheet` | Soreva's own sheet, read as **FORMULA** (hyperlinks hold photo folders); room links = room folders |
 | `spareroom_direct` | We crawl ~25 SpareRoom advertisers: `suppliers.spareroom.advertisers` + `suppliers.feed_agencies` (the ones Ali's feed had). Each advertiser's `/u{id}` page lists all their adverts. `'active' => false` pauses one (Cloudrooms) — also hidden from wildcards |
-| `whatsapp_sheet` | "WhatsApp rooms" tab of Room targets, filled daily by a Cowork task from the Fausto / Vic / Fab groups (`docs/whatsapp-rooms-task.md`). Rules in `config/suppliers.php` whatsapp: Fausto no deposit, gone 4 days off the daily list; Vic 1 week / Fab 2 weeks deposit, gone 14 days unseen; `Let` = gone; pw → pcm; 4 rooms / 1 bath assumed |
+| `whatsapp_sheet` | Its own sheet "Truehold - WhatsApp rooms (AI only)" (`1py4it…`, first tab; not in Room targets, Giaco never opens it), filled daily by a Cowork task from the Fausto / Vic / Fab groups (`docs/whatsapp-rooms-task.md`). Rules in `config/suppliers.php` whatsapp: Fausto no deposit, gone 4 days off the daily list; Vic 1 week / Fab 2 weeks deposit, gone 14 days unseen; `Let` = gone; pw → pcm; 4 rooms / 1 bath assumed |
 | `spareroom` / `spreadsheet` | Ali's feed. Off. |
 
 **Availability rules (Giaco):** AP/Horizon workbook — "Available" and not
