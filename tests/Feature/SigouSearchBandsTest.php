@@ -270,3 +270,17 @@ it('offers a room that is nearby and a little over budget when little else fits'
     expect($other->pluck('id')->all())->toBe(['mp']);
     expect($other[0]['why'])->toContain('mi from Stratford')->toContain('100 over budget');
 });
+
+it('finds only rooms that accept Universal Credit when the tenant is on it', function () {
+    fakeSigou(['universal_credit' => true, 'property_types' => []], [
+        room('k1', ['agent_name' => 'Kish', 'universal_credit_ok' => 'Yes']),
+        room('o1', ['agent_name' => 'Other']),
+    ]);
+    $this->actingAs(User::factory()->create());
+
+    $r = $this->postJson('/agent-search', ['q' => 'she is on universal credit'])->assertOk()->json();
+    $best = collect($r['groups']['commission'])->concat($r['groups']['standard']);
+
+    expect($best->pluck('id')->all())->toBe(['k1']);
+    expect($best[0]['note'])->toBe('Accepts Universal Credit');
+});

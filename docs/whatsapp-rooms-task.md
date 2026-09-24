@@ -1,0 +1,54 @@
+# Cowork task: WhatsApp rooms → Truehold
+
+Run once a day (e.g. 09:30). Paste everything below the line as the task.
+
+---
+
+Update the "WhatsApp rooms" tab of the Room targets Google Sheet
+(https://docs.google.com/spreadsheets/d/1aId9bPdtDHuuTo_8FMlg2JgZsb0tXiFHYwZVtVvHaRc)
+from three WhatsApp groups in WhatsApp Web. Only copy what the messages say;
+the Truehold site applies all the rules (deposits, prices, expiry).
+
+If the tab does not exist, create it with exactly this header row:
+
+Agency | Status | Area | Street | Postcode | Room | Price | Per | Price for 2 | Room type | Available from | Posted | Last seen | Photos link | Bathrooms | Notes
+
+One row per room. A room is the same room when Agency + Postcode + Street +
+Room match; update that row instead of adding a new one. Dates as DD/MM/YYYY.
+
+**Keep it cheap:** read only messages newer than the latest "Last seen" date
+for that agency in the tab. Read PDF lists as text. Do not scroll back further
+than needed. Do not open photos except to count bathrooms when it is obvious.
+
+**Never copy** phone numbers, people's names, or anything about tenants.
+
+## Fausto — group "Fausto-Truehold group" (Agency: `Fausto`)
+
+They post a list ("NEW LIST 24.09.pdf" and a picture of it) almost every day.
+The newest list is the truth:
+- Every room on the newest list: Status `Available`, Last seen = the list's date.
+- A room crossed out with a red X on the picture: Status `Let`.
+- A Fausto row that is not on the newest list: Status `Let`.
+Each entry reads like "TOTTENHAM HALE / Havelock Road, N17 9DR / £825 Double
+for 1 person / Available Now | Room B" → Area `Tottenham Hale`, Street
+`Havelock Road`, Postcode `N17 9DR`, Room `B`, Price `825`, Per `pcm`,
+Room type `Double`, Available from `Now`.
+
+## Vic — group "Vic-Truehold" (Agency: `Vic`)
+
+Rooms come as single messages, e.g. "EDMONTON / TRAMWAY AVENUE, N9 8PE /
+LARGE DOUBLE ROOM / £170pw FOR 1 PERSON / £195pw FOR 2 PERSONS / AVAILABLE NOW".
+→ Price `170`, Per `pw`, Price for 2 `195`. Posted = the message date; if the
+room is posted again, set Last seen to the new date. There is no X: if anyone
+in the chat says that room is taken / let / gone, set Status `Let`.
+
+## Fab — group "Fab- Truehold" (Agency: `Fab`)
+
+Same as Vic. Addresses sometimes come as a reply ("6 crowland road N15");
+use the postcode given. Questions from our agents are not rooms.
+
+## Every run
+
+- Photos link: leave empty unless a Google Drive folder link is given.
+- Bathrooms: leave empty (the site assumes 1) unless the photos clearly show more.
+- Finish with one line: rows added, updated, marked Let, per agency.

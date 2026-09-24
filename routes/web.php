@@ -347,6 +347,12 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
             : null,
         'why' => $p['why'] ?? null,
         'household' => \App\Support\Household::summary($p),
+        // Agents only (this endpoint needs a login): where the photos are,
+        // what the landlord accepts.
+        'note' => implode(' · ', array_filter([
+            $p['agent_note'] ?? null,
+            strtolower((string) ($p['universal_credit_ok'] ?? '')) === 'yes' ? 'Accepts Universal Credit' : null,
+        ])) ?: null,
         // Wildcards open on our own page, never on SpareRoom.
         'url' => ! empty($p['market']) ? route('market.show', $p['token'])
             : (! empty($p['id']) ? url('/properties/' . $p['id']) : null),

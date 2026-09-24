@@ -77,7 +77,7 @@ return [
             ['name' => 'Halfrome LTD', 'user_id' => '21447935', 'seeds' => ['17943270', '18168058', '17746059'], 'pays_commission' => false],
             ['name' => 'Instabook Ltd', 'user_id' => '20618506', 'seeds' => ['16669501', '17657782', '16980272'], 'pays_commission' => true],
             ['name' => 'KEY2STAY LTD', 'user_id' => '24113633', 'seeds' => ['18426501', '18412673', '18415087'], 'pays_commission' => false],
-            ['name' => 'Kish', 'user_id' => '8593186', 'seeds' => ['12663760', '18150746'], 'pays_commission' => true],
+            ['name' => 'Kish', 'user_id' => '8593186', 'seeds' => ['12663760', '18150746'], 'pays_commission' => true, 'universal_credit' => true],
             ['name' => 'My Place Properties', 'user_id' => '22116668', 'seeds' => ['18376013', '16791329'], 'pays_commission' => true],
             ['name' => 'PPM', 'user_id' => '890512', 'seeds' => ['18427211'], 'pays_commission' => true],
             ['name' => 'SilverLine Rooms', 'user_id' => '20889927', 'seeds' => ['18410802', '18380379'], 'pays_commission' => true],
@@ -101,6 +101,26 @@ return [
         'fenix' => 'Javier (FENIX)',
         'smart share' => 'Smart Share',
         'smartshare' => 'Smart Share',
+    ],
+
+    /*
+    | Rooms agencies only send on WhatsApp. A Cowork task copies them from the
+    | groups into the "WhatsApp rooms" tab of Room targets (docs/whatsapp-
+    | rooms-task.md); the site applies the rules below (Giaco, 24 Sep 2026).
+    |   fresh_days: a room not seen in the group (Fausto: on a daily list) for
+    |               longer than this is taken to be gone.
+    |   deposit_weeks: their deposit, in weeks of rent.
+    */
+    'whatsapp' => [
+        'tab' => env('WHATSAPP_ROOMS_TAB', 'WhatsApp rooms'),
+        'cache_timeout' => 900,
+        'default_total_rooms' => 4,
+        'default_bathrooms' => 1,
+        'agencies' => [
+            'fausto' => ['name' => 'Fausto', 'group' => 'Fausto-Truehold group', 'deposit_weeks' => 0, 'fresh_days' => 4],
+            'vic' => ['name' => 'Vic', 'group' => 'Vic-Truehold', 'deposit_weeks' => 1, 'fresh_days' => 10],
+            'fab' => ['name' => 'Fab', 'group' => 'Fab- Truehold', 'deposit_weeks' => 2, 'fresh_days' => 10],
+        ],
     ],
 
     // Javier's own vacancy sheet (JMS and FENIX). Only MOVE OUT and APT BREAK

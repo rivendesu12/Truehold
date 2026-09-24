@@ -308,6 +308,8 @@ class SpareRoomAdvertService
             'max_age' => $this->intAfter($lines, 'Max age'),
             'gender' => $this->valueAfter($lines, 'Gender'),
             'pref_occupation' => $this->occupation($lines),
+            // What the office knows about the advertiser (Kish: Universal Credit).
+            'universal_credit_ok' => ! empty($advertiser['universal_credit']) ? 'Yes' : null,
             'first_photo_url' => $photos[0] ?? null,
             'photos' => $photos ?: null,
             'all_photos' => $photos ? implode(', ', $photos) : null,

@@ -34,6 +34,7 @@ read every agency ourselves.
 | `javier_sheet` | Javier's own "JAVIER VACANCY" ROOMS tab (JMS, FENIX); Room targets' Javier rows give way to it |
 | `soreva_sheet` | Soreva's own sheet, read as **FORMULA** (hyperlinks hold photo folders); room links = room folders |
 | `spareroom_direct` | We crawl ~25 SpareRoom advertisers: `suppliers.spareroom.advertisers` + `suppliers.feed_agencies` (the ones Ali's feed had). Each advertiser's `/u{id}` page lists all their adverts. `'active' => false` pauses one (Cloudrooms) — also hidden from wildcards |
+| `whatsapp_sheet` | "WhatsApp rooms" tab of Room targets, filled daily by a Cowork task from the Fausto / Vic / Fab groups (`docs/whatsapp-rooms-task.md`). Rules in `config/suppliers.php` whatsapp: Fausto no deposit, gone 4 days off the daily list; Vic 1 week / Fab 2 weeks deposit, gone 10 days unseen; `Let` = gone; pw → pcm; 4 rooms / 1 bath assumed |
 | `spareroom` / `spreadsheet` | Ali's feed. Off. |
 
 **Availability rules (Giaco):** AP/Horizon workbook — "Available" and not
@@ -129,6 +130,8 @@ Mary while a search runs, rubs his hands on results. Agents only (`@auth`).
   Kept ONLY in `storage/app/private/agency-bank-details.json` on the server
   (git-ignored; the repo is public). Holding deposit forms ride along. The
   panel rains £ notes and Sigou does a money line.
+- `universal_credit` (UC / DSS / benefits) is a must-have: only a stated
+  yes (`universal_credit_ok`; Kish via `suppliers.feed_agencies`).
 - "no Cloudrooms" → `exclude_agencies`; `splitAgencies()` also moves any
   "no X" that lands in `agencies` (it once emptied a search).
 - **Agencies** (`AgencyDirectory`): the "Agencies link" tab of Room targets,

@@ -368,6 +368,9 @@ Rules:
 - `furnished` true or false when they say; null when they do not care.
 - `no_deposit` true for "no deposit", "zero deposit". `max_deposit` for a
   stated figure.
+- `universal_credit` true when the tenant's rent comes from Universal
+  Credit, benefits, DSS or housing benefit ("she is on UC", "DSS client").
+  A landlord can refuse that, so it is a need, not a description.
 - `available_by` an ISO date when they need to move by then. "ASAP", "now",
   "immediately", "this week" mean two weeks from today (a room free next
   Monday still suits them). "from October" means the 1st of October.
@@ -505,6 +508,7 @@ SYS;
                 'parking' => ['type' => ['boolean', 'null']],
                 'furnished' => ['type' => ['boolean', 'null']],
                 'no_deposit' => ['type' => ['boolean', 'null']],
+                'universal_credit' => ['type' => ['boolean', 'null']],
                 'max_deposit' => ['type' => ['number', 'null']],
                 'available_by' => ['type' => ['string', 'null']],
                 'max_commitment_months' => ['type' => ['number', 'null']],
@@ -561,7 +565,7 @@ SYS;
                 'min_bedrooms', 'max_bedrooms', 'couples', 'max_zone',
                 'max_walk_to_station', 'direct_only', 'lines',
                 'max_house_size', 'room_type', 'bills_included', 'students',
-                'smokers', 'pets', 'region', 'garden', 'parking', 'furnished', 'no_deposit',
+                'smokers', 'pets', 'region', 'garden', 'parking', 'furnished', 'no_deposit', 'universal_credit',
                 'max_deposit', 'available_by', 'max_commitment_months',
                 'good_transport', 'agencies', 'exclude_agencies', 'sort',
                 'commission_only', 'nice_to_have', 'explanation', 'refines_previous', 'agreement', 'wifi', 'invoice', 'agency_request', 'property_lookup',
@@ -1409,6 +1413,11 @@ SYS;
             $results = $results->filter(fn ($p) => FieldValue::number($p['deposit'] ?? null) === 0);
         }
 
+        // A must-have: only a landlord who says so (Kish does).
+        if (($spec['universal_credit'] ?? null) === true) {
+            $results = $results->filter(fn ($p) => strtolower((string) ($p['universal_credit_ok'] ?? '')) === 'yes');
+        }
+
         if (! empty($spec['max_deposit'])) {
             $limit = (int) $spec['max_deposit'];
             $results = $results->filter(function ($p) use ($limit) {
@@ -1610,6 +1619,7 @@ SYS;
             'garden' => fn () => 'a garden',
             'parking' => fn () => 'parking',
             'no_deposit' => fn () => 'no deposit',
+            'universal_credit' => fn () => 'Universal Credit accepted',
             'max_deposit' => fn ($v) => 'a deposit under GBP ' . number_format((float) $v),
             'available_by' => fn ($v) => 'availability by ' . $v,
             'max_commitment_months' => fn ($v) => 'a minimum term of ' . (int) $v . ' months or less',
@@ -1640,6 +1650,7 @@ SYS;
         'furnished' => ['furnishings', 'whether it is furnished'],
         'students' => ['pref_occupation', 'the tenant type wanted'],
         'no_deposit' => ['deposit', 'the deposit'],
+        'universal_credit' => ['universal_credit_ok', 'whether Universal Credit is accepted'],
         'max_deposit' => ['deposit', 'the deposit'],
         'available_by' => ['available_date', 'the date it is available'],
         'max_commitment_months' => ['min_term', 'the minimum term'],

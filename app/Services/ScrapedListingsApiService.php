@@ -198,6 +198,7 @@ class ScrapedListingsApiService
             // the feed's status allowlist does not apply to them.
             $direct = app(SorevaSheetService::class)->getAllProperties()
                 ->concat($javier)
+                ->concat(app(WhatsAppRoomsService::class)->getAllProperties())
                 ->concat(app(SpareRoomAdvertService::class)->getAllProperties());
 
             // Some of these advertisers are also scraped into the Harbor Ops

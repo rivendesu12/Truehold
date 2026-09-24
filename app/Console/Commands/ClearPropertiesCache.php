@@ -21,6 +21,7 @@ class ClearPropertiesCache extends Command
         app(\App\Services\SupplierTargetsSheetService::class)->clearCache();
         app(\App\Services\SorevaSheetService::class)->clearCache();
         app(\App\Services\JavierSheetService::class)->clearCache();
+        app(\App\Services\WhatsAppRoomsService::class)->clearCache();
         // AP workbook lookups (rooms, flatmates) re-read with the rest.
         \Illuminate\Support\Facades\Cache::forget('ap_portfolio_available');
         \Illuminate\Support\Facades\Cache::forget('ap_portfolio_households');

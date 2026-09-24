@@ -803,6 +803,7 @@
                         + (r.journey.changes === 1 ? ' change' : ' changes')) + '</small>' : '')
                 + (r.why ? '<small class="th-ask__why">' + esc(r.why) + '</small>' : '')
                 + (r.household ? '<small class="th-ask__stn">\ud83d\udc65 ' + esc(r.household) + '</small>' : '')
+                + (r.note ? '<small class="th-ask__stn">\u2139\ufe0f ' + esc(r.note) + '</small>' : '')
                 + (r.market ? '<small class="th-ask__wildwho">' + esc(r.agent || 'Agency not named')
                     + ' \u00b7 \ud83d\udcde number on the ad</small>' : '')
                 + '</span></a>';
