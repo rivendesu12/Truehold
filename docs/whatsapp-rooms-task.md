@@ -64,8 +64,19 @@ Crowland Road N15"). Take the price from the question and say so in Notes:
 `Price implied: offered for "anything for 650?"`. Use whatever postcode is
 given, even just the district (N15). Questions alone are not rooms.
 
+## Photos (after the sheet, each group)
+
+Log in to https://truehold.yaenlinea.co in the same browser first. In each
+group, run the script in `docs/whatsapp-photos.js` (paste it into the page),
+then `thPhotos.button('fausto')` (or `'vic'`, `'fab'`) and click the green
+"Send … photos to Truehold" button. Scroll up with the mouse to load older
+rooms and click again; photos already sent are skipped. It pairs each album
+with the room text posted beside it (within two minutes) and leaves out
+anything it cannot pair. **Never press keys in WhatsApp Web** (Page Up
+etc.): they are typed into the message box. Never send a message.
+
 ## Every run
 
-- Photos link: leave empty unless a Google Drive folder link is given.
+- Photos link: leave empty (photos go through the script above).
 - Bathrooms: leave empty (the site assumes 1) unless the photos clearly show more.
 - Finish with one line: rows added, updated, marked Let, per agency.
