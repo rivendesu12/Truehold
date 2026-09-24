@@ -125,7 +125,8 @@ class WhatsAppRoomsService
 
         $area = ucwords(strtolower($get(2)));
         $street = ucwords(strtolower($get(3)));
-        $room = strtoupper($get(5));
+        // "B", "M1" stay codes; "Double 1", "Single" read as words.
+        $room = mb_strlen($get(5)) <= 3 ? strtoupper($get(5)) : ucwords(strtolower($get(5)));
         $typeRaw = strtolower($get(9));
         $roomType = match (true) {
             str_contains($typeRaw, 'ensuite') || str_contains($typeRaw, 'en-suite') => 'ensuite',
