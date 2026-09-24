@@ -48,7 +48,7 @@ class SpareRoomAdvertService
         // seconds apart by design. Never during a page load: a web request
         // reads the cache and, if it is cold, serves without these rooms
         // until the scheduled warm-up fills it in.
-        if (! app()->runningInConsole()) {
+        if (! app()->runningInConsole() || app()->runningUnitTests()) {
             return collect(Cache::get(self::CACHE_KEY, []));
         }
 
