@@ -16,7 +16,7 @@ use Illuminate\Console\Command;
  */
 class CrawlMarket extends Command
 {
-    protected $signature = 'market:crawl {--pages=1500} {--adverts=5000} {--delay=2500}';
+    protected $signature = 'market:crawl {--pages=1500} {--adverts=5000} {--delay=2500} {--reread : open every advert again, not only new ones}';
 
     protected $description = 'Crawl free-to-contact SpareRoom agent listings for Sigou\'s wildcards';
 
@@ -29,6 +29,7 @@ class CrawlMarket extends Command
             function (string $stage, int $n, int $kept) {
                 $this->output->write("\r  {$stage} {$n}, kept {$kept}   ");
             },
+            (bool) $this->option('reread'),
         );
         $this->newLine();
 

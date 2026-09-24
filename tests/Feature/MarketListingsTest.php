@@ -17,6 +17,7 @@ function wildcard(array $overrides = []): string
         'phone' => null,
         'data' => json_encode($overrides + [
             'has_phone' => true,
+            'price_checked' => 2,
             'title' => 'Double Room / No Deposit / All Bills Included',
             'price' => 850,
             'location' => 'Cricklewood',
@@ -127,4 +128,32 @@ it('leaves out an agency that is switched off, however its name is written', fun
     expect(MarketListingsService::paused('Cloud Rooms'))->toBeTrue();
     expect(MarketListingsService::paused('Cloudrooms Ltd'))->toBeTrue();
     expect(MarketListingsService::paused('Marble Lettings'))->toBeFalse();
+});
+
+it('turns a weekly rent into monthly, and quotes the lower end of a range', function () {
+    $page = fn (string $summary) => '<meta property="og:description" content="All Saints : ' . $summary . '. Lovely flat">'
+        . '<h1>Lovely Flat</h1><p>from &pound;170</p><p>pw</p>';
+    $advert = app(\App\Services\SpareRoomAdvertService::class);
+    $price = new ReflectionMethod($advert, 'price');
+
+    expect($price->invoke($advert, [], $page('&pound;170 pw (inc bills)')))->toBe(736.67);
+    expect($price->invoke($advert, [], $page('&pound;982-&pound;1,046 pcm (inc bills)')))->toBe(982.0);
+    expect($price->invoke($advert, ['£839 pcm'], ''))->toBe(839.0);
+    // A bare "from £170" of another advert is not this one's price.
+    expect($price->invoke($advert, ['from £170', 'pw'], ''))->toBeNull();
+});
+
+it('reads the area, district and station from the advert\'s own key features', function () {
+    $advert = app(\App\Services\SpareRoomAdvertService::class);
+
+    expect($advert->keyFeatures(['Lovely flat', 'Flat share', 'All Saints', 'E14 Area info', 'Langdon Park Station', 'Tube map']))
+        ->toBe(['area' => 'All Saints', 'outcode' => 'E14', 'station' => 'Langdon Park']);
+    expect($advert->keyFeatures(['Flat share', 'Whitechapel', 'E1', 'Area info', 'Whitechapel Station']))
+        ->toBe(['area' => 'Whitechapel', 'outcode' => 'E1', 'station' => 'Whitechapel']);
+});
+
+it('holds back a cheap wildcard read before weekly rents were converted', function () {
+    wildcard(['price' => 170, 'price_checked' => null]);
+
+    expect(app(MarketListingsService::class)->all())->toHaveCount(0);
 });

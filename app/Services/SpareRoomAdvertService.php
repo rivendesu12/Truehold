@@ -255,7 +255,7 @@ class SpareRoomAdvertService
         }
 
         $lines = $this->textLines($html);
-        $price = $this->price($lines);
+        $price = $this->price($lines, $html);
         $title = $this->title($html);
 
         if ($title === null || $price === null) {
@@ -279,7 +279,7 @@ class SpareRoomAdvertService
             'property_type' => $this->propertyType($title, $roomType),
             'room1_type' => $roomType,
             'location' => $this->location($lines, $html),
-            'postcode' => $this->outcode($html),
+            'postcode' => $this->outcode($html) ?? $this->keyFeatures($lines)['outcode'],
             'latitude' => $lat,
             'longitude' => $lng,
             'link' => self::BASE . '/' . $advertId,
@@ -402,20 +402,41 @@ class SpareRoomAdvertService
         return is_numeric($value) ? (float) $value : null;
     }
 
-    protected function price(array $lines): ?float
+    protected function price(array $lines, string $html = ''): ?float
     {
+        // The advert's own figure, from the page's summary ("All Saints :
+        // £170 pw (inc bills)") or its price list. The text lines can miss
+        // it and pick up a "from £170" belonging to another advert, and a
+        // weekly rent then showed as monthly.
+        $decoded = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        // "£982-£1,046 pcm" for several rooms: the lower end, the one we can
+        // honour, as for every other source.
+        $amount = '£\s?([\d,]+(?:\.\d+)?)(?:\s*[-–]\s*£\s?[\d,]+(?:\.\d+)?)?[\s\x{00A0}]*p(cm|w)\b';
+        foreach ([
+            '/<meta[^>]+property="og:description"[^>]+content="[^"]*?' . $amount . '/iu',
+            '/class="feature-list__key">\s*' . $amount . '/iu',
+        ] as $pattern) {
+            if ($decoded !== '' && preg_match($pattern, $decoded, $m)) {
+                return self::monthly((float) str_replace(',', '', $m[1]), $m[2]);
+            }
+        }
+
         foreach ($lines as $line) {
             // "£839 pcm" and "£195 pw" both appear; weekly is converted.
-            if (preg_match('/£\s?([\d,]+(?:\.\d+)?)\s*p(cm|w)/i', $line, $m)) {
-                $amount = (float) str_replace(',', '', $m[1]);
-
-                return strtolower($m[2]) === 'pw'
-                    ? round($amount * 52 / 12, 2)
-                    : $amount;
+            if (preg_match('/£\s?([\d,]+(?:\.\d+)?)[\s\x{00A0}]*p(cm|w)\b/iu', $line, $m)) {
+                return self::monthly((float) str_replace(',', '', $m[1]), $m[2]);
             }
         }
 
         return null;
+    }
+
+    /** Per calendar month: a weekly rent is x 52 / 12. */
+    public static function monthly(float $amount, string $period): float
+    {
+        return strtolower($period) === 'w' || strtolower($period) === 'pw'
+            ? round($amount * 52 / 12, 2)
+            : $amount;
     }
 
     /** "double" / "single" / "twin", printed just after the price. */
@@ -522,21 +543,22 @@ class SpareRoomAdvertService
      */
     protected function location(array $lines, string $html = ''): ?string
     {
+        // The advert's own key features: "Flat share | All Saints | E14 Area
+        // info | Langdon Park Station". The area name is what agents say.
+        $key = $this->keyFeatures($lines);
+        if ($key['area']) {
+            return $key['area'];
+        }
+
         foreach ($lines as $line) {
             if (preg_match('/^London\s+([A-Z]{1,2}\d{1,2}[A-Z]?)$/', $line, $m)) {
                 return 'London ' . $m[1];
             }
         }
 
-        // The area name SpareRoom prints next to the map, e.g. "Whitechapel".
-        foreach ($lines as $i => $line) {
-            if (strcasecmp($line, 'Area info') === 0) {
-                $station = trim((string) ($lines[$i + 1] ?? ''));
-                $station = preg_replace('/\s+Station$/i', '', $station);
-                if ($station !== '' && ! str_contains(strtolower($station), 'tube map')) {
-                    return $station;
-                }
-            }
+        // Failing an area name, the station SpareRoom prints next to the map.
+        if ($key['station']) {
+            return $key['station'];
         }
 
         if ($outcode = $this->outcode($html)) {
@@ -556,6 +578,44 @@ class SpareRoomAdvertService
         }
 
         return null;
+    }
+
+    /**
+     * The key-features block at the top of the advert: property type, area,
+     * "E14 Area info" (district and link on one line, or "Area info" alone),
+     * then the nearest station. Only this advert's own, never the panels of
+     * other adverts further down.
+     *
+     * @return array{area: ?string, outcode: ?string, station: ?string}
+     */
+    public function keyFeatures(array $lines): array
+    {
+        $out = ['area' => null, 'outcode' => null, 'station' => null];
+        foreach (array_slice($lines, 0, 80) as $i => $line) {
+            if (! preg_match('/^(?:([A-Z]{1,2}\d{1,2}[A-Z]?)\s+)?Area info$/i', $line, $m)) {
+                continue;
+            }
+            $out['outcode'] = ! empty($m[1]) ? strtoupper($m[1]) : null;
+            $station = preg_replace('/\s+Station$/i', '', trim((string) ($lines[$i + 1] ?? '')));
+            if ($station !== '' && ! str_contains(strtolower($station), 'tube map')) {
+                $out['station'] = $station;
+            }
+            // The line before is the area, unless it is the district alone
+            // (then the area is one further up) or the property type.
+            $j = $i - 1;
+            if (isset($lines[$j]) && preg_match('/^[A-Z]{1,2}\d{1,2}[A-Z]?$/', $lines[$j])) {
+                $out['outcode'] ??= $lines[$j];
+                $j--;
+            }
+            $area = trim((string) ($lines[$j] ?? ''));
+            if ($area !== '' && mb_strlen($area) <= 40
+                && ! preg_match('/share$|^whole|^studio|bed (flat|house)|^flat$|^house$|^room/i', $area)) {
+                $out['area'] = $area;
+            }
+            break;
+        }
+
+        return $out;
     }
 
     protected function outcode(string $html): ?string

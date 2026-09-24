@@ -69,6 +69,9 @@ class MarketListingsService
                 ->get()
                 ->map(fn ($row) => $this->shape($row))
                 ->filter(fn ($p) => $p && self::offered($p) && ! self::paused((string) ($p['agency'] ?? '')))
+                // Read before weekly rents were converted: under £450 it is
+                // almost surely a weekly figure, so held back until re-read.
+                ->reject(fn ($p) => empty($p['price_checked']) && (float) ($p['price'] ?? 0) < 450)
                 ->values();
         } catch (\Throwable $e) {
             // No table yet, or the database is unhappy: no wildcards, no error.
@@ -115,7 +118,7 @@ class MarketListingsService
      *
      * @return array{bands:int, capped:int, pages:int, cards:int, agents:int, fetched:int, known:int, saved:int, no_number:int, outside:int, failed:int, stopped:?string}
      */
-    public function crawl(int $maxPages = 1500, int $maxAdverts = 5000, int $delayMs = 2500, ?callable $progress = null): array
+    public function crawl(int $maxPages = 1500, int $maxAdverts = 5000, int $delayMs = 2500, ?callable $progress = null, bool $reread = false): array
     {
         $stats = ['bands' => 0, 'capped' => 0, 'pages' => 0, 'cards' => 0, 'agents' => 0, 'fetched' => 0, 'known' => 0,
             'saved' => 0, 'no_number' => 0, 'outside' => 0, 'failed' => 0, 'stopped' => null];
@@ -165,8 +168,9 @@ class MarketListingsService
 
         $stats['agents'] = count($agentIds);
 
-        // Read in the last week: still listed, nothing to open.
-        $known = DB::table('market_listings')
+        // Read in the last week: still listed, nothing to open (unless a
+        // parser fix means every advert has to be read again).
+        $known = $reread ? [] : DB::table('market_listings')
             ->whereIn('spareroom_id', array_map('strval', array_keys($agentIds)))
             ->where('updated_at', '>=', now()->subDays(self::REREAD_DAYS))
             ->pluck('spareroom_id')->all();
@@ -435,6 +439,8 @@ class MarketListingsService
 
         $listing['agency'] = $agency;
         $listing['has_phone'] = $this->hasPhone($html);
+        // Read with the parser that converts weekly rents (24 Sep 2026).
+        $listing['price_checked'] = 2;
         // Rooms and their stations/journey times, like the feed.
         try {
             $listing = app(TransportIndex::class)->annotate($listing);
