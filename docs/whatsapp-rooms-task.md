@@ -17,10 +17,20 @@ One row per room. A room is the same room when Agency + Postcode + Street +
 Room match; update that row instead of adding a new one. Dates as DD/MM/YYYY.
 
 **Keep it cheap:** read only messages newer than the latest "Last seen" date
-for that agency in the tab. Read PDF lists as text. Do not scroll back further
-than needed. Do not open photos except to count bathrooms when it is obvious.
+for that agency in the tab. Read messages as page text (a small script over
+the chat's message elements), not screenshots; screenshots cost far more.
+WhatsApp Web keeps only part of a chat loaded, so collect while scrolling
+and merge. It may not load history older than about a week ("get older
+messages from your phone"); that is fine: Vic and Fab repost full lists.
+Do not open photos except to count bathrooms when it is obvious.
 
 **Never copy** phone numbers, people's names, or anything about tenants.
+Agents sometimes post a tenant's profile (name, date of birth, email,
+nationality): skip those messages entirely.
+
+**Writing to the sheet:** paste rows as tab-separated text in one go (typing
+Tab into Sheets puts everything in one cell). Dates as DD/MM/YYYY; the site
+reads them either way.
 
 ## Fausto — group "Fausto-Truehold group" (Agency: `Fausto`)
 
@@ -40,12 +50,19 @@ Rooms come as single messages, e.g. "EDMONTON / TRAMWAY AVENUE, N9 8PE /
 LARGE DOUBLE ROOM / £170pw FOR 1 PERSON / £195pw FOR 2 PERSONS / AVAILABLE NOW".
 → Price `170`, Per `pw`, Price for 2 `195`. Posted = the message date; if the
 room is posted again, set Last seen to the new date. There is no X: if anyone
-in the chat says that room is taken / let / gone, set Status `Let`.
+in the chat says that room is taken / let / gone, set Status `Let`. A room not
+posted again for two weeks drops off the site by itself.
+
+Several rooms on one street with no room letter: name them `Double 1`,
+`Double 2`, `Single`, `Master` so each is its own row.
 
 ## Fab — group "Fab- Truehold" (Agency: `Fab`)
 
-Same as Vic. Addresses sometimes come as a reply ("6 crowland road N15");
-use the postcode given. Questions from our agents are not rooms.
+Same as Vic, two weeks. Fab mostly offers rooms in reply to our agents'
+questions ("anything for 650?" → "Yes, Seven Sisters, single room, 6
+Crowland Road N15"). Take the price from the question and say so in Notes:
+`Price implied: offered for "anything for 650?"`. Use whatever postcode is
+given, even just the district (N15). Questions alone are not rooms.
 
 ## Every run
 
