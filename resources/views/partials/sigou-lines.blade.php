@@ -82,10 +82,23 @@ window.SigouLines = (function () {
 
     const nudges = ['Ela, type smth malaka', '…?', 'Iam waiting man *puff*', 'Hello? The client is waiting re', 'You fell asleep?'];
 
-    // While the search runs: something about the brief first, then filler.
-    // A new one comes up with every puff.
+    // While the search runs: something about what was typed first, then
+    // filler. A new one comes up with every puff. Room jokes only for a room
+    // search: "girls in the house" under a password request makes no sense.
     const thinking = (q) => {
         const lines = [];
+        const neutral = ['On sec… *puff*', 'Let m check', 'Is coming, is coming', 'Hold on, one puff…'];
+        const errand = [
+            [/\bwi-?fi\b|internet/i, ['The WiFi, one sec', 'Let m find the code *puff*']],
+            [/\b(bank|sort code|account number|iban|deposit form|how (do i|to) pay)\b/i, ['Money talk. Let m check the numbers twice', 'Bank details, one sec *puff*']],
+            [/\b(log ?in|logins?|password|credentials?|acc(ount)?)\b/i, ['Password… where Giaco put it this time', 'Let m find it. Dont tell nobody *puff*']],
+            [/\b(agreement|contract|invoice)\b/i, ['Paperwork. My favourite 🙄', 'Let m do the papers *puff*']],
+            [/\b(link|list|sheet|vacancy|who lives|flatmates)\b/i, ['Let m find it', 'One sec, looking *puff*']],
+        ].find(([re]) => has(q, re));
+        if (errand) return errand[1].concat(neutral);
+        const roomSearch = has(q, /\b(room|flat|studio|double|single|en.?suite|house|bed|pcm|pw|budget|zone|under|max|near|couple|client)\b|\d{3,4}/i);
+        if (!roomSearch) return neutral.sort(() => Math.random() - 0.5);
+
         const budget = (q || '').match(/£?\s?(\d{3,4})(?!\s?(min|mins|minutes))/i);
         if (budget) {
             const b = Number(budget[1]);
@@ -99,16 +112,11 @@ window.SigouLines = (function () {
         if (has(q, /\b(pet|dog|cat)s?\b/i)) lines.push('A pet? Ffs… ok iam looking');
         if (has(q, /\bmin(s|utes)?\b/i)) lines.push('Checking TfL. If is westbound we are finished');
         if (has(q, /clapham|shoreditch|soho|brixton|camden|hackney/i)) lines.push('Good area. Full of girls bro. For the client I mean 😂');
-        const filler = [
-            'On sec… *puff*',
-            'Let m check',
+        const filler = neutral.concat([
             'Triple mango. Ok where were we…',
             'Iam reading all of them man, relax',
-            'Is coming, is coming',
-            'Hold on, one puff…',
             'Checking the rooms… and if there are girls in the house *puff*',
-            'Let m see if any girls live there. For the client I mean 😂',
-        ];
+        ]);
         return lines.concat(filler.sort(() => Math.random() - 0.5));
     };
 

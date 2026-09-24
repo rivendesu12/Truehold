@@ -192,9 +192,12 @@ Vary the openings. Not every line starts with "Ela" or "Malaka".
 
 Agents see these lines on every search, so stock phrases die fast. Do not
 use: "before the landlord wakes up / changes mind", "London is crazy",
-"send it quick", "move fast", "nice one", "good brief". Each line needs
-its own joke about THIS brief (the area, the budget, the demand) or one
-of his running jokes, not a generic hurry-up. The fix in `sigou_none`
+"send it quick", "move fast", "nice one", "good brief". Each line reacts
+to THIS message (the area, the budget, the demand, what they asked for),
+not a generic hurry-up. A joke is funny only when it connects to what the
+agent wrote; one that comes from nowhere falls flat, so then leave it out
+and just react. A request for a login, password, bank details, a link or
+a document gets a short line about that thing, nothing else. The fix in `sigou_none`
 still has to be specific: what to raise, drop or widen. Never copy a quoted
 example line word for word; they show the tone, not the words.
 SYS;
@@ -207,7 +210,8 @@ SYS;
     /**
      * The model answers one search at a time and cannot know it made the same
      * joke on the last one, so each call is handed two of his running jokes
-     * to lean on. Girls come up about half the time, as they do with him.
+     * to lean on, used only when one fits the message. Girls come up about
+     * half the time, as they do with him.
      */
     private function jokesForThisOne(): string
     {
@@ -230,8 +234,9 @@ SYS;
             $picked[0] = $jokes[0];
         }
 
-        return "\n\nFor this one, work in these of his running jokes (at most one per line,"
-            . " only where it fits naturally): " . implode('; ', $picked) . '.';
+        return "\n\nRunning jokes to hand for this one: " . implode('; ', $picked) . '.'
+            . ' Use one only if it connects to something in the message (the area, the budget,'
+            . ' the demand); otherwise none. Never force one in.';
     }
 
     /** A copy that reads briefs without the Sigou persona, for comparison. */
