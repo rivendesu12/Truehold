@@ -69,7 +69,10 @@ class WhatsAppRoomsService
         try {
             $response = Http::withToken($token)->timeout(30)->get(
                 'https://sheets.googleapis.com/v4/spreadsheets/' . config('services.supplier_targets.spreadsheet_id')
-                    . '/values/' . rawurlencode($range)
+                    . '/values/' . rawurlencode($range),
+                // A cell Sheets took for a date comes as its day number, so the
+                // sheet's locale (US: 10/09 = 9 Oct) cannot flip day and month.
+                ['valueRenderOption' => 'UNFORMATTED_VALUE', 'dateTimeRenderOption' => 'SERIAL_NUMBER']
             );
         } catch (\Throwable $e) {
             Log::warning('WhatsApp rooms read failed', ['error' => $e->getMessage()]);
@@ -187,6 +190,10 @@ class WhatsAppRoomsService
     public static function date(string $value): ?Carbon
     {
         $value = trim($value);
+        // A Sheets date serial: days since 30 Dec 1899.
+        if (is_numeric($value) && (float) $value > 20000 && (float) $value < 80000) {
+            return Carbon::create(1899, 12, 30)->addDays((int) $value)->startOfDay();
+        }
         if ($value === '' || preg_match('/^now$/i', $value)) {
             return null;
         }

@@ -3,7 +3,7 @@
 use App\Services\WhatsAppRoomsService;
 
 /* Giaco's rules: Fausto no deposit, on the daily list; Vic 1 week, Fab 2
-   weeks, gone after 10 days unseen; crossed out or taken = gone. */
+   weeks, gone after 14 days unseen; crossed out or taken = gone. */
 
 function waRow(array $o = []): array
 {
@@ -48,10 +48,16 @@ it('drops a room that is crossed out, taken, or not seen for too long', function
     expect($svc->mapRow(waRow([1 => 'Let'])))->toBeNull();
     // Fausto posts a list almost daily: five days off it and it is gone.
     expect($svc->mapRow(waRow([12 => now()->subDays(5)->format('d/m/Y')])))->toBeNull();
-    // Vic and Fab: ten days.
-    expect($svc->mapRow(waRow([0 => 'Vic', 11 => now()->subDays(9)->format('d/m/Y'), 12 => ''])))->not->toBeNull();
-    expect($svc->mapRow(waRow([0 => 'Vic', 11 => now()->subDays(11)->format('d/m/Y'), 12 => ''])))->toBeNull();
+    // Vic and Fab: two weeks.
+    expect($svc->mapRow(waRow([0 => 'Vic', 11 => now()->subDays(13)->format('d/m/Y'), 12 => ''])))->not->toBeNull();
+    expect($svc->mapRow(waRow([0 => 'Vic', 11 => now()->subDays(15)->format('d/m/Y'), 12 => ''])))->toBeNull();
     // An agency we do not know, or a row with no postcode.
     expect($svc->mapRow(waRow([0 => 'Someone'])))->toBeNull();
     expect($svc->mapRow(waRow([4 => ''])))->toBeNull();
+});
+
+it('reads a date Sheets stored as a date, whatever the sheet locale', function () {
+    expect(WhatsAppRoomsService::date('46275')->toDateString())->toBe('2026-09-10');
+    expect(WhatsAppRoomsService::date('10/09/2026')->toDateString())->toBe('2026-09-10');
+    expect(WhatsAppRoomsService::date('Now'))->toBeNull();
 });

@@ -118,8 +118,8 @@ return [
         'default_bathrooms' => 1,
         'agencies' => [
             'fausto' => ['name' => 'Fausto', 'group' => 'Fausto-Truehold group', 'deposit_weeks' => 0, 'fresh_days' => 4],
-            'vic' => ['name' => 'Vic', 'group' => 'Vic-Truehold', 'deposit_weeks' => 1, 'fresh_days' => 10],
-            'fab' => ['name' => 'Fab', 'group' => 'Fab- Truehold', 'deposit_weeks' => 2, 'fresh_days' => 10],
+            'vic' => ['name' => 'Vic', 'group' => 'Vic-Truehold', 'deposit_weeks' => 1, 'fresh_days' => 14],
+            'fab' => ['name' => 'Fab', 'group' => 'Fab- Truehold', 'deposit_weeks' => 2, 'fresh_days' => 14],
         ],
     ],
 
