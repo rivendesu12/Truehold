@@ -979,6 +979,26 @@ SYS;
             }
         }
 
+        // Still thin: nearby AND a little over budget, e.g. Manor Park at £800
+        // for "Stratford, 700" (2.4 mi out, £100 over). Each on its own was
+        // offered; the two together were not.
+        if ($areaAsk && $areaCenter && ! empty($spec['max_price']) && $best->count() + $other->count() < 6) {
+            $stretched = $spec;
+            $stretched['max_price'] = (float) $spec['max_price'] * 1.15;
+            $around = $this->applyPreferences($this->withinRadius($properties, $areaCenter, 4.0), $stretched)
+                ->sortBy(fn ($p) => \App\Support\PropertyClassifier::milesBetween(
+                    (float) $p['latitude'], (float) $p['longitude'], $areaCenter[0], $areaCenter[1]));
+            foreach ($around as $p) {
+                $over = (float) $p['price'] - (float) $spec['max_price'];
+                if ($over <= 0) {
+                    continue;
+                }
+                $d = \App\Support\PropertyClassifier::milesBetween(
+                    (float) $p['latitude'], (float) $p['longitude'], $areaCenter[0], $areaCenter[1]);
+                $keep($p, sprintf('%.1f mi from %s, GBP %s over budget', $d, $areaLabel ?: 'the area', number_format($over)));
+            }
+        }
+
         // Nearest and closest-to-brief first, commission-paying breaking ties;
         // short enough to scan.
         $other = $other->take(20)->values();

@@ -254,3 +254,19 @@ it('hands over our own Room targets sheet', function () {
         ->assertJsonPath('agency.name', 'Room targets')
         ->assertJsonPath('agency.link', 'https://docs.google.com/spreadsheets/d/targets/edit');
 });
+
+it('offers a room that is nearby and a little over budget when little else fits', function () {
+    // Stratford station 51.5416, -0.0033; Manor Park 51.5524, 0.0463 (~2.2 mi).
+    fakeSigou(['location' => 'Stratford', 'max_price' => 700, 'property_types' => []], [
+        room('s1', ['location' => 'Stratford', 'price' => 700, 'latitude' => 51.5420, 'longitude' => -0.0030, 'nearest_station' => 'Stratford', 'walk_minutes' => 2]),
+        room('mp', ['location' => 'Manor Park', 'price' => 800, 'latitude' => 51.5524, 'longitude' => 0.0463, 'nearest_station' => 'Manor Park', 'walk_minutes' => 3]),
+        room('far', ['location' => 'Romford', 'price' => 800, 'latitude' => 51.5750, 'longitude' => 0.1830, 'nearest_station' => 'Romford', 'walk_minutes' => 3]),
+        room('dear', ['location' => 'Manor Park', 'price' => 1000, 'latitude' => 51.5524, 'longitude' => 0.0463, 'nearest_station' => 'Manor Park', 'walk_minutes' => 3]),
+    ]);
+    $this->actingAs(User::factory()->create());
+
+    $other = collect($this->postJson('/agent-search', ['q' => 'stratford 700'])->assertOk()->json('groups.alternatives'));
+
+    expect($other->pluck('id')->all())->toBe(['mp']);
+    expect($other[0]['why'])->toContain('mi from Stratford')->toContain('100 over budget');
+});

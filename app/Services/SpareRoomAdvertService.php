@@ -456,6 +456,15 @@ class SpareRoomAdvertService
 
     protected function title(string $html): ?string
     {
+        // og:title first: the <title> tag sometimes carries the advertiser's
+        // emoji mangled ("ðŸ%8F Poplar Single Room").
+        if (preg_match('/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i', $html, $og)) {
+            $title = trim(html_entity_decode($og[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            if ($title !== '' && ! preg_match('/Ã|ðŸ|â€/u', $title)) {
+                return $title;
+            }
+        }
+
         if (! preg_match('/<title>(.*?)<\/title>/is', $html, $m)) {
             return null;
         }
