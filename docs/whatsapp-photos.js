@@ -10,14 +10,15 @@
  * are skipped.
  *
  * Pairing: each album goes to the room text next to it, posted within two
- * minutes. Fausto posts the text, then the photos; Vic and Fab the photos,
- * then the text. An album with no room text beside it is left out rather
+ * minutes. Fausto and Fab post the text, then the photos; Vic the photos,
+ * then the text. Fab's texts carry no price, so Fab's albums are matched by
+ * reading the conversation and sent by hand. An album with no room text beside it is left out rather
  * than guessed. The same photo reposted is sent once (WhatsApp gives it
  * the same address).
  */
 (() => {
     const TRUEHOLD = 'https://truehold.yaenlinea.co/tools/whatsapp-photos';
-    const SIDE = { fausto: 'prev', vic: 'next', fab: 'next' };
+    const SIDE = { fausto: 'prev', vic: 'next', fab: 'prev' };
     const PC = /\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d)\s*([A-Z])\s*([A-Z])\b/i;
 
     const state = window.__thPhotos = window.__thPhotos || { sent: new Set(), win: null };
@@ -41,7 +42,8 @@
         if (i < 0 || !/£\s?\d/.test(text)) return null;
         const m = lines[i].match(PC);
         const street = lines[i].split(',')[0].replace(PC, '').replace(/^\d+\)\s*/, '').trim();
-        const room = (text.match(/\bRoom\s+([A-Z0-9]{1,3})\b/i) || [])[1] || '';
+        // A room code ("Room B", "Room D1", "Room 12"), not "ROOM ALL BILLS".
+        const room = (text.match(/\bRoom\s+([A-Z]\d{0,2}|\d{1,2})\b/i) || [])[1] || '';
         return { postcode: (m[1] + ' ' + m[2] + m[3] + m[4]).toUpperCase(), street, room };
     };
 
@@ -52,7 +54,9 @@
         // "[08:04, 17/09/2026] Name:" carries the time even when the bubble
         // hides it behind "Read more".
         const stamp = ((pre[0] && pre[0].getAttribute('data-pre-plain-text')) || '').match(/\[(\d{1,2}:\d{2})/);
-        return { row, imgs, room: text ? roomOf(text) : null, minute: stamp ? stamp[1] : minuteOf(row) };
+        // Fausto ends each room with a "=======" line: nothing pairs across it.
+        const sep = /^=+$/.test(text.trim());
+        return { row, imgs, sep, room: text ? roomOf(text) : null, minute: stamp ? stamp[1] : minuteOf(row) };
     });
 
     const jpeg = (img) => {
@@ -70,10 +74,12 @@
         const out = [];
         list.forEach((r, i) => {
             if (!r.imgs.length || r.room) return;
+            // The nearest room text on one side, stepping over the room's
+            // other albums, never over a "=====" line or another room.
             const near = (step) => {
-                for (let j = i + step, k = 0; k < 2 && list[j]; j += step, k++) {
+                for (let j = i + step, k = 0; k < 4 && list[j]; j += step, k++) {
+                    if (list[j].sep) return null;
                     if (list[j].room) return close(list[j].minute, r.minute) ? list[j] : null;
-                    if (list[j].imgs.length) return null;
                 }
                 return null;
             };

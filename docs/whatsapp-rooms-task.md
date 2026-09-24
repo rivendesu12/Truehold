@@ -75,6 +75,12 @@ with the room text posted beside it (within two minutes) and leaves out
 anything it cannot pair. **Never press keys in WhatsApp Web** (Page Up
 etc.): they are typed into the message box. Never send a message.
 
+Older rooms: scrolling stops about a week back. For a room on the sheet
+with no photos, open the group's own search (magnifier in the chat header),
+check the cursor is in that search box, type the street, click the newest
+result: WhatsApp jumps to that post and loads it; then click the button
+again. This found every Fausto room.
+
 ## Every run
 
 - Photos link: leave empty (photos go through the script above).
