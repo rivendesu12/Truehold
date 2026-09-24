@@ -218,6 +218,8 @@ window.SigouLines = (function () {
     const zoopla = () => pick([
         'Zoopla login bro. Dont change the password or Giaco kills us both',
         'Here. Log in, post, log out. No touching the settings malaka',
+        'Zoopla, here. Copy paste and dont share it with nobody bro',
+        'Email and password, done. If it asks for a code, ask Giaco',
     ]);
 
     const invoice = (a) => {

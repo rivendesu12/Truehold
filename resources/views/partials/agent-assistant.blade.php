@@ -741,7 +741,7 @@
             if ('wifi' in data) {
                 body.innerHTML = data.wifi ? wifiCard(data.wifi) : '';
                 Sigou.set('happy', 2000);
-                say((data.sigou || '').trim() || SigouLines.wifi());
+                say(data.wifi ? SigouLines.wifi() : data.sigou); // his own lines: the model's wander off topic
                 lastQ = q;
                 input.value = '';
                 return;
@@ -751,7 +751,7 @@
             if ('zoopla_login' in data) {
                 body.innerHTML = data.zoopla_login ? zooplaCard(data.zoopla_login) : '';
                 Sigou.set('happy', 2000);
-                say((data.sigou || '').trim() || SigouLines.zoopla());
+                say(data.zoopla_login ? SigouLines.zoopla() : data.sigou);
                 lastQ = q;
                 input.value = '';
                 return;
