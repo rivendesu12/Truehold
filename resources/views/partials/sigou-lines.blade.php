@@ -207,6 +207,11 @@ window.SigouLines = (function () {
         'Camera on the code, done. And no Netflix in the office',
     ]);
 
+    const zoopla = () => pick([
+        'Zoopla login bro. Dont change the password or Giaco kills us both',
+        'Here. Log in, post, log out. No touching the settings malaka',
+    ]);
+
     const invoice = (a) => {
         const m = a.missing || [];
         if (m.includes('client_name') && m.includes('amount')) return 'Invoice for who? And how much, cash 220 or transfer 250?';
@@ -232,6 +237,6 @@ window.SigouLines = (function () {
         'I dont have their account bro. Dont send money to random people pls',
     ]);
 
-    return {greeting, fresh, agreement, wifi, invoice, bank, noBank, poke: () => pick(pokes), nudge: () => pick(nudges), thinking, result, error, offline};
+    return {greeting, fresh, agreement, wifi, zoopla, invoice, bank, noBank, poke: () => pick(pokes), nudge: () => pick(nudges), thinking, result, error, offline};
 })();
 </script>

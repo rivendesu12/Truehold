@@ -127,6 +127,21 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
         ]);
     }
 
+    // Joy Homes' Zoopla login, the same way: from config, never the model.
+    if (! empty($spec['zoopla_login'])) {
+        $login = config('services.zoopla_login');
+
+        return response()->json([
+            'zoopla_login' => ! empty($login['email']) && ! empty($login['password']) ? [
+                'email' => $login['email'],
+                'password' => $login['password'],
+                'url' => $login['url'],
+            ] : null,
+            'sigou' => ! empty($login['email']) && ! empty($login['password']) ? (string) ($spec['sigou'] ?? '') : 'Nobody gave me the Zoopla login yet, ask Giaco',
+            'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
+        ]);
+    }
+
     // A partner agency: their vacancy link, their terms, or their rooms.
     $ask = (array) ($spec['agency_request'] ?? []);
 

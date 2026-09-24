@@ -473,6 +473,17 @@
         + (w.qr_url ? '<a class="th-ask__deallink" href="' + esc(w.qr_url) + '" target="_blank" rel="noopener">Open full screen</a>' : '')
         + '</div>';
 
+    // Joy Homes' Zoopla login: each part with its own Copy button.
+    const zooplaCard = (z) => {
+        const row = (k, v) => '<div class="th-ask__wifirow"><div><span>' + k + '</span><b>' + esc(v) + '</b></div>'
+            + '<button type="button" class="th-ask__copy" data-copy="' + esc(v) + '">Copy</button></div>';
+        return '<div class="th-ask__deal"><h4>Zoopla login</h4>'
+            + row('Email', z.email)
+            + '<details class="th-ask__pw"><summary>Show password</summary>' + row('Password', z.password) + '</details>'
+            + (z.url ? '<a class="th-ask__dealbtn" href="' + esc(z.url) + '" target="_blank" rel="noopener">Open Zoopla</a>' : '')
+            + '</div>';
+    };
+
     const agencyCard = (a) => {
         // Our own sheet: just the link.
         if (a.office) return '<div class="th-ask__deal"><h4>' + esc(a.name) + '</h4>'
@@ -731,6 +742,16 @@
                 body.innerHTML = data.wifi ? wifiCard(data.wifi) : '';
                 Sigou.set('happy', 2000);
                 say((data.sigou || '').trim() || SigouLines.wifi());
+                lastQ = q;
+                input.value = '';
+                return;
+            }
+
+            // The Zoopla login.
+            if ('zoopla_login' in data) {
+                body.innerHTML = data.zoopla_login ? zooplaCard(data.zoopla_login) : '';
+                Sigou.set('happy', 2000);
+                say((data.sigou || '').trim() || SigouLines.zoopla());
                 lastQ = q;
                 input.value = '';
                 return;

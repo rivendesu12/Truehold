@@ -36,6 +36,7 @@ class LogSigouInteraction
             $kind = match (true) {
                 isset($data['error']) => 'error',
                 isset($data['wifi']) || array_key_exists('wifi', $data) => 'wifi',
+                array_key_exists('zoopla_login', $data) => 'zoopla_login',
                 isset($data['agreement']) => 'agreement',
                 isset($data['invoice']) => 'invoice',
                 isset($data['agency']) || array_key_exists('agency_asked', $data) => 'agency',

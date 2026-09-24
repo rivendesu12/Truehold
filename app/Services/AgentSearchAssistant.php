@@ -244,7 +244,7 @@ SYS;
     }
 
     /** Keys that describe the reply rather than the search. */
-    public const NOT_FILTERS = ['explanation', 'chit_chat', 'sigou', 'sigou_found', 'sigou_none', 'refines_previous', 'agreement', 'wifi', 'invoice', 'agency_request', 'property_lookup'];
+    public const NOT_FILTERS = ['explanation', 'chit_chat', 'sigou', 'sigou_found', 'sigou_none', 'refines_previous', 'agreement', 'wifi', 'zoopla_login', 'invoice', 'agency_request', 'property_lookup'];
 
     /**
      * The filters worth carrying into a follow-up: everything the agent
@@ -449,6 +449,12 @@ Rules:
   password", "internet for the client", "what's the network". Then leave
   every search filter null. You do not know the password and must not make
   one up; the page shows it. Sigou just hands it over in his voice.
+- `zoopla_login` true when the agent asks for the Zoopla account or how to
+  log in to it: "zoopla login", "zoopla logins", "zoopla credentials",
+  "zoopla acc", "zoopla password", "zoopla email", "how do I get into
+  zoopla", "joy homes zoopla account". Then leave every search filter null. You do not know the
+  password and must not make one up; the page shows it. A room search that
+  merely mentions Zoopla is a search, not this.
 - `property_lookup`: the building or street when the agent asks about ONE
   property by name: who lives there, the flatmates, what is free there,
   its rooms: "who lives in netherby house", "flatmates at 53 fursecroft",
@@ -519,6 +525,7 @@ SYS;
                 'commission_only' => ['type' => 'boolean'],
                 'refines_previous' => ['type' => 'boolean'],
                 'wifi' => ['type' => 'boolean'],
+                'zoopla_login' => ['type' => 'boolean'],
                 'property_lookup' => ['type' => ['string', 'null']],
                 'agency_request' => [
                     'type' => 'object',
@@ -568,7 +575,7 @@ SYS;
                 'smokers', 'pets', 'region', 'garden', 'parking', 'furnished', 'no_deposit', 'universal_credit',
                 'max_deposit', 'available_by', 'max_commitment_months',
                 'good_transport', 'agencies', 'exclude_agencies', 'sort',
-                'commission_only', 'nice_to_have', 'explanation', 'refines_previous', 'agreement', 'wifi', 'invoice', 'agency_request', 'property_lookup',
+                'commission_only', 'nice_to_have', 'explanation', 'refines_previous', 'agreement', 'wifi', 'zoopla_login', 'invoice', 'agency_request', 'property_lookup',
             ],
             'additionalProperties' => false,
         ];

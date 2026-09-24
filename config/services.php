@@ -67,6 +67,14 @@ return [
         'qr_url' => env('OFFICE_WIFI_QR_URL'),
     ],
 
+    // Joy Homes' Zoopla login, which Sigou hands to agents who need it. In
+    // .env, not here: the repository is public.
+    'zoopla_login' => [
+        'email' => env('ZOOPLA_LOGIN_EMAIL'),
+        'password' => env('ZOOPLA_LOGIN_PASSWORD'),
+        'url' => env('ZOOPLA_LOGIN_URL', 'https://pro.zoopla.co.uk'),
+    ],
+
     'harborops' => [
         // Ali's feed. Off: every source it carried is now read or crawled by
         // us (agency sheets, config/suppliers.php feed_agencies).

@@ -130,6 +130,10 @@ Mary while a search runs, rubs his hands on results. Agents only (`@auth`).
   Kept ONLY in `storage/app/private/agency-bank-details.json` on the server
   (git-ignored; the repo is public). Holding deposit forms ride along. The
   panel rains £ notes and Sigou does a money line.
+- **Zoopla login**: "zoopla login / credentials / acc". Like the office
+  WiFi, the model only sets `zoopla_login`; the email and password come from
+  `ZOOPLA_LOGIN_EMAIL` / `ZOOPLA_LOGIN_PASSWORD` in the server `.env`, never
+  the repo or the model. Agents only.
 - `universal_credit` (UC / DSS / benefits) is a must-have: only a stated
   yes (`universal_credit_ok`; Kish via `suppliers.feed_agencies`).
 - "no Cloudrooms" → `exclude_agencies`; `splitAgencies()` also moves any

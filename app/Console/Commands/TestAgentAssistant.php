@@ -19,7 +19,7 @@ class TestAgentAssistant extends Command
         {--show-spec : print the full parsed spec for each case}
         {--sigou : print what Sigou says for each case}
         {--compare : also read every brief without the Sigou persona and report any filter that changed}
-        {--only= : run only these sections, comma-separated: searches,followups,agreements,invoices,wifi,chat}
+        {--only= : run only these sections, comma-separated: searches,followups,agreements,invoices,wifi,zoopla,chat}
         {--quick : searches: only the first 10 briefs (the wording traps and a few classics)}';
 
     /**
@@ -102,6 +102,16 @@ class TestAgentAssistant extends Command
         'whats the office wifi',
         'client needs the wifi password',
         'malaka give me the internet password for the client',
+    ];
+
+    /** Asking for the Zoopla login. */
+    private const ZOOPLA_CASES = [
+        'whats the zoopla login',
+        'zoopla logins',
+        'zoopla credentials pls',
+        'send me the zoopla acc',
+        'bro i need the password for zoopla',
+        'how do i get into the joy homes zoopla account',
     ];
 
     /** Fields that are Sigou talking, not search filters. */
@@ -337,6 +347,9 @@ class TestAgentAssistant extends Command
             if (! empty($spec['wifi'])) {
                 $misses[] = 'taken for a wifi request, no search';
             }
+            if (! empty($spec['zoopla_login'])) {
+                $misses[] = 'taken for a zoopla login request, no search';
+            }
             if (! empty($spec['invoice']['wanted'])) {
                 $misses[] = 'taken for an invoice, no search';
             }
@@ -455,6 +468,17 @@ class TestAgentAssistant extends Command
             }
         }
 
+        // The Zoopla login.
+        $zooplaOk = 0;
+        foreach ($this->section('zoopla', self::ZOOPLA_CASES) as $q) {
+            $spec = $assistant->parse($q, $locations);
+            $ok = $spec && ! empty($spec['zoopla_login']) && empty($spec['wifi']) && empty($spec['agreement']['wanted']);
+            $zooplaOk += $ok ? 1 : 0;
+            if (! $ok) {
+                $this->warn("zoopla MISS: {$q}");
+            }
+        }
+
         // Small talk: answered in character, nothing searched.
         $chatOk = 0;
         $chatRows = [];
@@ -477,6 +501,7 @@ class TestAgentAssistant extends Command
         $this->info("Passed {$passed}/{$total} on {$assistant->provider()}/{$assistant->model()}, follow-ups {$followOk}/" . count($this->section('followups', self::FOLLOWUP_CASES))
             . ", agreements {$dealOk}/" . count($this->section('agreements', self::AGREEMENT_CASES)) . ", invoices {$billOk}/" . count($this->section('invoices', self::INVOICE_CASES))
             . ", wifi {$wifiOk}/" . count($this->section('wifi', self::WIFI_CASES))
+            . ", zoopla {$zooplaOk}/" . count($this->section('zoopla', self::ZOOPLA_CASES))
             . ", small talk {$chatOk}/" . count($this->section('chat', self::CHAT_CASES)));
 
         if ($this->option('compare')) {
@@ -497,6 +522,7 @@ class TestAgentAssistant extends Command
 
         return $passed === $total && $chatOk === count($this->section('chat', self::CHAT_CASES)) && $followOk === count($this->section('followups', self::FOLLOWUP_CASES))
             && $dealOk === count($this->section('agreements', self::AGREEMENT_CASES)) && $wifiOk === count($this->section('wifi', self::WIFI_CASES))
+            && $zooplaOk === count($this->section('zoopla', self::ZOOPLA_CASES))
             && $billOk === count($this->section('invoices', self::INVOICE_CASES))
             ? self::SUCCESS : self::FAILURE;
     }

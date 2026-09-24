@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\DB;
  */
 class SigouScenarios extends Command
 {
-    protected $signature = 'sigou:scenarios {--only= : search,lookup,agency,docs,wifi,chat,edge}';
+    protected $signature = 'sigou:scenarios {--only= : search,lookup,agency,docs,wifi,zoopla_login,chat,edge}';
 
     protected $description = 'Run what agents ask Sigou through the real endpoint and check the answers';
 
@@ -123,6 +123,7 @@ class SigouScenarios extends Command
 
             // WiFi and small talk.
             ['wifi', 'whats the office wifi', $all($kind('wifi'), $has('wifi.qr')), true],
+            ['zoopla_login', 'whats the zoopla login', $all($kind('zoopla_login'), $has('zoopla_login.email')), true],
             ['chat', 'hey sigou how are you', $all($kind('chat'), $spoke), true],
             ['chat', 'who is the best agent in the office', $all($kind('chat'), $spoke), true],
             ['chat', 'thanks bro', $kind('chat'), true],
@@ -215,6 +216,7 @@ class SigouScenarios extends Command
         return match (true) {
             isset($r['error']) => 'error',
             array_key_exists('wifi', $r) => 'wifi',
+            array_key_exists('zoopla_login', $r) => 'zoopla_login',
             isset($r['agreement']) => 'agreement',
             isset($r['invoice']) => 'invoice',
             array_key_exists('agency_asked', $r) => 'agency',
