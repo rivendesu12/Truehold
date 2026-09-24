@@ -28,9 +28,18 @@ Do not open photos except to count bathrooms when it is obvious.
 Agents sometimes post a tenant's profile (name, date of birth, email,
 nationality): skip those messages entirely.
 
-**Writing to the sheet:** paste rows as tab-separated text in one go (typing
-Tab into Sheets puts everything in one cell). Dates as DD/MM/YYYY; the site
-reads them either way.
+**Reading the tab** (cheap): open
+`https://docs.google.com/spreadsheets/d/1aId9bPdtDHuuTo_8FMlg2JgZsb0tXiFHYwZVtVvHaRc/gviz/tq?tqx=out:html&sheet=WhatsApp%20rooms`
+and read the table as text.
+
+**Writing the tab:** rebuild the whole table (kept + updated + new rows,
+Let rows included) and replace it in one paste: Name box → A1, select all,
+Delete, Name box → A1, then dispatch a `paste` ClipboardEvent carrying the
+tab-separated text on `document.activeElement` (typing Tab into Sheets puts
+everything in one cell). Dates as DD/MM/YYYY; the site reads them either way.
+
+This runs as the scheduled task `whatsapp-rooms-truehold` (daily 09:30, in
+the Claude desktop app, which must be open; a missed run happens on launch).
 
 ## Fausto — group "Fausto-Truehold group" (Agency: `Fausto`)
 
