@@ -140,6 +140,10 @@ class WhatsAppRoomsService
         $folder = str_contains($get(13), 'drive.google.com') ? $get(13) : null;
         $photoIds = $folder ? app(SupplierPhotoService::class)->photosForRoom($folder, $room) : [];
         $photoUrls = array_map(fn ($id) => route('supplier.photo', ['fileId' => $id], false), $photoIds);
+        // Copied out of the group by docs/whatsapp-photos.js.
+        if (! $photoUrls) {
+            $photoUrls = app(WhatsAppPhotoStore::class)->urlsFor($key, $postcode, $get(3), $get(5));
+        }
 
         $title = trim(($street !== '' ? $street : $postcode) . ($area !== '' ? ', ' . $area : '')) . ($room !== '' ? ' — Room ' . $room : '');
 

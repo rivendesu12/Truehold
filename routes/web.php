@@ -540,6 +540,43 @@ Route::get('/supplier-photo/{fileId}', function (string $fileId) {
     ]);
 })->where('fileId', '[A-Za-z0-9_-]+')->name('supplier.photo');
 
+// Photos of WhatsApp-only rooms, from our own disk (WhatsAppPhotoStore).
+Route::get('/wa-photo/{path}', function (string $path) {
+    abort_unless(preg_match('#^[a-z0-9_-]+(/[a-z0-9_-]+){3}/[a-f0-9]{40}\.(jpg|png|webp)$#', $path), 404);
+    $file = \App\Services\WhatsAppPhotoStore::root() . '/' . $path;
+    abort_unless(is_file($file), 404);
+
+    return response()->file($file, ['Cache-Control' => 'public, max-age=2592000, immutable']);
+})->where('path', '.*')->name('whatsapp.photo');
+
+// The receiving end of docs/whatsapp-photos.js: a script in WhatsApp Web opens
+// this page and hands it each room's photos; this page saves them with the
+// agent's own session. WhatsApp Web will not let a page post elsewhere, but it
+// can open a window and pass it messages.
+Route::middleware('auth')->group(function () {
+    Route::get('/tools/whatsapp-photos', fn () => view('tools.whatsapp-photos', [
+        'agencies' => array_keys((array) config('suppliers.whatsapp.agencies', [])),
+    ]))->name('whatsapp.photos.receiver');
+
+    Route::post('/tools/whatsapp-photos', function (Request $request) {
+        $data = $request->validate([
+            'agency' => ['required', 'string', \Illuminate\Validation\Rule::in(array_keys((array) config('suppliers.whatsapp.agencies', [])))],
+            'postcode' => ['required', 'string', 'max:10', 'regex:/^[A-Za-z]{1,2}\d[A-Za-z\d]?\s*(\d\s*[A-Za-z]{2})?$/'],
+            'street' => ['nullable', 'string', 'max:80'],
+            'room' => ['nullable', 'string', 'max:20'],
+            'image' => ['required', 'string', 'max:4200000'],
+        ]);
+        if (! preg_match('#^data:image/(jpeg|png|webp);base64,(.+)$#', $data['image'], $m)) {
+            return response()->json(['saved' => false, 'why' => 'not an image'], 422);
+        }
+        $saved = app(\App\Services\WhatsAppPhotoStore::class)->save(
+            $data['agency'], $data['postcode'], $data['street'] ?? null, $data['room'] ?? null, (string) base64_decode($m[2], true)
+        );
+
+        return response()->json(['saved' => $saved]);
+    })->middleware('throttle:600,1')->name('whatsapp.photos.store');
+});
+
 Route::get('/rental-codes/agent-earnings', [RentalCodeController::class, 'agentEarnings'])->name('rental-codes.agent-earnings');
 // New ID-based payroll route
 Route::get('/rental-codes/agent-payroll/{agentId}', [RentalCodeController::class, 'agentPayrollById'])
