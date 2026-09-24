@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
  *
  * WhatsApp gives a photo no link anyone else can open, so this is the only
  * copy the site can show. A room without its own photos borrows the ones
- * posted for its street (Vic's albums name no room).
+ * posted for its street (Vic's albums name no room), never another street's.
  */
 class WhatsAppPhotoStore
 {
@@ -68,8 +68,8 @@ class WhatsAppPhotoStore
     }
 
     /**
-     * Photo URLs for a room: its own, else its street's, else the only set
-     * posted at that postcode. Disk only, safe in a web request.
+     * Photo URLs for a room: its own, else its street's. Disk only, safe in
+     * a web request.
      *
      * @return array<int, string>
      */
@@ -77,14 +77,21 @@ class WhatsAppPhotoStore
     {
         $own = self::dir($agency, $postcode, $street, $room);
         [$a, $pc] = explode('/', $own);
-        $streetDir = $a . '/' . $pc . '/' . (Str::slug((string) $street) ?: '_');
+        $want = Str::slug((string) $street);
 
-        $candidates = [$own, $streetDir . '/_'];
-        // Anything at this postcode, when it is all one street's.
-        $streets = glob(self::root() . '/' . $a . '/' . $pc . '/*', GLOB_ONLYDIR) ?: [];
-        if (count($streets) === 1) {
-            foreach (glob($streets[0] . '/*', GLOB_ONLYDIR) ?: [] as $d) {
-                $candidates[] = substr($d, strlen(self::root()) + 1);
+        // The room's own photos, then its street's. A street is the same
+        // street when one name contains the other ("listria-lodge" and
+        // "listria-lodge-manor-road"); never a neighbour at the same postcode
+        // (Nags Head Road is not Scotland Green Road, both EN3 7AE).
+        $candidates = [$own];
+        foreach (glob(self::root() . '/' . $a . '/' . $pc . '/*', GLOB_ONLYDIR) ?: [] as $dir) {
+            $have = basename($dir);
+            $same = $want === '' || $have === '_'
+                ? $want === '' && $have === '_'
+                : (str_contains($want, $have) || str_contains($have, $want));
+            if ($same) {
+                $candidates[] = $a . '/' . $pc . '/' . $have . '/' . (Str::slug((string) $room) ?: '_');
+                $candidates[] = $a . '/' . $pc . '/' . $have . '/_';
             }
         }
 

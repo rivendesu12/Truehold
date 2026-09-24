@@ -46,3 +46,14 @@ it('refuses anything that is not a photo, an unknown agency, or a guest', functi
 });
 
 afterAll(fn () => exec('rm -rf ' . escapeshellarg(storage_path('app/whatsapp-photos/vic'))));
+
+it('never lends a street\'s photos to another street at the same postcode', function () {
+    $this->actingAs(User::factory()->create());
+    $this->postJson('/tools/whatsapp-photos', ['agency' => 'vic', 'postcode' => 'EN3 7AE', 'street' => 'SCOTLAND GREEN ROAD', 'image' => jpegData(2)])->assertJson(['saved' => true]);
+    $this->postJson('/tools/whatsapp-photos', ['agency' => 'vic', 'postcode' => 'N16 5SH', 'street' => 'Listria Lodge', 'image' => jpegData(3)])->assertJson(['saved' => true]);
+    $store = app(WhatsAppPhotoStore::class);
+
+    expect($store->urlsFor('vic', 'EN3 7AE', 'Nags Head Road', ''))->toBe([]);
+    expect($store->urlsFor('vic', 'EN3 7AE', 'Scotland Green Road', 'Double 1'))->toHaveCount(1);
+    expect($store->urlsFor('vic', 'N16 5SH', 'Listria Lodge, Manor Road', ''))->toHaveCount(1);
+});

@@ -3,15 +3,17 @@
  *
  * Paste into WhatsApp Web (the group open), then run:
  *     thPhotos.button('fausto')   // or 'vic', 'fab'
- * and click the green "Send photos to Truehold" button it adds. The click
+ * and click the green "Send photos to Truehold" button it adds. Scroll with
+ * the mouse only: key presses in WhatsApp Web land in the message box. The click
  * opens a small Truehold page (you must be logged in there) that saves the
  * photos. Scroll the chat and click again to send more; photos already sent
  * are skipped.
  *
- * Pairing: each album goes to the room text next to it, posted in the same
- * minute. Fausto posts the text, then the photos; Vic and Fab the photos,
+ * Pairing: each album goes to the room text next to it, posted within two
+ * minutes. Fausto posts the text, then the photos; Vic and Fab the photos,
  * then the text. An album with no room text beside it is left out rather
- * than guessed.
+ * than guessed. The same photo reposted is sent once (WhatsApp gives it
+ * the same address).
  */
 (() => {
     const TRUEHOLD = 'https://truehold.yaenlinea.co/tools/whatsapp-photos';
@@ -23,6 +25,13 @@
     const minuteOf = (row) => {
         const m = (row.innerText || '').match(/\b(\d{1,2}:\d{2})\b(?![\s\S]*\b\d{1,2}:\d{2}\b)/);
         return m ? m[1] : null;
+    };
+
+    // Posted within two minutes of each other (08:19 photos, 08:20 text).
+    const close = (a, b) => {
+        if (!a || !b) return false;
+        const m = (t) => { const [h, mm] = t.split(':').map(Number); return h * 60 + mm; };
+        return Math.abs(m(a) - m(b)) <= 2;
     };
 
     // "FOREST GATE / Derby Road, E7 8 NH / £800 ... / Room B" -> the room.
@@ -38,8 +47,12 @@
 
     const rows = () => [...document.querySelectorAll('#main [role="row"]')].map((row) => {
         const imgs = [...row.querySelectorAll('img[src^="blob:"]')].filter((i) => i.naturalWidth >= 200);
-        const text = [...row.querySelectorAll('[data-pre-plain-text]')].map((e) => e.innerText).join('\n');
-        return { row, imgs, room: text ? roomOf(text) : null, minute: minuteOf(row) };
+        const pre = [...row.querySelectorAll('[data-pre-plain-text]')];
+        const text = pre.map((e) => e.innerText).join('\n');
+        // "[08:04, 17/09/2026] Name:" carries the time even when the bubble
+        // hides it behind "Read more".
+        const stamp = ((pre[0] && pre[0].getAttribute('data-pre-plain-text')) || '').match(/\[(\d{1,2}:\d{2})/);
+        return { row, imgs, room: text ? roomOf(text) : null, minute: stamp ? stamp[1] : minuteOf(row) };
     });
 
     const jpeg = (img) => {
@@ -59,7 +72,7 @@
             if (!r.imgs.length || r.room) return;
             const near = (step) => {
                 for (let j = i + step, k = 0; k < 2 && list[j]; j += step, k++) {
-                    if (list[j].room) return list[j].minute === r.minute ? list[j] : null;
+                    if (list[j].room) return close(list[j].minute, r.minute) ? list[j] : null;
                     if (list[j].imgs.length) return null;
                 }
                 return null;
