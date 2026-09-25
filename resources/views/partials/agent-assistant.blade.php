@@ -481,6 +481,7 @@
             + row('Email', z.email)
             + '<details class="th-ask__pw"><summary>Show password</summary>' + row('Password', z.password) + '</details>'
             + (z.url ? '<a class="th-ask__dealbtn" href="' + esc(z.url) + '" target="_blank" rel="noopener">Open Zoopla</a>' : '')
+            + '<p class="th-ask__hint" style="margin-top:10px">For viewing ads only: not for sourcing, and never the Truehold name.</p>'
             + '</div>';
     };
 

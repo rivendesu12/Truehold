@@ -72,6 +72,12 @@ window.SigouLines = (function () {
         'Pasquale came, closed a deal, left. 10 minutes. Legend',
         'Music high volume? Pasquale must be in 😂',
         'Ehhhh mamma mia. My Pasquale impression, good no?',
+        'Alex is 5 min away. Since 20 min',
+        'Oana wants the client list before 10. Is 10:05 😬',
+        'Pasquale still owes Ema 4 pounds. Interest is running',
+        'LIST UPDATED @all. Nobody reads it. Crazy tragic',
+        'Dont sit on the fabric chairs. Long story',
+        'Va be. Pasquale teach me this one',
         'Single, Greek, with a vape. Ladies the queue is here 😂😂😂',
         'Tinder is dead today so iam all yours bro',
         'Find me a girlfriend and I give you my commission 😂😂😂',
@@ -229,6 +235,7 @@ window.SigouLines = (function () {
         'Here. Log in, post, log out. No touching the settings malaka',
         'Zoopla, here. Copy paste and dont share it with nobody bro',
         'Email and password, done. If it asks for a code, ask Giacomo',
+        'Viewing ads only bro. Sourcing on Zoopla and Giacomo sends the police 😂',
     ]);
 
     const invoice = (a) => {

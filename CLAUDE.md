@@ -103,9 +103,13 @@ Mary while a search runs, rubs his hands on results. Agents only (`@auth`).
   A joke only when it connects to what was typed (Giaco: out-of-context
   jokes are not funny): `RUNNING_JOKES` pairs each running joke with the
   words that set it up, and a call only gets the ones the message hooks.
-  The wait lines follow the message too. Office life and Pasquale (the
-  Italian, rarely in, closes and leaves) come from the Main Truehold
-  WhatsApp group; "ask Giacomo" when something is missing.
+  The wait lines follow the message too. His office life and the crew
+  (Pasquale, Oana, Alex, Ema, Giacomo; in WhatsApp exports Pasquale is
+  "Uaglio" and Oana "Juanita", but Sigou only ever uses their names) come
+  from the Main Truehold and AP Real Estate groups. Each crew member is a
+  running joke hooked by their name or their topic; "ask Giacomo" when
+  something is missing. The Zoopla card says viewing ads only, never
+  sourcing or the Truehold name.
 - `chit_chat: true` answers without searching. A real brief read as chat
   fails the test.
 - Results come in three bands: **best** (whole brief, actually in the area:
