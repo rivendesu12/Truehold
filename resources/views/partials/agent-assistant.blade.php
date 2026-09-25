@@ -177,6 +177,9 @@
 .th-sigou .sg-head{animation:sgBreathe 3.4s ease-in-out infinite}
 .th-sigou .sg-eyes{transition:transform .07s}
 .th-sigou .sg-eyes.is-blink{transform:scaleY(.08)}
+/* heavy lids, his usual look; they lift when he types or is shocked */
+.th-sigou .sg-lids{transition:opacity .15s}
+.th-sigou:is([data-state=typing],[data-state=shocked]) .sg-lids{opacity:0}
 .th-sigou .sg-pupils{transition:transform .16s ease-out}
 .th-sigou .sg-brows,.th-sigou .sg-brow,.th-sigou .sg-white,.th-sigou .sg-dot{transition:transform .2s ease}
 .th-sigou .sg-brows.is-waggle{animation:sgWaggle .7s ease-in-out}

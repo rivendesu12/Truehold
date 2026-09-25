@@ -73,81 +73,86 @@
 
         <g class="sg-head">
             {{-- ears --}}
-            <ellipse cx="48" cy="100" rx="9" ry="13" fill="#e8b597"/>
-            <ellipse cx="152" cy="100" rx="9" ry="13" fill="#e8b597"/>
-            <path d="M46 94 q5 6 0 12 M154 94 q-5 6 0 12" stroke="#cc8f70" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <ellipse cx="50" cy="99" rx="9" ry="14" fill="#e8b597"/>
+            <ellipse cx="150" cy="99" rx="9" ry="14" fill="#e8b597"/>
+            <path d="M48 93 q5 6 0 12 M152 93 q-5 6 0 12" stroke="#cc8f70" stroke-width="2.5" fill="none" stroke-linecap="round"/>
 
-            {{-- face --}}
-            <path d="M100 38 C132 38 153 60 153 94 C153 126 138 152 100 154 C62 152 47 126 47 94 C47 60 68 38 100 38 Z" fill="url(#{{ $u }}skin)"/>
-            <ellipse cx="68" cy="112" rx="11" ry="6" fill="#e58f7a" opacity=".22"/>
-            <ellipse cx="132" cy="112" rx="11" ry="6" fill="#e58f7a" opacity=".22"/>
+            {{-- face: a long oval, not a round one --}}
+            <path d="M100 32 C131 32 150 57 150 92 C150 126 135 153 100 155 C65 153 50 126 50 92 C50 57 69 32 100 32 Z" fill="url(#{{ $u }}skin)"/>
+            <ellipse cx="68" cy="110" rx="10" ry="5.5" fill="#e58f7a" opacity=".2"/>
+            <ellipse cx="132" cy="110" rx="10" ry="5.5" fill="#e58f7a" opacity=".2"/>
 
-            {{-- hair: short at the sides, thick and messy on top, a wavy fringe --}}
-            <path d="M48 86 C46 68 50 55 58 46 C60 36 70 28 82 26 C88 18 100 15 109 19 C119 15 131 19 137 28 C147 32 153 44 151 56 C154 66 154 76 152 86 C150 75 147 66 143 60 C141 55 136 52 130 52 C126 47 120 48 116 51 C111 46 104 47 100 51 C95 46 88 47 84 51 C79 47 72 49 69 54 C62 55 57 60 55 64 C51 70 49 78 48 86 Z" fill="url(#{{ $u }}hair)"/>
-            <g stroke="#4d3a2d" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".75">
-                <path d="M70 40 q6 -8 14 -7"/><path d="M88 31 q7 -6 15 -3"/><path d="M108 28 q8 -3 15 3"/>
-                <path d="M124 38 q7 1 11 7"/><path d="M78 46 q5 -5 11 -4"/><path d="M104 42 q6 -4 12 -1"/>
-                <path d="M93 38 q3 -3 7 -2"/>
+            {{-- hair: dense, dark, short at the sides, textured on top, a
+                 fairly straight hairline --}}
+            <path d="M50 86 C47 66 51 50 60 41 C61 33 67 27 75 27 C78 20 86 17 93 20 C98 14 107 14 111 19 C118 15 127 19 131 25 C138 25 144 31 144 39 C150 47 153 64 150 86 C149 76 146 67 142 61 C138 56 131 54 124 53 C117 51 108 52 100 52 C92 52 83 51 76 53 C69 54 62 56 58 61 C54 67 51 76 50 86 Z" fill="url(#{{ $u }}hair)"/>
+            <g stroke="#4d3a2d" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".7">
+                <path d="M68 42 q6 -7 13 -6"/><path d="M86 33 q7 -5 14 -3"/><path d="M106 31 q8 -3 14 3"/>
+                <path d="M124 40 q6 1 10 6"/><path d="M78 47 q5 -4 10 -3"/><path d="M100 43 q6 -4 12 -1"/>
             </g>
-            <path d="M109 19 C114 12 124 11 128 16 C122 16 117 18 114 22 Z" fill="#2a1f18"/>
-            {{-- short sides --}}
-            <path d="M49 86 C49 76 51 67 55 60 L58 62 C55 69 53 77 52 86 Z M151 86 C151 76 149 67 145 60 L142 62 C145 69 147 77 148 86 Z" fill="#3a2c23" opacity=".85"/>
 
-            {{-- eyebrows: thick, and they do most of the acting --}}
+            {{-- eyebrows: thick, dark, straight, sitting low on the frames --}}
             <g class="sg-brows">
-                <path class="sg-brow sg-brow--l" d="M62 69 Q77 62 93 66" stroke="#2a1d15" stroke-width="7" fill="none" stroke-linecap="round"/>
-                <path class="sg-brow sg-brow--r" d="M107 66 Q123 62 138 69" stroke="#2a1d15" stroke-width="7" fill="none" stroke-linecap="round"/>
+                <path class="sg-brow sg-brow--l" d="M59 72 Q76 66 94 69.5" stroke="#241911" stroke-width="7.5" fill="none" stroke-linecap="round"/>
+                <path class="sg-brow sg-brow--r" d="M106 69.5 Q124 66 141 72" stroke="#241911" stroke-width="7.5" fill="none" stroke-linecap="round"/>
             </g>
 
-            {{-- eyes --}}
+            {{-- eyes, heavy-lidded: his "are you serious" look --}}
             <g class="sg-eyes">
-                <ellipse class="sg-white" cx="79" cy="89" rx="9.5" ry="9" fill="#fff"/>
-                <ellipse class="sg-white" cx="121" cy="89" rx="9.5" ry="9" fill="#fff"/>
-                <path d="M69 85 Q79 77 89 85 M111 85 Q121 77 131 85" stroke="#5a3a28" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+                <ellipse class="sg-white" cx="77" cy="88" rx="8.5" ry="7.5" fill="#fff"/>
+                <ellipse class="sg-white" cx="123" cy="88" rx="8.5" ry="7.5" fill="#fff"/>
                 <g class="sg-pupils">
-                    <circle cx="79" cy="90" r="5.2" fill="#6a4328"/>
-                    <circle cx="121" cy="90" r="5.2" fill="#6a4328"/>
-                    <circle class="sg-dot" cx="79" cy="90" r="2.7" fill="#140d09"/>
-                    <circle class="sg-dot" cx="121" cy="90" r="2.7" fill="#140d09"/>
-                    <circle cx="81" cy="88" r="1.4" fill="#fff"/>
-                    <circle cx="123" cy="88" r="1.4" fill="#fff"/>
+                    <circle cx="77" cy="89" r="4.6" fill="#5e3b24"/>
+                    <circle cx="123" cy="89" r="4.6" fill="#5e3b24"/>
+                    <circle class="sg-dot" cx="77" cy="89" r="2.4" fill="#140d09"/>
+                    <circle class="sg-dot" cx="123" cy="89" r="2.4" fill="#140d09"/>
+                    <circle cx="78.8" cy="87.3" r="1.2" fill="#fff"/>
+                    <circle cx="124.8" cy="87.3" r="1.2" fill="#fff"/>
+                </g>
+                <g class="sg-lids">
+                    <path d="M67.5 86.5 Q77 82.5 86.5 86.5 L86.5 79 L67.5 79 Z" fill="#efc7aa"/>
+                    <path d="M113.5 86.5 Q123 82.5 132.5 86.5 L132.5 79 L113.5 79 Z" fill="#efc7aa"/>
+                    <path d="M67.5 86.5 Q77 82.5 86.5 86.5 M113.5 86.5 Q123 82.5 132.5 86.5" stroke="#4a3326" stroke-width="2" fill="none" stroke-linecap="round"/>
                 </g>
             </g>
 
-            {{-- nose --}}
-            <path d="M100 92 C96 104 90 111 93 116 C96 121 106 121 109 116" stroke="#c98b6b" stroke-width="3.2" fill="none" stroke-linecap="round"/>
-            <ellipse cx="101" cy="113" rx="8" ry="4.5" fill="#dc9f80" opacity=".35"/>
+            {{-- nose: a proper one, broad at the tip --}}
+            <path d="M99 88 C98 99 95 106 93 111" stroke="#cf9476" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+            <path d="M93 111 C90 115 92 120 97 120 C99 121.5 103 121.5 105 120 C110 120 112 115 109 111" stroke="#cf9476" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+            <ellipse cx="102" cy="114" rx="6" ry="4" fill="#fbe2d0" opacity=".45"/>
 
-            {{-- black rectangular frames, the heavier rim on top --}}
+            {{-- black rectangular frames, wide and shallow, heavier on top --}}
             <g class="sg-glasses">
-                <g stroke="#15110f" stroke-width="3.8" fill="rgba(205,225,255,.12)" stroke-linejoin="round">
-                    <rect x="57" y="77" width="41" height="25" rx="4"/>
-                    <rect x="102" y="77" width="41" height="25" rx="4"/>
+                <g stroke="#15110f" stroke-width="3.6" fill="rgba(205,225,255,.12)" stroke-linejoin="round">
+                    <rect x="54" y="77" width="44" height="22" rx="3.5"/>
+                    <rect x="102" y="77" width="44" height="22" rx="3.5"/>
                 </g>
-                <path d="M58 78.5 H97 M103 78.5 H142" stroke="#15110f" stroke-width="3.2" stroke-linecap="round"/>
-                <path d="M98 84 Q100 81 102 84 M57 84 L47 88 M143 84 L153 88" stroke="#15110f" stroke-width="3.6" fill="none" stroke-linecap="round"/>
-                <path d="M64 98 L75 81 M109 98 L120 81" stroke="#fff" stroke-width="2.4" opacity=".28" stroke-linecap="round"/>
+                <path d="M55 78.5 H97 M103 78.5 H145" stroke="#15110f" stroke-width="3.4" stroke-linecap="round"/>
+                <path d="M98 83 Q100 80 102 83 M54 83 L46 87 M146 83 L154 87" stroke="#15110f" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+                <path d="M61 95 L71 81 M109 95 L119 81" stroke="#fff" stroke-width="2.2" opacity=".28" stroke-linecap="round"/>
             </g>
 
-            {{-- beard --}}
-            <path d="M48 98 C48 136 70 162 100 162 C130 162 152 136 152 98 C150 110 145 118 138 122 C131 126 124 124 118 125 C112 126 107 124 100 124 C93 124 88 126 82 125 C76 124 69 126 62 122 C55 118 50 110 48 98 Z" fill="url(#{{ $u }}beard)"/>
-            <g stroke="#5a4535" stroke-width="1.8" stroke-linecap="round" opacity=".6">
-                <path d="M60 128 l3 6 M70 142 l2 6 M84 152 l1 5 M116 152 l-1 5 M130 142 l-2 6 M140 128 l-3 6 M100 154 v5 M92 156 l0 4 M108 156 l0 4"/>
+            {{-- beard: full, warm dark brown, up the cheeks and under the chin --}}
+            <path d="M50 98 C50 134 70 159 100 161 C130 159 150 134 150 98 C147 107 142 112 136 114 C129 117 123 121 117 123 C111 124.5 106 123.5 100 123.5 C94 123.5 89 124.5 83 123 C77 121 71 117 64 114 C58 112 53 107 50 98 Z" fill="url(#{{ $u }}beard)"/>
+            <g stroke="#5c4535" stroke-width="1.8" stroke-linecap="round" opacity=".55">
+                <path d="M58 122 l3 6 M66 135 l2 6 M78 146 l1 5 M122 146 l-1 5 M134 135 l-2 6 M142 122 l-3 6 M100 153 v5 M89 151 v5 M111 151 v5"/>
             </g>
 
             {{-- mouths: one is shown per state --}}
             <g class="sg-mouths">
-                <path class="sg-m sg-m--flat" d="M88 135 Q100 138 112 134" stroke="#c47a68" stroke-width="5" fill="none" stroke-linecap="round"/>
-                <g class="sg-m sg-m--grin">
-                    <path d="M83 131 Q100 154 117 131 Z" fill="#5c2420"/>
-                    <path d="M86 132 Q100 139 114 132 L113 135 Q100 141 87 135 Z" fill="#fff"/>
+                <g class="sg-m sg-m--flat">
+                    <path d="M89 137 Q100 144 111 137 Q100 140 89 137 Z" fill="#c98372"/>
+                    <path d="M88 136 Q100 138.5 112 136" stroke="#9c5a4b" stroke-width="2.4" fill="none" stroke-linecap="round"/>
                 </g>
-                <ellipse class="sg-m sg-m--o" cx="100" cy="138" rx="6" ry="8" fill="#4d1d19"/>
-                <path class="sg-m sg-m--sad" d="M87 140 Q100 131 113 140" stroke="#b86c5c" stroke-width="5" fill="none" stroke-linecap="round"/>
-                <ellipse class="sg-m sg-m--talk" cx="100" cy="137" rx="8" ry="4" fill="#4d1d19"/>
+                <g class="sg-m sg-m--grin">
+                    <path d="M84 132 Q100 154 116 132 Z" fill="#5c2420"/>
+                    <path d="M87 133 Q100 140 113 133 L112 136 Q100 142 88 136 Z" fill="#fff"/>
+                </g>
+                <ellipse class="sg-m sg-m--o" cx="100" cy="139" rx="6" ry="8" fill="#4d1d19"/>
+                <path class="sg-m sg-m--sad" d="M88 141 Q100 133 112 141" stroke="#b86c5c" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+                <ellipse class="sg-m sg-m--talk" cx="100" cy="138" rx="8" ry="4" fill="#4d1d19"/>
             </g>
             {{-- moustache, over the mouth --}}
-            <path d="M76 127 C86 118 114 118 124 127 C118 131 108 129 100 128.5 C92 129 82 131 76 127 Z" fill="#3a2b21"/>
+            <path d="M77 128 C86 120 114 120 123 128 C117 132 108 130.5 100 130 C92 130.5 83 132 77 128 Z" fill="#3e2d22"/>
 
             {{-- sweat, for when it goes wrong --}}
             <path class="sg-sweat" d="M146 62 C141 71 140 76 146 78 C152 76 151 71 146 62 Z" fill="#8ec5f2"/>
