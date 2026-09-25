@@ -51,6 +51,15 @@ class SigouOffice
         return array_values(array_filter((array) (self::data()[$kind] ?? []), 'is_string'));
     }
 
+    /** Whether a name is someone in the office rather than an agency. */
+    public static function isPerson(?string $name): bool
+    {
+        $words = preg_split('/[^a-z]+/', mb_strtolower((string) $name), -1, PREG_SPLIT_NO_EMPTY);
+        $people = array_map('mb_strtolower', array_filter((array) (self::data()['people'] ?? []), 'is_string'));
+
+        return (bool) array_intersect($words, $people);
+    }
+
     /** For tests. */
     public static function forget(): void
     {

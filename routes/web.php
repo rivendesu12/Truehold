@@ -161,6 +161,15 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
         $directory = app(\App\Services\AgencyDirectory::class);
         $agency = $directory->find($ask['name']);
 
+        // "who is <a colleague>" read as an agency: it is small talk.
+        if (! $agency && ($ask['want'] ?? 'link') !== 'bank' && \App\Support\SigouOffice::isPerson($ask['name'])) {
+            return response()->json([
+                'chat' => true,
+                'sigou' => (string) ($spec['sigou'] ?? ''),
+                'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
+            ]);
+        }
+
         if (($ask['want'] ?? null) === 'bank') {
             $bank = app(\App\Services\AgencyBankDetails::class)->find($ask['name'])
                 ?? ($agency ? app(\App\Services\AgencyBankDetails::class)->find($agency['name']) : null);

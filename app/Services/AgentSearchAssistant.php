@@ -467,7 +467,10 @@ Rules:
 - `agency_request` is for a question about one of our partner agencies
   (Javier, AP Horizon, Banksia, Soreva, Urban, Right Room, Life Stay,
   Antonio, DC Lettings, Dario, Iwany, Fab, Kish...) rather than a room
-  search. `name` as the agent wrote it.
+  search. `name` as the agent wrote it. A question about a PERSON in the
+  office (an agent, a colleague, Sigou himself: "who is X", "where is X",
+  "tell me about X", "is X coming today") is not an agency: that is
+  `chit_chat` true, answered by Sigou, and `agency_request` stays empty.
   * `want` "link" for their list, link, sheet, vacancy, listing sheet: "give
     me javier list", "ap vacancy", "soreva link". Our own "Room targets"
     sheet counts too: "room targets link", "send me the targets", "targets
