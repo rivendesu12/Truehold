@@ -9,17 +9,17 @@
      viewBox="0 0 200 200" role="img" aria-label="Sigou">
     <defs>
         <radialGradient id="{{ $u }}skin" cx="50%" cy="42%" r="62%">
-            <stop offset="0" stop-color="#f6d0ae"/>
-            <stop offset=".72" stop-color="#eab990"/>
-            <stop offset="1" stop-color="#d49a73"/>
+            <stop offset="0" stop-color="#f8dcc6"/>
+            <stop offset=".72" stop-color="#eec4a6"/>
+            <stop offset="1" stop-color="#d9a386"/>
         </radialGradient>
         <linearGradient id="{{ $u }}beard" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#2f231c"/>
-            <stop offset="1" stop-color="#1b130f"/>
+            <stop offset="0" stop-color="#46342a"/>
+            <stop offset="1" stop-color="#2c2019"/>
         </linearGradient>
         <linearGradient id="{{ $u }}hair" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#3a2b22"/>
-            <stop offset="1" stop-color="#1f1612"/>
+            <stop offset="0" stop-color="#34271f"/>
+            <stop offset="1" stop-color="#211812"/>
         </linearGradient>
         {{-- His shirt: the cream plaid flannel he always wears. --}}
         <pattern id="{{ $u }}plaid" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(-3)">
@@ -38,9 +38,9 @@
             <stop offset="1" stop-color="#5a4a3c" stop-opacity=".28"/>
         </linearGradient>
         <linearGradient id="{{ $u }}mary" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#f4e88e"/>
-            <stop offset=".55" stop-color="#eeb88e"/>
-            <stop offset="1" stop-color="#df6f82"/>
+            <stop offset="0" stop-color="#e8413a"/>
+            <stop offset=".5" stop-color="#f58a3c"/>
+            <stop offset="1" stop-color="#f7d34a"/>
         </linearGradient>
         {{-- Vapour: soft puffs pushed through a noise field, so they curl and
              wisp as they drift instead of reading as circles. --}}
@@ -73,26 +73,30 @@
 
         <g class="sg-head">
             {{-- ears --}}
-            <ellipse cx="49" cy="102" rx="9" ry="14" fill="#e2a883"/>
-            <ellipse cx="151" cy="102" rx="9" ry="14" fill="#e2a883"/>
-            <path d="M47 96 q5 6 0 12 M153 96 q-5 6 0 12" stroke="#c7865f" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <ellipse cx="48" cy="100" rx="9" ry="13" fill="#e8b597"/>
+            <ellipse cx="152" cy="100" rx="9" ry="13" fill="#e8b597"/>
+            <path d="M46 94 q5 6 0 12 M154 94 q-5 6 0 12" stroke="#cc8f70" stroke-width="2.5" fill="none" stroke-linecap="round"/>
 
             {{-- face --}}
-            <ellipse cx="100" cy="97" rx="51" ry="57" fill="url(#{{ $u }}skin)"/>
-            <ellipse cx="70" cy="113" rx="10" ry="6" fill="#e58f7a" opacity=".28"/>
-            <ellipse cx="130" cy="113" rx="10" ry="6" fill="#e58f7a" opacity=".28"/>
+            <path d="M100 38 C132 38 153 60 153 94 C153 126 138 152 100 154 C62 152 47 126 47 94 C47 60 68 38 100 38 Z" fill="url(#{{ $u }}skin)"/>
+            <ellipse cx="68" cy="112" rx="11" ry="6" fill="#e58f7a" opacity=".22"/>
+            <ellipse cx="132" cy="112" rx="11" ry="6" fill="#e58f7a" opacity=".22"/>
 
-            {{-- hair: short sides, messy on top with a flick at the front --}}
-            <path d="M49 88 C46 60 54 40 70 32 C74 24 84 20 92 24 C98 16 110 16 116 22 C124 18 136 24 138 32 C150 40 155 62 151 88 C150 74 147 62 142 52 C132 45 118 44 104 42 C90 44 74 45 62 50 C55 60 51 72 49 88 Z" fill="url(#{{ $u }}hair)"/>
-            <path d="M86 44 C83 31 94 21 110 23 C103 27 99 33 98 43 Z" fill="#2c2019"/>
-            <g stroke="#4a382c" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".75">
-                <path d="M70 42 q8 -9 18 -9"/><path d="M112 30 q13 -2 21 9"/><path d="M60 58 q2 -8 8 -12"/><path d="M140 58 q-2 -8 -8 -12"/>
+            {{-- hair: short at the sides, thick and messy on top, a wavy fringe --}}
+            <path d="M48 86 C46 68 50 55 58 46 C60 36 70 28 82 26 C88 18 100 15 109 19 C119 15 131 19 137 28 C147 32 153 44 151 56 C154 66 154 76 152 86 C150 75 147 66 143 60 C141 55 136 52 130 52 C126 47 120 48 116 51 C111 46 104 47 100 51 C95 46 88 47 84 51 C79 47 72 49 69 54 C62 55 57 60 55 64 C51 70 49 78 48 86 Z" fill="url(#{{ $u }}hair)"/>
+            <g stroke="#4d3a2d" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".75">
+                <path d="M70 40 q6 -8 14 -7"/><path d="M88 31 q7 -6 15 -3"/><path d="M108 28 q8 -3 15 3"/>
+                <path d="M124 38 q7 1 11 7"/><path d="M78 46 q5 -5 11 -4"/><path d="M104 42 q6 -4 12 -1"/>
+                <path d="M93 38 q3 -3 7 -2"/>
             </g>
+            <path d="M109 19 C114 12 124 11 128 16 C122 16 117 18 114 22 Z" fill="#2a1f18"/>
+            {{-- short sides --}}
+            <path d="M49 86 C49 76 51 67 55 60 L58 62 C55 69 53 77 52 86 Z M151 86 C151 76 149 67 145 60 L142 62 C145 69 147 77 148 86 Z" fill="#3a2c23" opacity=".85"/>
 
             {{-- eyebrows: thick, and they do most of the acting --}}
             <g class="sg-brows">
-                <path class="sg-brow sg-brow--l" d="M63 66 Q78 56 93 63" stroke="#21170f" stroke-width="7.5" fill="none" stroke-linecap="round"/>
-                <path class="sg-brow sg-brow--r" d="M107 63 Q122 56 137 66" stroke="#21170f" stroke-width="7.5" fill="none" stroke-linecap="round"/>
+                <path class="sg-brow sg-brow--l" d="M62 69 Q77 62 93 66" stroke="#2a1d15" stroke-width="7" fill="none" stroke-linecap="round"/>
+                <path class="sg-brow sg-brow--r" d="M107 66 Q123 62 138 69" stroke="#2a1d15" stroke-width="7" fill="none" stroke-linecap="round"/>
             </g>
 
             {{-- eyes --}}
@@ -111,28 +115,29 @@
             </g>
 
             {{-- nose --}}
-            <path d="M100 94 C95 106 91 112 94 116 C97 120 105 120 108 116" stroke="#c4845f" stroke-width="3.2" fill="none" stroke-linecap="round"/>
-            <ellipse cx="101" cy="112" rx="7" ry="4" fill="#d7976f" opacity=".35"/>
+            <path d="M100 92 C96 104 90 111 93 116 C96 121 106 121 109 116" stroke="#c98b6b" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+            <ellipse cx="101" cy="113" rx="8" ry="4.5" fill="#dc9f80" opacity=".35"/>
 
-            {{-- thick black frames --}}
+            {{-- black rectangular frames, the heavier rim on top --}}
             <g class="sg-glasses">
-                <g stroke="#111" stroke-width="6" fill="rgba(205,225,255,.14)" stroke-linejoin="round">
-                    <rect x="59" y="75" width="39" height="28" rx="6"/>
-                    <rect x="102" y="75" width="39" height="28" rx="6"/>
+                <g stroke="#15110f" stroke-width="3.8" fill="rgba(205,225,255,.12)" stroke-linejoin="round">
+                    <rect x="57" y="77" width="41" height="25" rx="4"/>
+                    <rect x="102" y="77" width="41" height="25" rx="4"/>
                 </g>
-                <path d="M98 85 Q100 81 102 85 M59 83 L48 88 M141 83 L152 88" stroke="#111" stroke-width="5" fill="none" stroke-linecap="round"/>
-                <path d="M66 99 L78 79 M110 99 L122 79" stroke="#fff" stroke-width="3" opacity=".3" stroke-linecap="round"/>
+                <path d="M58 78.5 H97 M103 78.5 H142" stroke="#15110f" stroke-width="3.2" stroke-linecap="round"/>
+                <path d="M98 84 Q100 81 102 84 M57 84 L47 88 M143 84 L153 88" stroke="#15110f" stroke-width="3.6" fill="none" stroke-linecap="round"/>
+                <path d="M64 98 L75 81 M109 98 L120 81" stroke="#fff" stroke-width="2.4" opacity=".28" stroke-linecap="round"/>
             </g>
 
             {{-- beard --}}
-            <path d="M49 100 C49 142 72 170 100 170 C128 170 151 142 151 100 C148 114 143 122 135 126 C125 120 75 120 65 126 C57 122 52 114 49 100 Z" fill="url(#{{ $u }}beard)"/>
-            <g stroke="#3d2e25" stroke-width="2" stroke-linecap="round" opacity=".7">
-                <path d="M62 136 l3 7 M74 150 l2 7 M88 158 l1 6 M112 158 l-1 6 M126 150 l-2 7 M138 136 l-3 7 M100 162 v6"/>
+            <path d="M48 98 C48 136 70 162 100 162 C130 162 152 136 152 98 C150 110 145 118 138 122 C131 126 124 124 118 125 C112 126 107 124 100 124 C93 124 88 126 82 125 C76 124 69 126 62 122 C55 118 50 110 48 98 Z" fill="url(#{{ $u }}beard)"/>
+            <g stroke="#5a4535" stroke-width="1.8" stroke-linecap="round" opacity=".6">
+                <path d="M60 128 l3 6 M70 142 l2 6 M84 152 l1 5 M116 152 l-1 5 M130 142 l-2 6 M140 128 l-3 6 M100 154 v5 M92 156 l0 4 M108 156 l0 4"/>
             </g>
 
             {{-- mouths: one is shown per state --}}
             <g class="sg-mouths">
-                <path class="sg-m sg-m--flat" d="M86 135 Q100 140 114 134" stroke="#b86c5c" stroke-width="5" fill="none" stroke-linecap="round"/>
+                <path class="sg-m sg-m--flat" d="M88 135 Q100 138 112 134" stroke="#c47a68" stroke-width="5" fill="none" stroke-linecap="round"/>
                 <g class="sg-m sg-m--grin">
                     <path d="M83 131 Q100 154 117 131 Z" fill="#5c2420"/>
                     <path d="M86 132 Q100 139 114 132 L113 135 Q100 141 87 135 Z" fill="#fff"/>
@@ -142,7 +147,7 @@
                 <ellipse class="sg-m sg-m--talk" cx="100" cy="137" rx="8" ry="4" fill="#4d1d19"/>
             </g>
             {{-- moustache, over the mouth --}}
-            <path d="M74 126 C86 116 114 116 126 126 C119 132 108 129 100 128 C92 129 81 132 74 126 Z" fill="#241913"/>
+            <path d="M76 127 C86 118 114 118 124 127 C118 131 108 129 100 128.5 C92 129 82 131 76 127 Z" fill="#3a2b21"/>
 
             {{-- sweat, for when it goes wrong --}}
             <path class="sg-sweat" d="M146 62 C141 71 140 76 146 78 C152 76 151 71 146 62 Z" fill="#8ec5f2"/>
