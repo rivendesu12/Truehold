@@ -67,6 +67,14 @@ class WhatsAppPhotoStore
         return file_put_contents($file, $bytes) !== false;
     }
 
+    /** A stored photo by its file name (a hash of the image), wherever it sits. */
+    public static function find(string $name): ?string
+    {
+        $hits = glob(self::root() . '/*/*/*/*/' . $name) ?: [];
+
+        return $hits[0] ?? null;
+    }
+
     /**
      * Photo URLs for a room: its own, else its street's. Disk only, safe in
      * a web request.
@@ -99,7 +107,7 @@ class WhatsAppPhotoStore
             $files = glob(self::root() . '/' . $rel . '/*.{jpg,png,webp}', GLOB_BRACE) ?: [];
             if ($files) {
                 sort($files);
-                return array_map(fn ($f) => route('whatsapp.photo', ['path' => substr($f, strlen(self::root()) + 1)], false), array_slice($files, 0, self::MAX_PER_ROOM));
+                return array_map(fn ($f) => route('whatsapp.photo', ['path' => basename($f)], false), array_slice($files, 0, self::MAX_PER_ROOM));
             }
         }
 

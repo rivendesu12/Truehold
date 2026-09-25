@@ -29,6 +29,8 @@ it('saves a WhatsApp photo for an agent and serves it on the room', function () 
 
     $urls = app(WhatsAppPhotoStore::class)->urlsFor('vic', 'N9 8PE', 'TRAMWAY AVENUE', '');
     expect($urls)->toHaveCount(1);
+    // The address names no supplier, postcode or street.
+    expect($urls[0])->toMatch('#^/wa-photo/[a-f0-9]{40}\.jpg$#');
     $this->get($urls[0])->assertOk();
 
     // A room on the same street without its own photos borrows the street's.

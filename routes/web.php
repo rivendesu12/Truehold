@@ -565,10 +565,17 @@ Route::get('/supplier-photo/{fileId}', function (string $fileId) {
 })->where('fileId', '[A-Za-z0-9_-]+')->name('supplier.photo');
 
 // Photos of WhatsApp-only rooms, from our own disk (WhatsAppPhotoStore).
+// Linked by file name only (the name is a hash of the image), so the
+// address says nothing about the supplier, postcode or street. The older
+// agency/postcode/street/room/name form still opens.
 Route::get('/wa-photo/{path}', function (string $path) {
-    abort_unless(preg_match('#^[a-z0-9_-]+(/[a-z0-9_-]+){3}/[a-f0-9]{40}\.(jpg|png|webp)$#', $path), 404);
-    $file = \App\Services\WhatsAppPhotoStore::root() . '/' . $path;
-    abort_unless(is_file($file), 404);
+    if (preg_match('#^[a-f0-9]{40}\.(jpg|png|webp)$#', $path)) {
+        $file = \App\Services\WhatsAppPhotoStore::find($path);
+    } else {
+        abort_unless(preg_match('#^[a-z0-9_-]+(/[a-z0-9_-]+){3}/[a-f0-9]{40}\.(jpg|png|webp)$#', $path), 404);
+        $file = \App\Services\WhatsAppPhotoStore::root() . '/' . $path;
+    }
+    abort_unless($file && is_file($file), 404);
 
     return response()->file($file, ['Cache-Control' => 'public, max-age=2592000, immutable']);
 })->where('path', '.*')->name('whatsapp.photo');
