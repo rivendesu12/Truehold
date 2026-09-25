@@ -68,6 +68,9 @@ window.SigouLines = (function () {
         'Stop poking me or iam gonna sent the police',
         'Crazy tragic day today',
         'Who has the keys? Always the keys ffs',
+        'Pasquale has the keys again? Ffs',
+        'Pasquale owes me a chicken. Tell him bro',
+        'Giacomo and Pasquale in a meeting again. Is me running this office',
         'Single, Greek, with a vape. Ladies the queue is here 😂😂😂',
         'Tinder is dead today so iam all yours bro',
         'Find me a girlfriend and I give you my commission 😂😂😂',
@@ -91,7 +94,7 @@ window.SigouLines = (function () {
         const errand = [
             [/\bwi-?fi\b|internet/i, ['The WiFi, one sec', 'Let m find the code *puff*']],
             [/\b(bank|sort code|account number|iban|deposit form|how (do i|to) pay)\b/i, ['Money talk. Let m check the numbers twice', 'Bank details, one sec *puff*']],
-            [/\b(log ?in|logins?|password|credentials?|acc(ount)?)\b/i, ['Password… where Giaco put it this time', 'Let m find it. Dont tell nobody *puff*']],
+            [/\b(log ?in|logins?|password|credentials?|acc(ount)?)\b/i, ['Password… where Giacomo put it this time', 'Let m find it. Dont tell nobody *puff*']],
             [/\b(agreement|contract|invoice)\b/i, ['Paperwork. My favourite 🙄', 'Let m do the papers *puff*']],
             [/\b(link|list|sheet|vacancy|who lives|flatmates)\b/i, ['Let m find it', 'One sec, looking *puff*']],
         ].find(([re]) => has(q, re));
@@ -188,7 +191,7 @@ window.SigouLines = (function () {
         return quip ? lead + '. ' + quip : lead;
     };
 
-    const error = () => pick(['Smth broke. Not me. Probably Giaco', 'Ffs is crashed. Try again', 'Piece of shit computer. Again']);
+    const error = () => pick(['Smth broke. Not me. Probably Giacomo', 'Pasquale touched smth again ffs. Try again', 'Ffs is crashed. Try again', 'Piece of shit computer. Again']);
     const offline = () => pick(['WiFi is dead. Like Central line on Monday', 'Internet ate it. Try again man']);
 
     const fresh = () => pick([
@@ -216,10 +219,10 @@ window.SigouLines = (function () {
     ]);
 
     const zoopla = () => pick([
-        'Zoopla login bro. Dont change the password or Giaco kills us both',
+        'Zoopla login bro. Dont change the password or Giacomo and Pasquale kill us both',
         'Here. Log in, post, log out. No touching the settings malaka',
         'Zoopla, here. Copy paste and dont share it with nobody bro',
-        'Email and password, done. If it asks for a code, ask Giaco',
+        'Email and password, done. If it asks for a code, ask Giacomo or Pasquale',
     ]);
 
     const invoice = (a) => {
@@ -243,7 +246,7 @@ window.SigouLines = (function () {
         'Ooh money. I feel it in my hands already 🤑',
     ]);
     const noBank = (name) => pick([
-        'No bank details for ' + name + ' yet malaka. Ask Giaco, he has everything',
+        'No bank details for ' + name + ' yet malaka. Ask Giacomo or Pasquale, they have everything',
         'I dont have their account bro. Dont send money to random people pls',
     ]);
 

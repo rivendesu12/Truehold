@@ -45,7 +45,7 @@ it('says so when nobody has set the wifi', function () {
     $this->postJson('/agent-search', ['q' => 'wifi pls'])
         ->assertOk()
         ->assertJsonPath('wifi', null)
-        ->assertJsonPath('sigou', 'Nobody told me the WiFi yet, ask Giaco');
+        ->assertJsonPath('sigou', 'Nobody told me the WiFi yet, ask Giacomo or Pasquale');
 });
 
 it('never gives the wifi to someone who is not signed in', function () {
