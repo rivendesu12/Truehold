@@ -257,11 +257,15 @@ SYS;
             $fits = array_values(array_diff($fits, ['girls']));
         }
 
+        // A request for something (a list, a login, bank details, a form):
+        // he hands it over, no running joke.
+        $errand = preg_match('/\\b(list|link|sheet|vacancy|vacancies|details|bank|sort code|account|login|logins|password|credentials?|acc|wifi|form|agreement|invoice|contract|targets?)\\b/', $q);
+
         // Not a brief (no budget, place or room): small talk about him.
-        if (! $fits && ! preg_match('/\\d|\\b(room|flat|studio|double|single|ensuite|en-suite|house|bed|zone|near|in)\\b/', $q)) {
+        if (! $fits && ! $errand && ! preg_match('/\\d|\\b(room|flat|studio|double|single|ensuite|en-suite|house|bed|zone|near|in)\\b/', $q)) {
             $fits = array_values(array_intersect(array_merge(self::SMALL_TALK_JOKES, SigouOffice::smallTalk()), array_keys($jokes)));
         }
-        if (! $fits) {
+        if (! $fits || $errand) {
             return "\n\nNo running joke fits this message. React to what it says (the area,"
                 . ' the budget, the demand) and leave his running jokes out.';
         }
