@@ -274,6 +274,10 @@ SYS;
     {
         $q = mb_strtolower($question);
         $fits = array_keys(array_filter(self::RUNNING_JOKES, fn ($j) => preg_match($j[1], $q)));
+        // A female client: any girls joke would land on her, so none at all.
+        if (preg_match('/\\b(girl|girls|woman|women|lady|ladies|female|she|her|mum|mother|daughter)\\b/', $q)) {
+            $fits = array_values(array_diff($fits, ['girls']));
+        }
 
         // Not a brief (no budget, place or room): small talk about him.
         if (! $fits && ! preg_match('/\\d|\\b(room|flat|studio|double|single|ensuite|en-suite|house|bed|zone|near|in)\\b/', $q)) {
