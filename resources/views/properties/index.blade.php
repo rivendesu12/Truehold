@@ -1856,7 +1856,7 @@ button {
             @if($properties->count() > 0)
                 <div class="properties-grid">
                     @foreach($properties as $property)
-                        <a href="{{ route('properties.show', $property->id) }}" class="property-card">
+                        <a href="{{ route('properties.show', \App\Support\PublicId::for((string) $property->id)) }}" class="property-card">
                             @if($property->flag)
                                 <span class="property-flag" style="{{ $property->flag_color ? 'background: ' . $property->flag_color : '' }}">
                                     {{ $property->flag }}

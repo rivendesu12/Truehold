@@ -630,7 +630,15 @@ class ScrapedListingsApiService
      */
     public function getPropertyById($id): ?array
     {
-        return $this->getAllProperties()->firstWhere('id', (string) $id);
+        $id = (string) $id;
+        $all = $this->getAllProperties();
+
+        // The public URL carries a hash of the id (App\Support\PublicId).
+        if (\App\Support\PublicId::looksLikeOne($id)) {
+            return $all->first(fn ($p) => \App\Support\PublicId::for((string) ($p['id'] ?? '')) === $id);
+        }
+
+        return $all->firstWhere('id', $id);
     }
 
     public function clearCache(): void

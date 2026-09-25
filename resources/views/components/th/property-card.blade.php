@@ -30,7 +30,7 @@
     $title = (string) ($p->title ?? 'Untitled listing');
     $description = (string) ($p->description ?? '');
 
-    $href = route('properties.show', $p->id ?? 0);
+    $href = route('properties.show', \App\Support\PublicId::for((string) ($p->id ?? 0)));
 
     $flag = strtolower((string) ($p->flag ?? ''));
     $isPremium = $flag === 'premium';

@@ -379,7 +379,7 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
         ])) ?: null,
         // Wildcards open on our own page, never on SpareRoom.
         'url' => ! empty($p['market']) ? route('market.show', $p['token'])
-            : (! empty($p['id']) ? url('/properties/' . $p['id']) : null),
+            : (! empty($p['id']) ? route('properties.show', \App\Support\PublicId::for((string) $p['id'])) : null),
         'market' => ! empty($p['market']),
     ];
 

@@ -54,6 +54,7 @@ final class PropertyPayload
         'url',
         'external_ref',
         'source',
+        'spareroom_id',
     ];
 
     /**
@@ -80,6 +81,15 @@ final class PropertyPayload
         if (! $isAgent) {
             foreach (self::AGENTS_ONLY as $key) {
                 unset($property[$key]);
+            }
+        }
+
+        // Links use the public id; a client's copy carries no internal id at
+        // all, since those name the source ("spareroom-…").
+        if (isset($property['id']) && ! \App\Support\PublicId::looksLikeOne((string) $property['id'])) {
+            $property['public_id'] = PublicId::for((string) $property['id']);
+            if (! $isAgent) {
+                $property['id'] = $property['public_id'];
             }
         }
 

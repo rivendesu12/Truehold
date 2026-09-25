@@ -510,7 +510,15 @@ class PropertyController extends Controller
         if ($feedService) {
             try {
                 $propertyData = $feedService->getPropertyById($id);
-                
+
+                // An old link with the internal id ("spareroom-…"): same
+                // page, under the address that does not name the source.
+                if ($propertyData && ! \App\Support\PublicId::looksLikeOne($id)) {
+                    $query = request()->getQueryString();
+
+                    return redirect()->to(route('properties.show', \App\Support\PublicId::for((string) $propertyData['id'])) . ($query ? '?' . $query : ''), 301);
+                }
+
                 if ($propertyData) {
                     $property = new PropertyFromSheet($propertyData);
                     

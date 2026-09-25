@@ -21,9 +21,21 @@
             <stop offset="0" stop-color="#3a2b22"/>
             <stop offset="1" stop-color="#1f1612"/>
         </linearGradient>
-        <linearGradient id="{{ $u }}knit" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#9a9ea6"/>
-            <stop offset="1" stop-color="#7d8189"/>
+        {{-- His shirt: the cream plaid flannel he always wears. --}}
+        <pattern id="{{ $u }}plaid" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(-3)">
+            <rect width="22" height="22" fill="#ebe4d4"/>
+            <rect y="6" width="22" height="7" fill="#c7b594" opacity=".55"/>
+            <rect x="6" width="7" height="22" fill="#c7b594" opacity=".55"/>
+            <rect y="9" width="22" height="1.4" fill="#3f332a" opacity=".85"/>
+            <rect x="9" width="1.4" height="22" fill="#3f332a" opacity=".85"/>
+            <rect y="17" width="22" height=".8" fill="#7a6552" opacity=".7"/>
+            <rect x="17" width=".8" height="22" fill="#7a6552" opacity=".7"/>
+        </pattern>
+        <linearGradient id="{{ $u }}shade" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#5a4a3c" stop-opacity=".28"/>
+            <stop offset=".3" stop-color="#5a4a3c" stop-opacity="0"/>
+            <stop offset=".7" stop-color="#5a4a3c" stop-opacity="0"/>
+            <stop offset="1" stop-color="#5a4a3c" stop-opacity=".28"/>
         </linearGradient>
         <linearGradient id="{{ $u }}mary" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="#f4e88e"/>
@@ -44,16 +56,19 @@
 
     <g clip-path="url(#{{ $u }}clip)">
         <g class="sg-body">
-            {{-- grey cable-knit jumper --}}
-            <path d="M22 214 C28 168 60 152 100 152 C140 152 172 168 178 214 Z" fill="url(#{{ $u }}knit)"/>
-            <g stroke="#6f737b" stroke-width="3.2" fill="none" stroke-linecap="round" opacity=".75">
-                <path d="M68 164 q8 7 0 14 q-8 7 0 14 q8 7 0 14"/>
-                <path d="M76 164 q-8 7 0 14 q8 7 0 14 q-8 7 0 14"/>
-                <path d="M124 164 q8 7 0 14 q-8 7 0 14 q8 7 0 14"/>
-                <path d="M132 164 q-8 7 0 14 q8 7 0 14 q-8 7 0 14"/>
-                <path d="M100 168 v40" stroke-dasharray="3 5"/>
-            </g>
-            <path d="M68 154 Q100 176 132 154" stroke="#7a7e86" stroke-width="9" fill="none" stroke-linecap="round"/>
+            {{-- cream plaid flannel shirt, open at the neck --}}
+            <path d="M22 214 C28 168 60 152 100 152 C140 152 172 168 178 214 Z" fill="url(#{{ $u }}plaid)"/>
+            <path d="M22 214 C28 168 60 152 100 152 C140 152 172 168 178 214 Z" fill="url(#{{ $u }}shade)"/>
+            {{-- the open neck --}}
+            <path d="M84 152 L100 176 L116 152 Z" fill="#d9a37c"/>
+            {{-- placket and buttons --}}
+            <path d="M100 176 V214" stroke="#b9aa8e" stroke-width="5"/>
+            <path d="M102.5 176 V214" stroke="#8c7b65" stroke-width="1" opacity=".7"/>
+            <circle cx="100" cy="189" r="2.1" fill="#f3eee3" stroke="#8c7b65" stroke-width=".8"/>
+            <circle cx="100" cy="204" r="2.1" fill="#f3eee3" stroke="#8c7b65" stroke-width=".8"/>
+            {{-- collar --}}
+            <path d="M66 153 C74 150 82 150 86 151 L99 176 C90 172 80 166 72 162 Z" fill="url(#{{ $u }}plaid)" stroke="#a8977b" stroke-width="1.4" stroke-linejoin="round"/>
+            <path d="M134 153 C126 150 118 150 114 151 L101 176 C110 172 120 166 128 162 Z" fill="url(#{{ $u }}plaid)" stroke="#a8977b" stroke-width="1.4" stroke-linejoin="round"/>
         </g>
 
         <g class="sg-head">
@@ -144,10 +159,10 @@
                 <circle class="sg-cloud sg-cloud--6" cx="101" cy="130" r="7" fill="#eaeef3"/>
             </g>
             <g class="sg-vape-arm">
-                <path d="M156 230 C156 202 148 182 136 166" stroke="#61656c" stroke-width="29" fill="none" stroke-linecap="round"/>
-                <path d="M156 230 C156 202 148 182 136 166" stroke="#a3a7ae" stroke-width="24" fill="none" stroke-linecap="round"/>
-                <path d="M146 214 C145 198 140 186 132 176" stroke="#8a8e95" stroke-width="3" fill="none" stroke-linecap="round"/>
-                <path d="M143 173 l-10 -10" stroke="#8a8e95" stroke-width="6" stroke-linecap="round"/>
+                <path d="M156 230 C156 202 148 182 136 166" stroke="#9a8a72" stroke-width="29" fill="none" stroke-linecap="round"/>
+                <path d="M156 230 C156 202 148 182 136 166" stroke="url(#{{ $u }}plaid)" stroke-width="24" fill="none" stroke-linecap="round"/>
+                <path d="M146 214 C145 198 140 186 132 176" stroke="#8c7b65" stroke-width="2" fill="none" stroke-linecap="round" opacity=".6"/>
+                <path d="M143 173 l-10 -10" stroke="#b9aa8e" stroke-width="6" stroke-linecap="round"/>
                 <g transform="translate(108 140) rotate(-58)">
                     <rect x="-4.6" y="-9" width="9.2" height="11" rx="3" fill="#f1e38a"/>
                     <rect x="-11" y="0" width="22" height="33" rx="5.5" fill="url(#{{ $u }}mary)"/>
@@ -163,8 +178,8 @@
 
         {{-- rubbing hands, for a good result --}}
         <g class="sg-rub">
-            <path d="M28 214 C34 188 54 172 76 166 L84 186 C66 192 54 202 50 214 Z" fill="url(#{{ $u }}knit)"/>
-            <path d="M172 214 C166 188 146 172 124 166 L116 186 C134 192 146 202 150 214 Z" fill="url(#{{ $u }}knit)"/>
+            <path d="M28 214 C34 188 54 172 76 166 L84 186 C66 192 54 202 50 214 Z" fill="url(#{{ $u }}plaid)" stroke="#a8977b" stroke-width="1.2"/>
+            <path d="M172 214 C166 188 146 172 124 166 L116 186 C134 192 146 202 150 214 Z" fill="url(#{{ $u }}plaid)" stroke="#a8977b" stroke-width="1.2"/>
             <g class="sg-hand sg-hand--l">
                 <path d="M72 164 C80 156 100 156 104 166 C106 176 96 186 84 186 C74 186 66 176 72 164 Z" fill="#e8b48c"/>
                 <path d="M80 164 q10 -3 20 2 M78 171 q11 -3 23 2 M78 178 q10 -2 20 1" stroke="#c98a63" stroke-width="2.2" fill="none" stroke-linecap="round"/>
