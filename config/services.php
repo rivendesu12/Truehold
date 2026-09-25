@@ -148,7 +148,8 @@ return [
     // JSON schema, which small models do well, so the cheapest tier is a
     // reasonable fit. Switch provider/model with env alone.
     //   openai  gpt-5-nano      $0.05/$0.40 per 1M  (~GBP 0.09 / 1k searches)
-    //   openai  gpt-5.6-luna    $0.20/$1.20         (~GBP 0.30 / 1k)
+    //   openai  gpt-5.6-luna    $0.20/$1.20         (~GBP 0.50 / 1k measured)
+    //   openai  gpt-6-luna      $0.10/$0.50, effort low  (~GBP 0.25 / 1k) <- live
     //   anthropic claude-haiku-4-5  $1.00/$5.00     (~GBP 1.30 / 1k)
     'assistant' => [
         'provider' => env('ASSISTANT_PROVIDER', 'openai'),
@@ -161,17 +162,18 @@ return [
 
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
-        'model' => env('OPENAI_MODEL', 'gpt-5-nano'),
-        // none | low | medium | high (this model has no "minimal"). "none":
-        // measured 40/40 on assistant:test --quick, faster, and cheaper than
-        // low; empty sends nothing (the model's
-        // own default, medium, which spends far more on hidden thinking).
-        'reasoning_effort' => env('OPENAI_REASONING_EFFORT', 'none'),
-        // USD per 1M tokens, for assistant:usage estimates (gpt-5.6-luna).
+        'model' => env('OPENAI_MODEL', 'gpt-6-luna'),
+        // none | low | medium | high. gpt-6-luna needs "low": with "none" it
+        // misreads "student at UCL, half an hour max" (39/40); with low it
+        // read all 40 briefs right, still about half gpt-5.6-luna's cost
+        // (25 Sep 2026). Empty sends nothing (the model's own default,
+        // medium, which spends far more on hidden thinking).
+        'reasoning_effort' => env('OPENAI_REASONING_EFFORT', 'low'),
+        // USD per 1M tokens, for assistant:usage estimates (gpt-6-luna).
         'price' => [
-            'input' => (float) env('OPENAI_PRICE_INPUT', 0.20),
-            'cached' => (float) env('OPENAI_PRICE_CACHED', 0.02),
-            'output' => (float) env('OPENAI_PRICE_OUTPUT', 1.20),
+            'input' => (float) env('OPENAI_PRICE_INPUT', 0.10),
+            'cached' => (float) env('OPENAI_PRICE_CACHED', 0.01),
+            'output' => (float) env('OPENAI_PRICE_OUTPUT', 0.50),
         ],
         // Any provider exposing an OpenAI-compatible /chat/completions
         // endpoint can be used by pointing this at their base URL. The

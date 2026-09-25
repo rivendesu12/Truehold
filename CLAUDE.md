@@ -159,7 +159,9 @@ Mary while a search runs, rubs his hands on results. Agents only (`@auth`).
 - Every question is logged to `assistant_interactions` (own DB, 180 days) with
   clicks per band; `assistant:insights` summarises, `assistant:usage` shows cost.
 - End-to-end check: `sigou:scenarios` (~35 real calls through the endpoint, ~2p).
-  Model reasoning is off (`OPENAI_REASONING_EFFORT=none`); the instructions are
+  Model: `gpt-6-luna` with `OPENAI_REASONING_EFFORT=low` (25 Sep 2026: 40/40
+  briefs, half gpt-5.6-luna's price; with `none` it misses commute briefs).
+  Try another with `assistant:test --model=… --effort=…`. The instructions are
   byte-identical per call so they cache (date and jokes ride in the user message).
 - **The persona must not change the filters.** Check with
   `assistant:test --compare --sigou` (runs every brief with and without him,
