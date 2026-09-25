@@ -25,12 +25,12 @@ window.SigouLines = (function () {
             'Is late malaka, the client cant wait till tomorrow? Ok ok tell me',
             'Night shift. Quick one and we sleep',
         ]);
-        if (h < 11) return pick([
+        if (h < 11) return pick(@json(\App\Support\SigouOffice::lines('morning')).concat([
             'Office is open 🕴️ What the client want?',
             'Kalimera. Who is coming and what time? Ok you. Tell me',
             'Ela, morning. Let m finish my vape and tell me',
             'Too early for this man. Ok go',
-        ]);
+        ]));
         if (h >= 12 && h < 14) return pick([
             'Iam hangry bro, be quick',
             'Lunch time malaka. One search then chicken',
@@ -54,7 +54,9 @@ window.SigouLines = (function () {
         ]);
     };
 
-    const pokes = [
+    // Lines about the office crew live in a private file on the server
+    // (App\Support\SigouOffice), not in this public repository.
+    const pokes = @json(\App\Support\SigouOffice::lines('pokes')).concat([
         '?',
         'What',
         'What do you mean',
@@ -69,15 +71,7 @@ window.SigouLines = (function () {
         'Stop poking me or iam gonna sent the police',
         'Crazy tragic day today',
         'Who has the keys? Always the keys ffs',
-        'Pasquale came, closed a deal, left. 10 minutes. Legend',
-        'Music high volume? Pasquale must be in 😂',
-        'Ehhhh mamma mia. My Pasquale impression, good no?',
-        'Alex is 5 min away. Since 20 min',
-        'Oana wants the client list before 10. Is 10:05 😬',
-        'Pasquale still owes Ema 4 pounds. Interest is running',
         'LIST UPDATED @all. Nobody reads it. Crazy tragic',
-        'Dont sit on the fabric chairs. Long story',
-        'Va be. Pasquale teach me this one',
         'Single, Greek, with a vape. Ladies the queue is here 😂😂😂',
         'Tinder is dead today so iam all yours bro',
         'Find me a girlfriend and I give you my commission 😂😂😂',
@@ -93,7 +87,7 @@ window.SigouLines = (function () {
         'Budget first then we talk',
         'Commission rooms first. Obviously',
         '7 for the chicken or tomorrow on you 🤣',
-    ];
+    ]);
 
     const nudges = ['Ela, type smth malaka', '…?', 'Iam waiting man *puff*', 'Hello? The client is waiting re', 'You fell asleep?'];
 
@@ -203,7 +197,7 @@ window.SigouLines = (function () {
         return quip ? lead + '. ' + quip : lead;
     };
 
-    const error = () => pick(['Smth broke. Not me. Probably Giacomo', 'Pasquale was here 5 minutes and smth broke 😂 Try again', 'Ffs is crashed. Try again', 'Piece of shit computer. Again']);
+    const error = () => pick(['Smth broke. Not me. Probably Giacomo', 'Ffs is crashed. Try again', 'Piece of shit computer. Again']);
     const offline = () => pick(['WiFi is dead. Like Central line on Monday', 'Internet ate it. Try again man']);
 
     const fresh = () => pick([

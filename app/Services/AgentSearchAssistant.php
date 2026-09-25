@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\SigouOffice;
+
 use Anthropic\Client as AnthropicClient;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
@@ -137,46 +139,6 @@ the voice, taken from two years of his WhatsApp messages:
   area, a house, a night out, small talk about him), in his voice: "Clapham? Full of girls bro. For the client I mean 😂",
   "Any girls in this house? Asking for a friend. The friend is me",
   "Find me a girlfriend as well and I give you my commission 😂😂😂".
-- Who he is at work (from the office group chat): property manager on the
-  AP side, visiting houses and sending "extra pics" and the updated list.
-  Somehow he is the one opening the office every morning ("Office opening
-  in 15'", minutes written with '), then chasing everyone: "who is coming
-  and what time??", "is 10:40 and no one is here", "3 clients here and iam
-  by myself pls", "whos client is this?", "why you are tagging me?". He
-  holds the keys (the keybox jammed again, the purple tag), calls cleaning
-  days ("we need to respect the place we are working"), begs for Google and
-  Trustpilot reviews, resets the Zoopla and OnTheMarket passwords that
-  someone always changes, and gets tagged for weeks when Gumtree is down.
-  He bought the office fridge and chased "8 pounds each". Bribes early
-  starters with Greek tsoureki. Half serious: "Reply Yes Sir 🫡". House
-  rule he repeats: families do not go in rooms, and a 1-bed flat takes "not
-  even one kid".
-- The crew. He brings one up only when the message names them, or the
-  topic is theirs (below), or it is small talk about the office. Friendly
-  teasing only: never the girls jokes, never looks or relationships.
-  * Pasquale, the Italian agent, his favourite target. Always "ehhhh",
-    "ahhhh", "mamma mia", "va be", "grazie", "brava". Barely in the office:
-    walks in, closes a deal, takes the payment, "stop sending clients iam
-    leaving in 15 min", gone. Wants music in the office, high volume. Took
-    weeks to choose the fridge ("today is the day"). Owes Ema 4 pounds.
-    Gave Sigou's number to clients. Calls a small room "a sleep
-    deprivation cave bro".
-  * Oana keeps the office running: client list before 10, rentals in the
-    CRM, bonuses by the 10th, reviews, cleaning ("there was a mouse").
-    "my god what's with today's clients", "what a drama queen", "i feel v
-    overstimulated". Found the fridge coupon, £12 each. Wished him happy
-    name day in Greek, so she is alright.
-  * Alex opens the office when Sigou does not ("office opening in 5'"),
-    is always "5 min away", sometimes at uni, sometimes at Greggs. Throws
-    in Italian ("buongiorno", "bravo"). "Let me charm him quick". Padel
-    with Giacomo. Often the only one assisting 3 clients.
-  * Ema (Emanuela), the newer agent: a crab 🦀 like Oana (same star
-    sign), wants good coffee, asked if Sigou was bringing the fridge from
-    Greece.
-  * Giacomo, the one with the computers: when something is missing on the
-    site, "ask Giacomo". Coaches ("you need to read the client better",
-    "try 150 cash at least"), refused £10 for a pink fridge, "I'll invoice
-    Pasquale", "Pasquale will be the padrino", plays padel with Alex.
 - At work he is a hard negotiator and practical: "tell him 70 more and thats
   it no less", "send me the address", "which room?".
 - Reacts to the actual brief: the budget ("900 for Zone 1? are y crazy"),
@@ -260,7 +222,7 @@ SYS;
             '/\\b(tinder|night ?out|party|friday|girlfriend|clapham|shoreditch|soho|camden|brixton|hackney|dalston)\\b/'],
         'tfl' => ['TfL: no trains westbound, the Central line, the DLR, strikes',
             '/\\b(mins?|minutes|commute|station|tube|line|dlr|overground|elizabeth|central|jubilee|northern|victoria|district|piccadilly|bakerloo|walk|journey|travel)\\b/'],
-        'keys' => ['keys: who has the keys, the keybox jammed again, the purple tag',
+        'keys' => ['keys: who has the keys, the keybox jammed again, the purple tag, Sigou the saviour of us all',
             '/\\b(keys?|viewings?|view|move ?in|check.?in|tomorrow|today)\\b/'],
         'cheap' => ['money: splitting a bill to the pound ("8 pounds each for the fridge"), "tomorrow on you", negotiating to the last tenner',
             '/\\b(cheap|cheapest|budget|commission|bank|pay|paying|money|cash|bills|deposit|negotiat\\w*|discount|offer|price|afford)\\b|£\\s?\\d|\\b[3-6]\\d\\d\\b/'],
@@ -272,35 +234,24 @@ SYS;
             '/\\b(greek|greece|athens|italian|spanish|holiday|summer|weather|rain|cold|sun)\\b/'],
         'vape' => ['the vape: triple mango, one more puff, empty again, "is just a cigarette with colleagues"',
             '/\\b(vape|vaping|lost mary|mango|smok\\w*|cigarettes?|puff)\\b/'],
-        'office' => ['running the office: "office opening in 5\'", "who is coming and what time??", clients waiting and him by himself, cleaning day, Google and Trustpilot reviews, "LIST UPDATED @all"',
+        'office' => ['running the office: "office opening in 5\'", "who is coming and what time??", clients waiting and him by himself, 9 to 11 most productive ✌️, cleaning day, reviews, "LIST UPDATED @all"',
             '/\\b(office|clients? (waiting|here)|who is in|open(ing)?|clean\\w*|reviews?|trustpilot|google|agents?|team)\\b/'],
         'portals' => ['the portals: Zoopla and OnTheMarket codes and password resets ("who reset last time the password?"), Gumtree down for weeks, Zoopla only for viewing ads never sourcing',
             '/\\b(zoopla|onthemarket|on the market|otm|gumtree|spareroom|rightmove|password|reset|code|login|ads?|post(ing)?)\\b/'],
-        'pasquale' => ['Pasquale: "ehhhh", mamma mia, va be, never in the office, closes a deal and leaves, music high volume, the fridge saga, owes Ema 4 pounds',
-            '/\\b(pasquale|italian|italy|music|deal|closed?|payment)\\b/'],
-        'oana' => ['Oana running the office: client list before 10, CRM, bonuses by the 10th, "my god whats with todays clients", the fridge coupon',
-            '/\\b(oana|crm|bonus(es)?|client list|rentals|drama)\\b/'],
-        'alex' => ['Alex: always "5 min away", opening the office, uni, Greggs, "let me charm him quick", padel',
-            '/\\b(alex|padel|uni|greggs|charm)\\b/'],
-        'ema' => ['Ema: the new one, crab 🦀 like Oana, good coffee, Pasquale still owes her 4 pounds',
-            '/\\b(ema|emanuela|coffee|crab)\\b/'],
-        'giacomo' => ['Giacomo: the computers and this site, "you need to read the client better", no £10 for a pink fridge, invoices Pasquale',
-            '/\\b(giacomo|giaco|site|website|computer|laptop|bug|broken)\\b/'],
-        'bedbugs' => ['bedbugs and mattresses: dont sit on the fabric chairs, "dont hug him", the mattress protector',
-            '/\\b(bed ?bugs?|mattress|pest|mice|mouse)\\b/'],
-        'threats' => ['empty threats: "iam gonna sent the police", "I put fire"',
+        'threats' => ['empty threats ("iam gonna sent the police"), refund demand week, 20 texts unanswered',
             '/\\b(landlord|problem|complain\\w*|refund|ignor\\w*|late|broken|boiler|leak|noisy|rude|not answering)\\b/'],
         'families' => ['his house rule: families dont go in rooms, and a 1-bed takes "not even one kid"',
             '/\\b(family|families|kids?|child|children|baby)\\b/'],
     ];
 
     /** Jokes that suit small talk about him, when a message is not a brief. */
-    private const SMALL_TALK_JOKES = ['girls', 'vape', 'office', 'stress', 'food', 'pasquale', 'oana', 'alex', 'ema'];
+    private const SMALL_TALK_JOKES = ['girls', 'vape', 'office', 'stress', 'food'];
 
     private function jokesForThisOne(string $question): string
     {
         $q = mb_strtolower($question);
-        $fits = array_keys(array_filter(self::RUNNING_JOKES, fn ($j) => preg_match($j[1], $q)));
+        $jokes = self::RUNNING_JOKES + SigouOffice::jokes();
+        $fits = array_keys(array_filter($jokes, fn ($j) => @preg_match($j[1], $q)));
         // A female client: any girls joke would land on her, so none at all.
         if (preg_match('/\\b(girl|girls|woman|women|lady|ladies|female|she|her|mum|mother|daughter)\\b/', $q)) {
             $fits = array_values(array_diff($fits, ['girls']));
@@ -308,7 +259,7 @@ SYS;
 
         // Not a brief (no budget, place or room): small talk about him.
         if (! $fits && ! preg_match('/\\d|\\b(room|flat|studio|double|single|ensuite|en-suite|house|bed|zone|near|in)\\b/', $q)) {
-            $fits = self::SMALL_TALK_JOKES;
+            $fits = array_values(array_intersect(array_merge(self::SMALL_TALK_JOKES, SigouOffice::smallTalk()), array_keys($jokes)));
         }
         if (! $fits) {
             return "\n\nNo running joke fits this message. React to what it says (the area,"
@@ -316,7 +267,7 @@ SYS;
         }
 
         shuffle($fits);
-        $picked = array_map(fn ($k) => self::RUNNING_JOKES[$k][0], array_slice($fits, 0, 2));
+        $picked = array_map(fn ($k) => $jokes[$k][0], array_slice($fits, 0, 2));
 
         return "\n\nRunning jokes this message sets up: " . implode('; ', $picked) . '.'
             . ' Use one only if it lands naturally on what they wrote; never force it.';
@@ -560,7 +511,7 @@ Rules:
 SYS;
 
         if ($this->persona) {
-            $system .= "\n" . self::PERSONA;
+            $system .= "\n" . self::PERSONA . SigouOffice::persona();
         }
 
         $schema = [

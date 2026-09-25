@@ -18,4 +18,8 @@ return [
     // the server: the repository is public.
     'agency_bank_details' => env('AGENCY_BANK_DETAILS', storage_path('app/private/agency-bank-details.json')),
 
+    // What Sigou knows about the office crew (App\Support\SigouOffice),
+    // from the team's WhatsApp groups. A private file on the server.
+    'sigou_office' => env('SIGOU_OFFICE', storage_path('app/private/sigou-office.json')),
+
 ];
