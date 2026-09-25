@@ -21,7 +21,8 @@ class TestAgentAssistant extends Command
         {--compare : also read every brief without the Sigou persona and report any filter that changed}
         {--only= : run only these sections, comma-separated: searches,followups,agreements,invoices,wifi,zoopla,chat}
         {--quick : searches: only the first 10 briefs (the wording traps and a few classics)}
-        {--model= : try another model for this run only, e.g. gpt-6-luna (the live setting is untouched)}';
+        {--model= : try another model for this run only, e.g. gpt-6-luna (the live setting is untouched)}
+        {--effort= : reasoning effort for this run only (none, low, medium; OpenAI)}';
 
     /**
      * Each case is a paid model call, so test what changed, not everything:
@@ -311,6 +312,9 @@ class TestAgentAssistant extends Command
     {
         if ($this->option('model')) {
             config(['services.' . $assistant->provider() . '.model' => $this->option('model')]);
+        }
+        if ($this->option('effort')) {
+            config(['services.openai.reasoning_effort' => $this->option('effort')]);
         }
         if (! $assistant->isConfigured()) {
             $this->error("Not configured — set the API key for provider '{$assistant->provider()}' first.");
