@@ -36,7 +36,7 @@ it('says so when nobody has set the zoopla login', function () {
     $this->postJson('/agent-search', ['q' => 'zoopla login pls'])
         ->assertOk()
         ->assertJsonPath('zoopla_login', null)
-        ->assertJsonPath('sigou', 'Nobody gave me the Zoopla login yet, ask Giacomo or Pasquale');
+        ->assertJsonPath('sigou', 'Nobody gave me the Zoopla login yet, ask Giacomo');
 });
 
 it('never gives the zoopla login to someone who is not signed in', function () {

@@ -26,7 +26,8 @@ window.SigouLines = (function () {
             'Night shift. Quick one and we sleep',
         ]);
         if (h < 11) return pick([
-            'Kalimera malaka. What the client want?',
+            'Office is open 🕴️ What the client want?',
+            'Kalimera. Who is coming and what time? Ok you. Tell me',
             'Ela, morning. Let m finish my vape and tell me',
             'Too early for this man. Ok go',
         ]);
@@ -68,16 +69,21 @@ window.SigouLines = (function () {
         'Stop poking me or iam gonna sent the police',
         'Crazy tragic day today',
         'Who has the keys? Always the keys ffs',
-        'Pasquale has the keys again? Ffs',
-        'Pasquale owes me a chicken. Tell him bro',
-        'Giacomo and Pasquale in a meeting again. Is me running this office',
+        'Pasquale came, closed a deal, left. 10 minutes. Legend',
+        'Music high volume? Pasquale must be in 😂',
+        'Ehhhh mamma mia. My Pasquale impression, good no?',
         'Single, Greek, with a vape. Ladies the queue is here 😂😂😂',
         'Tinder is dead today so iam all yours bro',
         'Find me a girlfriend and I give you my commission 😂😂😂',
         'After this we go out find girls ok? Deal',
-        'Which area has the most single girls? For research bro',
         'Iam not bored, iam single. Is different',
-        'Stop poking me, poke a girl for me 😂',
+        'Who is coming and what time?? 🕴️',
+        'Why you are tagging me? Ah, poking. Same thing',
+        'Reply Yes Sir 🫡',
+        'Who reset the Zoopla password again? Confess',
+        '8 pounds each for the fridge. Iam still waiting for some of you',
+        'Cleaning day. We need to respect the place we are working',
+        'Leave a review on Google. And Trustpilot. Now pls',
         'Budget first then we talk',
         'Commission rooms first. Obviously',
         '7 for the chicken or tomorrow on you 🤣',
@@ -191,7 +197,7 @@ window.SigouLines = (function () {
         return quip ? lead + '. ' + quip : lead;
     };
 
-    const error = () => pick(['Smth broke. Not me. Probably Giacomo', 'Pasquale touched smth again ffs. Try again', 'Ffs is crashed. Try again', 'Piece of shit computer. Again']);
+    const error = () => pick(['Smth broke. Not me. Probably Giacomo', 'Pasquale was here 5 minutes and smth broke 😂 Try again', 'Ffs is crashed. Try again', 'Piece of shit computer. Again']);
     const offline = () => pick(['WiFi is dead. Like Central line on Monday', 'Internet ate it. Try again man']);
 
     const fresh = () => pick([
@@ -219,10 +225,10 @@ window.SigouLines = (function () {
     ]);
 
     const zoopla = () => pick([
-        'Zoopla login bro. Dont change the password or Giacomo and Pasquale kill us both',
+        'Zoopla login bro. Dont change the password or Giacomo kills us both',
         'Here. Log in, post, log out. No touching the settings malaka',
         'Zoopla, here. Copy paste and dont share it with nobody bro',
-        'Email and password, done. If it asks for a code, ask Giacomo or Pasquale',
+        'Email and password, done. If it asks for a code, ask Giacomo',
     ]);
 
     const invoice = (a) => {
@@ -246,7 +252,7 @@ window.SigouLines = (function () {
         'Ooh money. I feel it in my hands already 🤑',
     ]);
     const noBank = (name) => pick([
-        'No bank details for ' + name + ' yet malaka. Ask Giacomo or Pasquale, they have everything',
+        'No bank details for ' + name + ' yet malaka. Ask Giacomo, he has everything',
         'I dont have their account bro. Dont send money to random people pls',
     ]);
 

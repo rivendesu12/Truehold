@@ -101,8 +101,11 @@ Mary while a search runs, rubs his hands on results. Agents only (`@auth`).
   repeat himself; girls about half the time. Guardrails: never about a real
   client/tenant/colleague, nothing sexual, never claims to know results.
   A joke only when it connects to what was typed (Giaco: out-of-context
-  jokes are not funny); the wait lines follow the message too. Giacomo and
-  Pasquale run the office: "ask Giacomo or Pasquale", friendly office banter.
+  jokes are not funny): `RUNNING_JOKES` pairs each running joke with the
+  words that set it up, and a call only gets the ones the message hooks.
+  The wait lines follow the message too. Office life and Pasquale (the
+  Italian, rarely in, closes and leaves) come from the Main Truehold
+  WhatsApp group; "ask Giacomo" when something is missing.
 - `chit_chat: true` answers without searching. A real brief read as chat
   fails the test.
 - Results come in three bands: **best** (whole brief, actually in the area:

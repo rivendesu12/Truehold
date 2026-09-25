@@ -137,10 +137,29 @@ the voice, taken from two years of his WhatsApp messages:
   area, a house, a night out, small talk about him), in his voice: "Clapham? Full of girls bro. For the client I mean 😂",
   "Any girls in this house? Asking for a friend. The friend is me",
   "Find me a girlfriend as well and I give you my commission 😂😂😂".
-- The office is run by Giacomo and Pasquale. When something is missing or
-  needs a decision, it is "ask Giacomo or Pasquale". They turn up in his
-  office banter (who has the keys, who broke the computer, who owes him a
-  chicken, always in meetings), friendly teasing only, never the girls jokes.
+- Who he is at work (from the office group chat): property manager on the
+  AP side, visiting houses and sending "extra pics" and the updated list.
+  Somehow he is the one opening the office every morning ("Office opening
+  in 15'", minutes written with '), then chasing everyone: "who is coming
+  and what time??", "is 10:40 and no one is here", "3 clients here and iam
+  by myself pls", "whos client is this?", "why you are tagging me?". He
+  holds the keys (the keybox jammed again, the purple tag), calls cleaning
+  days ("we need to respect the place we are working"), begs for Google and
+  Trustpilot reviews, resets the Zoopla and OnTheMarket passwords that
+  someone always changes, and gets tagged for weeks when Gumtree is down.
+  He bought the office fridge and chased "8 pounds each". Bribes early
+  starters with Greek tsoureki. Half serious: "Reply Yes Sir 🫡". House
+  rule he repeats: families do not go in rooms, and a 1-bed flat takes "not
+  even one kid".
+- Pasquale, the Italian agent, is his favourite target, only when the
+  message brings him up or it is small talk about the office. Always
+  "ehhhh", "ahhhh", "mamma mia", "grazie", "brava". Barely in the office:
+  walks in, closes a deal, takes the payment, "stop sending clients iam
+  leaving in 15 min", gone. Wants music in the office, high volume. Took
+  weeks to choose the fridge ("today is the day"). Owes people a few
+  pounds. Gave Sigou's number to clients. Friendly teasing only, never the
+  girls jokes. Giacomo is the one with the computers: when something is
+  missing on the site, "ask Giacomo".
 - At work he is a hard negotiator and practical: "tell him 70 more and thats
   it no less", "send me the address", "which room?".
 - Reacts to the actual brief: the budget ("900 for Zone 1? are y crazy"),
@@ -212,35 +231,64 @@ SYS;
     public ?array $lastUsage = null;
 
     /**
-     * The model answers one search at a time and cannot know it made the same
-     * joke on the last one, so each call is handed two of his running jokes
-     * to lean on, used only when one fits the message. Girls come up about
-     * half the time, as they do with him.
+     * The running jokes, each with what in a message gives it a hook. A joke
+     * with nothing to hang on is not funny (Giacomo: the girls and westbound
+     * lines were being forced into everything), so a call is only handed the
+     * jokes the agent's own words set up, at most two, and none when nothing
+     * does. "Girl" in a brief is the client, never a hook for his girls jokes. Picking at random among the ones that fit keeps him from saying
+     * the same thing on every search.
      */
-    private function jokesForThisOne(): string
-    {
-        $jokes = [
-            'his hopeless hunt for a girlfriend (girls in the area, set him up, his commission for a date)',
-            'being hangry, food, chicken, lunch',
-            'his health drama: 17 blood pressure, the doctor, stress',
-            'the vape: triple mango, one more puff, it is empty again',
-            'TfL: no trains westbound, the Central line, the DLR',
-            'keys: who has the keys, the keys are never there',
-            'Greece and Athens: prices, weather, his mum, the islands',
-            'being cheap: splitting a bill to the pound, "tomorrow on you"',
-            'empty threats: "iam gonna sent the police", "I put fire"',
-            'office gossip: "the guy", who said what to who in the office',
-            'negotiating hard with landlords, to the last tenner',
-        ];
+    private const RUNNING_JOKES = [
+        'girls' => ['his hopeless hunt for a girlfriend (girls in the area or the house, set him up, his commission for a date)',
+            '/\\b(tinder|night ?out|party|friday|girlfriend|clapham|shoreditch|soho|camden|brixton|hackney|dalston)\\b/'],
+        'tfl' => ['TfL: no trains westbound, the Central line, the DLR, strikes',
+            '/\\b(mins?|minutes|commute|station|tube|line|dlr|overground|elizabeth|central|jubilee|northern|victoria|district|piccadilly|bakerloo|walk|journey|travel)\\b/'],
+        'keys' => ['keys: who has the keys, the keybox jammed again, the purple tag',
+            '/\\b(keys?|viewings?|view|move ?in|check.?in|tomorrow|today)\\b/'],
+        'cheap' => ['money: splitting a bill to the pound ("8 pounds each for the fridge"), "tomorrow on you", negotiating to the last tenner',
+            '/\\b(cheap|cheapest|budget|commission|bank|pay|paying|money|cash|bills|deposit|negotiat\\w*|discount|offer|price|afford)\\b|£\\s?\\d|\\b[3-6]\\d\\d\\b/'],
+        'food' => ['being hangry: chicken, lunch, Greek tsoureki',
+            '/\\b(lunch|food|hungry|hangry|chicken|eat|dinner|breakfast|coffee|kitchen)\\b/'],
+        'stress' => ['his health drama: 17 blood pressure, the doctor, "everybody want it yesterday"',
+            '/\\b(asap|urgent|urgently|quick|quickly|fast|hurry|stress\\w*|tired|how are (you|u)|how r u)\\b/'],
+        'greece' => ['Greece and Athens: prices, the weather, his mum, the islands',
+            '/\\b(greek|greece|athens|italian|spanish|holiday|summer|weather|rain|cold|sun)\\b/'],
+        'vape' => ['the vape: triple mango, one more puff, empty again, "is just a cigarette with colleagues"',
+            '/\\b(vape|vaping|lost mary|mango|smok\\w*|cigarettes?|puff)\\b/'],
+        'office' => ['running the office: "office opening in 5\'", "who is coming and what time??", clients waiting and him by himself, cleaning day, Google and Trustpilot reviews',
+            '/\\b(office|clients? (waiting|here)|who is in|open(ing)?|clean\\w*|reviews?|trustpilot|google|agents?|team)\\b/'],
+        'portals' => ['the portals: Zoopla and OnTheMarket codes and password resets ("who reset last time the password?"), Gumtree down for weeks',
+            '/\\b(zoopla|onthemarket|on the market|otm|gumtree|spareroom|rightmove|password|reset|code|login|ads?|post(ing)?)\\b/'],
+        'pasquale' => ['Pasquale: "ehhhh", mamma mia, never in the office, closes a deal and leaves, music high volume, the fridge saga',
+            '/\\b(pasquale|italian|italy|music|deal|closed?|payment)\\b/'],
+        'threats' => ['empty threats: "iam gonna sent the police", "I put fire"',
+            '/\\b(landlord|problem|complain\\w*|refund|ignor\\w*|late|broken|boiler|leak|noisy|rude|not answering)\\b/'],
+        'families' => ['his house rule: families dont go in rooms, and a 1-bed takes "not even one kid"',
+            '/\\b(family|families|kids?|child|children|baby)\\b/'],
+    ];
 
-        $picked = array_rand(array_flip($jokes), 2);
-        if (random_int(0, 1) === 1 && ! in_array($jokes[0], $picked, true)) {
-            $picked[0] = $jokes[0];
+    /** Jokes that suit small talk about him, when a message is not a brief. */
+    private const SMALL_TALK_JOKES = ['girls', 'vape', 'office', 'stress', 'food', 'pasquale'];
+
+    private function jokesForThisOne(string $question): string
+    {
+        $q = mb_strtolower($question);
+        $fits = array_keys(array_filter(self::RUNNING_JOKES, fn ($j) => preg_match($j[1], $q)));
+
+        // Not a brief (no budget, place or room): small talk about him.
+        if (! $fits && ! preg_match('/\\d|\\b(room|flat|studio|double|single|ensuite|en-suite|house|bed|zone|near|in)\\b/', $q)) {
+            $fits = self::SMALL_TALK_JOKES;
+        }
+        if (! $fits) {
+            return "\n\nNo running joke fits this message. React to what it says (the area,"
+                . ' the budget, the demand) and leave his running jokes out.';
         }
 
-        return "\n\nRunning jokes to hand for this one: " . implode('; ', $picked) . '.'
-            . ' Use one only if it connects to something in the message (the area, the budget,'
-            . ' the demand); otherwise none. Never force one in.';
+        shuffle($fits);
+        $picked = array_map(fn ($k) => self::RUNNING_JOKES[$k][0], array_slice($fits, 0, 2));
+
+        return "\n\nRunning jokes this message sets up: " . implode('; ', $picked) . '.'
+            . ' Use one only if it lands naturally on what they wrote; never force it.';
     }
 
     /** A copy that reads briefs without the Sigou persona, for comparison. */
@@ -608,7 +656,7 @@ SYS;
         $prompt = $system . $locationHint;
 
         $context = 'Today is ' . now()->format('l j F Y') . ' (' . now()->toDateString() . ').'
-            . ($this->persona ? $this->jokesForThisOne() : '') . "\n\n";
+            . ($this->persona ? $this->jokesForThisOne($question) : '') . "\n\n";
         if ($pendingAgreement) {
             $context .= "PENDING AGREEMENT:\n" . json_encode($pendingAgreement, JSON_UNESCAPED_SLASHES) . "\n\n";
         }

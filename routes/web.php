@@ -122,7 +122,7 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
                 )))->writeString('WIFI:T:WPA;S:' . addcslashes($wifi['ssid'], '\\;,:"')
                     . ';P:' . addcslashes((string) $wifi['password'], '\\;,:"') . ';;'),
             ] : null,
-            'sigou' => ! empty($wifi['ssid']) ? (string) ($spec['sigou'] ?? '') : 'Nobody told me the WiFi yet, ask Giacomo or Pasquale',
+            'sigou' => ! empty($wifi['ssid']) ? (string) ($spec['sigou'] ?? '') : 'Nobody told me the WiFi yet, ask Giacomo',
             'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
         ]);
     }
@@ -137,7 +137,7 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
                 'password' => $login['password'],
                 'url' => $login['url'],
             ] : null,
-            'sigou' => ! empty($login['email']) && ! empty($login['password']) ? (string) ($spec['sigou'] ?? '') : 'Nobody gave me the Zoopla login yet, ask Giacomo or Pasquale',
+            'sigou' => ! empty($login['email']) && ! empty($login['password']) ? (string) ($spec['sigou'] ?? '') : 'Nobody gave me the Zoopla login yet, ask Giacomo',
             'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
         ]);
     }
@@ -152,7 +152,7 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
         return response()->json([
             'agency' => $url ? ['name' => 'Room targets', 'link' => $url, 'office' => true] : null,
             'agency_asked' => 'Room targets',
-            'sigou' => $url ? (string) ($spec['sigou'] ?? '') : 'Room targets link is not set up, ask Giacomo or Pasquale',
+            'sigou' => $url ? (string) ($spec['sigou'] ?? '') : 'Room targets link is not set up, ask Giacomo',
             'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
         ]);
     }
@@ -169,7 +169,7 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
                 'agency' => null,
                 'agency_bank' => $bank,
                 'agency_asked' => $ask['name'],
-                'sigou' => $bank ? (string) ($spec['sigou'] ?? '') : 'No bank details for ' . ($agency['name'] ?? $ask['name']) . ' yet malaka, ask Giacomo or Pasquale to send them',
+                'sigou' => $bank ? (string) ($spec['sigou'] ?? '') : 'No bank details for ' . ($agency['name'] ?? $ask['name']) . ' yet malaka, ask Giacomo to send them',
                 'groups' => ['commission' => [], 'standard' => [], 'alternatives' => []],
             ]);
         }
