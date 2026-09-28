@@ -47,9 +47,12 @@ class SpareRoomAdvertService
         // Crawling is dozens of requests to someone else's site, several
         // seconds apart by design. Never during a page load: a web request
         // reads the cache and, if it is cold, serves without these rooms
-        // until the scheduled warm-up fills it in.
+        // until the scheduled warm-up fills it in. The six-hour cache expires
+        // up to an hour before the next hourly run re-crawls, so the last good
+        // crawl covers that gap — without it every SpareRoom room vanished
+        // from the site for an hour in six.
         if (! app()->runningInConsole() || app()->runningUnitTests()) {
-            return collect(Cache::get(self::CACHE_KEY, []));
+            return collect(Cache::get(self::CACHE_KEY) ?? Cache::get(self::CACHE_KEY . '_last_good', []));
         }
 
         $cached = Cache::get(self::CACHE_KEY);
