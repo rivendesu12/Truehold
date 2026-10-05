@@ -388,6 +388,17 @@ body {
     overflow: hidden;
 }
 
+/* Desktop locks page scroll (the map is fixed under the header), so an open
+   panel taller than the window scrolls inside itself instead of being cut off. */
+@media (min-width: 769px) {
+    .filters-collapse.active .filters-collapse__inner {
+        max-height: calc(100vh - 360px);
+        min-height: 240px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+}
+
 .thf-card__scroll {
     flex: 1;
     overflow: visible;
