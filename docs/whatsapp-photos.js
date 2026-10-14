@@ -17,7 +17,7 @@
  * the same address).
  */
 (() => {
-    const TRUEHOLD = 'https://truehold.yaenlinea.co/tools/whatsapp-photos';
+    const TRUEHOLD = 'https://truehold.co.uk/tools/whatsapp-photos';
     const SIDE = { fausto: 'prev', vic: 'next', fab: 'prev' };
     const PC = /\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d)\s*([A-Z])\s*([A-Z])\b/i;
 
@@ -97,7 +97,7 @@
         const items = collect(agency);
         if (!items.length) return alert('No new photos next to a room here. Scroll to more rooms and try again.');
         const go = () => {
-            state.win.postMessage({ batch: Date.now(), items: items.map(({ srcs, ...it }) => it) }, 'https://truehold.yaenlinea.co');
+            state.win.postMessage({ batch: Date.now(), items: items.map(({ srcs, ...it }) => it) }, 'https://truehold.co.uk');
             items.forEach((it) => it.srcs.forEach((s) => state.sent.add(s)));
             state.last = { rooms: items.length, photos: items.reduce((n, it) => n + it.images.length, 0) };
         };
@@ -105,7 +105,7 @@
         state.win = window.open(TRUEHOLD, 'truehold-photos', 'width=520,height=320');
         state.ready = false;
         const onReady = (e) => {
-            if (e.origin !== 'https://truehold.yaenlinea.co') return;
+            if (e.origin !== 'https://truehold.co.uk') return;
             if (e.data && e.data.ready) { state.ready = true; go(); }
             if (e.data && e.data.done) state.result = e.data;
         };

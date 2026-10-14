@@ -3,7 +3,7 @@
 # Run as root on the new server:  bash provision.sh <site-domain>
 set -euo pipefail
 
-DOMAIN="${1:?usage: provision.sh <site-domain>   e.g. truehold.yaenlinea.co}"
+DOMAIN="${1:?usage: provision.sh <site-domain>   e.g. truehold.co.uk}"
 APP_DIR=/var/www/truehold
 REPO=https://github.com/rivendesu12/Truehold.git
 BRANCH="${BRANCH:-main}"

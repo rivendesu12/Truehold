@@ -77,7 +77,7 @@ given, even just the district (N15). Questions alone are not rooms.
 
 ## Photos (after the sheet, each group)
 
-Log in to https://truehold.yaenlinea.co in the same browser first. In each
+Log in to https://truehold.co.uk in the same browser first. In each
 group, run the script in `docs/whatsapp-photos.js` (paste it into the page),
 then `thPhotos.button('fausto')` (or `'vic'`, `'fab'`) and click the green
 "Send … photos to Truehold" button. Scroll up with the mouse to load older
