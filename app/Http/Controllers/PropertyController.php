@@ -371,7 +371,7 @@ class PropertyController extends Controller
 
                 // Paginate the results
                 $perPage = 20;
-                $currentPage = $request->get('page', 1);
+                $currentPage = max(1, (int) $request->get('page', 1));
                 $items = $properties->slice(($currentPage - 1) * $perPage, $perPage)->values();
                 
                 $properties = new LengthAwarePaginator(

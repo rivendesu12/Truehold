@@ -5,8 +5,9 @@ check the source advert, and send clients links. Clients see a reduced view.
 
 **Live:** https://truehold.co.uk (since 14 Oct 2026). DNS at Squarespace
 (A `@` → server; `www`/`ap` CNAME to it; MX/TXT are Google Workspace mail,
-leave them). nginx 301s `truehold.yaenlinea.co`, `www`, `ap` to
-`https://truehold.co.uk$request_uri`, so old shared links keep working.
+leave them). `truehold.yaenlinea.co` still serves the same app (one
+certificate covers both; Giaco compares them side by side); `www` and `ap`
+301 to `https://truehold.co.uk$request_uri`.
 
 Laravel 12, PHP 8.4, MySQL, nginx. Server `89.58.38.5`, app in `/var/www/truehold`,
 branch `main`. SSH key `~/.ssh/truehold_deploy`.

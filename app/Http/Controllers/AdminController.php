@@ -673,7 +673,7 @@ class AdminController extends Controller
         }
         
         // Pagination
-        $page = $request->get('page', 1);
+        $page = max(1, (int) $request->get('page', 1));
         $perPage = 20;
         $offset = ($page - 1) * $perPage;
         
