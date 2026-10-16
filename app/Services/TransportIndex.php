@@ -30,6 +30,7 @@ class TransportIndex
     protected ?array $stations = null;
     protected ?array $byName = null;
     protected ?array $journeys = null;
+    protected ?array $boroughs = null;
     protected ?string $fingerprint = null;
 
     public function __construct()
@@ -354,5 +355,71 @@ class TransportIndex
     public function hubLabel(string $key): string
     {
         return $this->hubs()[$key]['label'] ?? ucwords(str_replace('-', ' ', $key));
+    }
+
+    /** @return array<string, string> naptan => borough, from transport:build-boroughs */
+    protected function boroughs(): array
+    {
+        if ($this->boroughs !== null) {
+            return $this->boroughs;
+        }
+
+        $path = storage_path('app/transport/boroughs.json');
+        $data = is_file($path) ? json_decode((string) file_get_contents($path), true) : null;
+
+        return $this->boroughs = $data['boroughs'] ?? [];
+    }
+
+    public function boroughOf(?string $naptan): ?string
+    {
+        return $naptan ? ($this->boroughs()[$naptan] ?? null) : null;
+    }
+
+    /**
+     * "Tower Hamlets", "hackney borough", "LB of Newham", "Royal Borough of
+     * Kensington & Chelsea", "City of Westminster", "Kingston upon Thames".
+     * Returns the borough's own name and whether the phrase said "borough"
+     * (or council) outright, which lets a borough win over a station of the
+     * same name (Westminster, Southwark, Lewisham).
+     *
+     * @return array{name: string, explicit: bool}|null
+     */
+    public function findBorough(string $phrase): ?array
+    {
+        $norm = fn (string $s) => trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z ]/', ' ',
+            str_replace('&', ' and ', strtolower($s)))));
+
+        $raw = $norm($phrase);
+        $explicit = (bool) preg_match('/\b(borough|council|lb|rb)\b|^city of (?!london\b)/', $raw);
+        $stripped = preg_replace('/^city of (?!london\b)/', '', $raw);
+        $stripped = trim(preg_replace('/\s+/', ' ', preg_replace('/\b(the|london|royal|borough|boroughs|council|lb|rb|of|area)\b/', ' ', $stripped)));
+
+        foreach (array_unique($this->boroughs()) as $name) {
+            $n = $norm($name);
+            $short = preg_replace('/ upon thames$/', '', $n);
+            foreach ([$raw, $stripped] as $p) {
+                if (strlen($p) >= 4 && ($p === $n || $p === $short)) {
+                    return ['name' => $name, 'explicit' => $explicit];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /** Mean position of a borough's stations, for "how far out" on nearby options. */
+    public function boroughCentre(string $borough): ?array
+    {
+        $lat = $lng = 0.0;
+        $n = 0;
+        foreach ($this->stations() as $station) {
+            if (($this->boroughs()[$station['naptan'] ?? ''] ?? null) === $borough) {
+                $lat += (float) $station['lat'];
+                $lng += (float) $station['lng'];
+                $n++;
+            }
+        }
+
+        return $n ? [$lat / $n, $lng / $n] : null;
     }
 }

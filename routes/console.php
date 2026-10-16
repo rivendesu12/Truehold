@@ -49,6 +49,12 @@ Schedule::command('transport:build-stations')
     ->monthlyOn(1, '03:00')
     ->withoutOverlapping();
 
+// Each station's borough (postcodes.io), so "Tower Hamlets" or "Hackney" can
+// be searched. After the station rebuild, so new stations get one.
+Schedule::command('transport:build-boroughs')
+    ->monthlyOn(1, '03:20')
+    ->withoutOverlapping();
+
 // Incremental by design: pairs already on file are skipped, so this only does
 // work when listings appear near a station we have never seen. Runs after the
 // station rebuild so a new station is picked up the same night.

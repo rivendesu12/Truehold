@@ -899,7 +899,25 @@ SYS;
             $stationArea = $stationArea || $properties->contains(fn ($p) => self::normPlace((string) ($p['nearest_station'] ?? '')) === self::normPlace($areaName));
         }
 
-        $scope = function (?array $useCenter, ?float $useRadius) use ($properties, $term, $areaAsk, $areaName, $areaCenter, $stationArea) {
+        // A borough ("Tower Hamlets", "Hackney") is not a station or a point:
+        // a listing is in it when its nearest station is (boroughs.json, from
+        // postcodes.io). A station of the same name (Westminster, Southwark)
+        // still means the station area unless the brief says "borough".
+        $borough = null;
+        if ($areaAsk && ($found = $transport->findBorough($areaLabel ?: $areaName))
+            && (! $stationArea || $found['explicit'])) {
+            $borough = $found['name'];
+            $areaLabel = $borough;
+            $stationArea = false;
+            $areaCenter = $transport->boroughCentre($borough) ?? $areaCenter;
+            $unplaced = null; // placed after all, if it came in as a landmark
+        }
+
+        $scope = function (?array $useCenter, ?float $useRadius) use ($properties, $term, $areaAsk, $areaName, $areaCenter, $stationArea, $borough, $transport) {
+            if ($borough) {
+                return $properties->filter(fn ($p) => $transport->boroughOf($p['station_naptan'] ?? null) === $borough
+                    || $this->nameMatches((string) ($p['location'] ?? ''), $areaName));
+            }
             if ($areaAsk) {
                 return $properties->filter(fn ($p) => $this->inArea($p, $areaName, $areaCenter, $stationArea));
             }
@@ -937,8 +955,10 @@ SYS;
         // Nearby: the same brief within two miles of the area, four if that is
         // still thin, each labelled with the distance.
         if ($areaAsk && $areaCenter) {
-            foreach ([2.0, 4.0] as $ring) {
-                if ($ring > 2.0 && $best->count() + $other->count() >= 5) {
+            // A borough is a few miles across, so its rings start further out.
+            $rings = $borough ? [3.0, 5.0] : [2.0, 4.0];
+            foreach ($rings as $ring) {
+                if ($ring > $rings[0] && $best->count() + $other->count() >= 5) {
                     break;
                 }
                 $around = $this->applyPreferences($this->withinRadius($properties, $areaCenter, $ring), $spec)
@@ -947,7 +967,9 @@ SYS;
                 foreach ($around as $p) {
                     $d = \App\Support\PropertyClassifier::milesBetween(
                         (float) $p['latitude'], (float) $p['longitude'], $areaCenter[0], $areaCenter[1]);
-                    $keep($p, sprintf('%.1f mi from %s', $d, $areaLabel ?: 'the area'));
+                    $keep($p, $borough
+                        ? 'just outside ' . $borough
+                        : sprintf('%.1f mi from %s', $d, $areaLabel ?: 'the area'));
                 }
             }
         }

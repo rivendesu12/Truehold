@@ -68,6 +68,12 @@ commission / no-commission / other options.
 - `transport:build-journeys` — real TfL journey times, station→hub, 22 hubs in
   `config/transport.php`. Resumable, incremental, ~15/min keyless.
   `TFL_APP_KEY` (optional) makes it 10× faster.
+- `transport:build-boroughs` — each station's borough from postcodes.io
+  (`boroughs.json`, own file so the annotation cache survives). A listing is
+  in a borough when its nearest station is. "Tower Hamlets", "LB Newham",
+  "City of Westminster" search the borough; a borough sharing a station's
+  name (Westminster, Southwark, Lewisham) means the station area unless the
+  brief says "borough". Saves nothing unless every station got one.
 - Journey filter only engages above 90% coverage; below that it falls back to a
   straight-line radius and **says so**.
 

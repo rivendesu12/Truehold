@@ -155,6 +155,11 @@ class TestAgentAssistant extends Command
             'expect' => ['available_by' => '~', 'parking' => 'none', 'nice_to_have' => ['parking'], 'max_price' => 750],
         ],
         [
+            // A borough, not a station: placed via boroughs.json.
+            'q' => 'can you find en suite near tower hamlets around 1000',
+            'expect' => ['ensuite_only' => true, 'place' => 'tower hamlets', 'max_price' => 1000],
+        ],
+        [
             'q' => 'ensuite within 20 minutes of Bond Street',
             'expect' => ['ensuite_only' => true, 'place' => 'bond', 'minutes_from_landmark' => 20],
         ],
