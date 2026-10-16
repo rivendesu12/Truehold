@@ -1656,6 +1656,7 @@ html {
                         Agent Login
                     </a></li>
                         @endguest
+                        @include('partials.nav-logout')
                 </ul>
                     </div>
                             </div>
