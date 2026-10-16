@@ -390,6 +390,7 @@ Route::middleware(['auth', 'throttle:60,1', \App\Http\Middleware\LogSigouInterac
         'radius' => $found['radius'],
         'hub' => $found['hub_label'] ?? null,
         'unplaced' => $found['unplaced'] ?? null,
+        'corrected' => $found['corrected'] ?? null,
         'unanswerable' => $found['unanswerable'] ?? [],
         'why_none' => $found['why_none'] ?? [],
         'max_journey' => $found['max_journey'] ?? null,

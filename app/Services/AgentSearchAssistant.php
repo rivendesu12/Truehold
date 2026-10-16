@@ -877,6 +877,22 @@ SYS;
         $areaName = $term !== '' ? $term : strtolower(trim((string) ($spec['near_landmark'] ?? '')));
         $areaAsk = $areaName !== '' && empty($spec['radius_miles']) && empty($spec['minutes_from_landmark'])
             && empty($spec['_max_journey']) && empty($spec['direct_only']);
+
+        // A misspelt place ("nehwam") that matches nothing at all is read as
+        // the station, borough or listing area one or two letters away, and
+        // the panel says so. Only when nothing matches as typed.
+        $corrected = null;
+        if ($areaAsk && ! $this->placeKnown($areaName, $properties, $transport)) {
+            $areas = $properties->pluck('location')
+                ->filter(fn ($l) => is_string($l) && str_word_count($l) <= 3)->unique()->values()->all();
+            if ($fixed = $transport->closestPlace($areaName, array_merge($areas, array_keys(self::LANDMARKS)))) {
+                $corrected = ['from' => trim((string) ($spec['location'] ?? '')) ?: trim((string) ($spec['near_landmark'] ?? '')), 'to' => $fixed];
+                $spec[! empty($spec['location']) ? 'location' : 'near_landmark'] = $fixed;
+                $areaName = strtolower($fixed);
+                $unplaced = null;
+            }
+        }
+
         $areaCenter = $areaAsk ? ($center ?: $this->centroidFor($properties, $areaName)) : null;
         $areaLabel = trim((string) ($spec['location'] ?? '')) ?: trim((string) ($spec['near_landmark'] ?? ''));
 
@@ -1089,6 +1105,7 @@ SYS;
                 ->sortByDesc(fn ($p) => $p['commission_value'] ?? 0)->values(),
             'standard' => $best->reject(fn ($p) => $this->paysCommission($p))->values(),
             'unplaced' => $unplaced,
+            'corrected' => $corrected,
             'unanswerable' => $this->unanswerable($spec, $properties),
             'why_none' => $best->isEmpty() ? $this->diagnose($spec, $properties) : [],
             'hub' => $spec['_hub'] ?? null,
@@ -1835,6 +1852,19 @@ SYS;
         $station = app(TransportIndex::class)->findStation($needle);
 
         return $station ? [(float) $station['lat'], (float) $station['lng']] : null;
+    }
+
+    /** Does a place name match anything as typed: a station, borough, landmark or listing? */
+    protected function placeKnown(string $name, Collection $properties, TransportIndex $transport): bool
+    {
+        $station = $transport->findStation($name);
+        if (($station && self::normPlace($station['name']) === self::normPlace($name))
+            || $transport->findBorough($name) || $this->resolveLandmark($name)) {
+            return true;
+        }
+
+        return $properties->contains(fn ($p) => $this->nameMatches((string) ($p['location'] ?? ''), $name)
+            || $this->nameMatches((string) ($p['nearest_station'] ?? ''), $name));
     }
 
     /** Centre of our own listings matching a term, else a known landmark. */

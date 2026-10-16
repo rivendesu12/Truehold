@@ -185,14 +185,16 @@ window.SigouLines = (function () {
         const paying = g.commission.length;
         const onBrief = paying + g.standard.length;
         const said = s => (s || '').trim();
+        // A misspelt place the search read as the real one ("nehwam").
+        const fix = data.corrected ? data.corrected.from + '? You mean ' + data.corrected.to + ' bro. ' : '';
 
         if (onBrief && said(data.sigou_found)) {
-            return said(data.sigou_found) + (paying ? ' · ' + paying + ' with commission 🤑' : '');
+            return fix + said(data.sigou_found) + (paying ? ' · ' + paying + ' with commission 🤑' : '');
         }
         if (!onBrief && !data.unplaced && said(data.sigou_none)) {
-            return said(data.sigou_none) + (g.alternatives.length ? ' · These are close tho, have a look' : '');
+            return fix + said(data.sigou_none) + (g.alternatives.length ? ' · These are close tho, have a look' : '');
         }
-        const lead = found(data);
+        const lead = fix + found(data);
         const quip = said(data.sigou) || aboutBrief(data, q);
         return quip ? lead + '. ' + quip : lead;
     };

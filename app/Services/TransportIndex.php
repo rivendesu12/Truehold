@@ -407,6 +407,60 @@ class TransportIndex
         return null;
     }
 
+    /**
+     * The station or borough a misspelt place most likely means: "nehwam" is
+     * Newham, "stratfrod" Stratford. Only a close, unambiguous match (one or
+     * two letters off, three for long names); a tie between two different
+     * places returns nothing rather than a guess. $extra adds names the
+     * caller knows (areas on listings, landmarks).
+     */
+    public function closestPlace(string $phrase, array $extra = []): ?string
+    {
+        $norm = fn (string $s) => trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z ]/', ' ', str_replace('&', ' and ', strtolower($s)))));
+        $want = $norm($phrase);
+        $len = strlen($want);
+        if ($len < 4) {
+            return null;
+        }
+        $limit = $len <= 5 ? 1 : ($len <= 10 ? 2 : 3);
+
+        $candidates = [];
+        foreach (array_unique($this->boroughs()) as $name) {
+            $candidates[$norm($name)] = $name;
+            $candidates[preg_replace('/ upon thames$/', '', $norm($name))] = $name;
+        }
+        foreach ($this->stations() as $station) {
+            $candidates[$norm($station['name'])] ??= $station['name'];
+        }
+        foreach ($extra as $name) {
+            if (is_string($name) && $name !== '') {
+                $candidates[$norm($name)] ??= ucwords(strtolower(trim($name)));
+            }
+        }
+        // Last, so a real area name wins: "Peckham" for Peckham Rye.
+        foreach ($this->stations() as $station) {
+            $short = preg_replace('/ (rye|central|broadway|junction|town|high street)$/', '', $norm($station['name']));
+            $candidates[$short] ??= $station['name'];
+        }
+
+        $best = null;
+        $bestDistance = PHP_INT_MAX;
+        $tied = false;
+        foreach ($candidates as $key => $name) {
+            if (abs(strlen($key) - $len) > $limit) {
+                continue;
+            }
+            $d = levenshtein($want, $key);
+            if ($d < $bestDistance) {
+                [$best, $bestDistance, $tied] = [$name, $d, false];
+            } elseif ($d === $bestDistance && $name !== $best) {
+                $tied = true;
+            }
+        }
+
+        return $best !== null && $bestDistance <= $limit && ! $tied ? $best : null;
+    }
+
     /** Mean position of a borough's stations, for "how far out" on nearby options. */
     public function boroughCentre(string $borough): ?array
     {

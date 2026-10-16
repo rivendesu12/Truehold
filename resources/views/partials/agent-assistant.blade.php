@@ -855,6 +855,11 @@
 
             if (data.refined) html += '<p class="th-ask__hint"><span class="th-ask__refined" title="Your last search, with this change">REFINED</span> your last search</p>';
 
+            if (data.corrected) {
+                html += '<p class="th-ask__hint">Read <strong>' + esc(data.corrected.from)
+                     + '</strong> as <strong>' + esc(data.corrected.to) + '</strong>.</p>';
+            }
+
             if (data.unplaced) {
                 html += '<p class="th-ask__warn">We could not place <strong>'
                      + esc(data.unplaced) + '</strong>, so the results below ignore it. '
